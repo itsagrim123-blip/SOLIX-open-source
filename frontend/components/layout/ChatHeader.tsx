@@ -87,12 +87,17 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           <Settings className="w-4 h-4" />
         </button>
 
-        {/* Profile Avatar placeholder */}
+        {/* Profile Avatar */}
         <div
-          className="w-8 h-8 rounded-xl bg-gradient-to-tr from-slate-800 to-slate-700 border border-white/10 flex items-center justify-center text-slate-300 shadow-sm cursor-pointer hover:border-cyan-400/30 transition-colors"
-          title="User profile"
+          className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-cyan-400/30 transition-all cursor-pointer"
+          title="Agrim Kaushik (Creator)"
         >
-          <User className="w-4 h-4" />
+          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-[10px] font-bold text-white shadow-glow-cyan">
+            AK
+          </div>
+          <span className="hidden md:inline text-xs text-slate-300 font-medium">
+            Agrim Kaushik
+          </span>
         </div>
       </div>
     </header>

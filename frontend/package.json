@@ -1,6 +1,7 @@
 {
   "name": "solix-frontend",
   "version": "1.0.0",
+  "author": "Agrim Kaushik",
   "private": true,
   "scripts": {
     "dev": "next dev",

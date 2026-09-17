@@ -311,6 +311,26 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           </div>
         )}
 
+        {/* User Profile Pill */}
+        {!isCollapsed ? (
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05] text-xs">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-[11px] font-bold text-white shadow-glow-cyan flex-shrink-0">
+              AK
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-slate-200 font-medium truncate">Agrim Kaushik</div>
+              <div className="text-[10px] text-cyan-400/80 font-mono">Creator / Admin</div>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="w-8 h-8 mx-auto rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-[11px] font-bold text-white shadow-glow-cyan cursor-pointer"
+            title="Agrim Kaushik (Creator / Admin)"
+          >
+            AK
+          </div>
+        )}
+
         {/* Settings Button */}
         <button
           onClick={onOpenSettings}

@@ -3,6 +3,7 @@
 <div align="center">
 
 ![Solix Banner](https://img.shields.io/badge/SOLIX-AI%20Assistant-06b6d4?style=for-the-badge&logo=probot&logoColor=white)
+![Author: Agrim Kaushik](https://img.shields.io/badge/Author-Agrim%20Kaushik-06b6d4?style=for-the-badge&logo=github&logoColor=white)
 ![Next.js 15](https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=for-the-badge&logo=fastapi&logoColor=white)
@@ -13,9 +14,11 @@
 
 <p align="center">
   <strong>An open-source, production-grade conversational AI application featuring a dark-first glassmorphic interface, real-time Server-Sent Events (SSE) streaming, extensible AI provider abstraction layer, and native local Ollama integration.</strong>
+  <br />
+  <sub>Designed & Developed by <strong>Agrim Kaushik</strong></sub>
 </p>
 
-[Key Features](#-key-features) • [Architecture](#-architecture) • [Getting Started](#-getting-started) • [API Reference](#-api-reference) • [Configuration](#-configuration) • [Extending Providers](#-extending-ai-providers)
+[Key Features](#-key-features) • [Architecture](#-architecture) • [Getting Started](#-getting-started) • [API Reference](#-api-reference) • [Configuration](#-configuration) • [Author](#-author--maintainer)
 
 </div>
 
@@ -325,6 +328,14 @@ npm run build
 
 ---
 
+## 👤 Author & Maintainer
+
+**Agrim Kaushik**
+- GitHub: [@itsagrim123-blip](https://github.com/itsagrim123-blip)
+- Repository: [SOLIX-open-source](https://github.com/itsagrim123-blip/SOLIX-open-source)
+
+---
+
 ## 📄 License
 
 Distributed under the **MIT License**. See `LICENSE` for more information.
@@ -332,5 +343,5 @@ Distributed under the **MIT License**. See `LICENSE` for more information.
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for the open-source AI community. Star ⭐ this repository if you find it helpful!</sub>
+  <sub>Designed & Developed with ❤️ by <strong>Agrim Kaushik</strong> for the open-source AI community. Star ⭐ this repository if you find it helpful!</sub>
 </div>
