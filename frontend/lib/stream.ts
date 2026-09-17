@@ -1,7 +1,5 @@
+import { API_BASE_URL, getApiUrl } from "@/lib/config";
 import { StreamPayload } from "@/types/chat";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface StreamChatParams {
   message: string;
@@ -31,7 +29,7 @@ export async function streamChat({
   onDone,
   onError,
 }: StreamChatParams): Promise<void> {
-  const url = `${API_BASE_URL.replace(/\/$/, "")}/api/chat`;
+  const url = getApiUrl("/api/chat");
 
   try {
     const response = await fetch(url, {

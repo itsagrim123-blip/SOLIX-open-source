@@ -1,3 +1,4 @@
+import { API_BASE_URL, getApiUrl } from "@/lib/config";
 import {
   ConversationDetail,
   ConversationSummary,
@@ -5,14 +6,11 @@ import {
   ModelsResponse,
 } from "@/types/chat";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 /**
  * Perform a typed HTTP fetch to the Solix backend with error handling.
  */
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL.replace(/\/$/, "")}${path}`;
+  const url = getApiUrl(path);
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {}),

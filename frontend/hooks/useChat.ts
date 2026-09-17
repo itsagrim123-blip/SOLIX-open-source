@@ -9,6 +9,8 @@ import {
   ModelInfo,
 } from "@/types/chat";
 
+export type BackendStatus = "checking" | "online" | "offline";
+
 export function useChat() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -17,16 +19,21 @@ export function useChat() {
   const [currentModel, setCurrentModel] = useState<string>("llama3.2");
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
-  const [isBackendConnected, setIsBackendConnected] = useState<boolean>(true);
+  const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
   const [isProviderConnected, setIsProviderConnected] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Load conversations and models on initial mount
+  // Derived boolean for backward compatibility
+  const isBackendConnected = backendStatus === "online";
+
+  // Load conversations, models, and initial health check
   const refreshData = useCallback(async () => {
     try {
       setError(null);
+      setBackendStatus("checking");
+
       const [healthData, modelsData, convsData] = await Promise.all([
         api.getHealth().catch(() => null),
         api.getModels().catch(() => null),
@@ -34,10 +41,10 @@ export function useChat() {
       ]);
 
       if (healthData) {
-        setIsBackendConnected(true);
+        setBackendStatus("online");
         setIsProviderConnected(healthData.provider_connected);
       } else {
-        setIsBackendConnected(false);
+        setBackendStatus("offline");
       }
 
       if (modelsData) {
@@ -50,7 +57,7 @@ export function useChat() {
       setConversations(convsData);
     } catch (err: any) {
       console.error("Initialization error:", err);
-      setIsBackendConnected(false);
+      setBackendStatus("offline");
       setError(err.message || "Unable to connect to Solix backend.");
     }
   }, []);
@@ -58,6 +65,25 @@ export function useChat() {
   useEffect(() => {
     refreshData();
   }, [refreshData]);
+
+  // Periodic lightweight background health polling (every 20s)
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const healthData = await api.getHealth();
+        if (healthData) {
+          setBackendStatus("online");
+          setIsProviderConnected(healthData.provider_connected);
+        } else {
+          setBackendStatus("offline");
+        }
+      } catch {
+        setBackendStatus("offline");
+      }
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Load messages whenever activeConversationId changes
   const selectConversation = useCallback(async (id: string) => {
@@ -110,20 +136,23 @@ export function useChat() {
     [activeConversationId, startNewChat]
   );
 
-  // Rename conversation
-  const renameConversation = useCallback(async (id: string, newTitle: string) => {
-    try {
-      const updated = await api.updateConversationTitle(id, newTitle);
-      setConversations((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, title: updated.title } : c))
-      );
-    } catch (err: any) {
-      console.error("Failed to rename conversation:", err);
-      setError(err.message || "Failed to rename conversation.");
-    }
-  }, []);
+  // Rename a conversation
+  const renameConversation = useCallback(
+    async (id: string, newTitle: string) => {
+      try {
+        await api.updateConversationTitle(id, newTitle);
+        setConversations((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c))
+        );
+      } catch (err: any) {
+        console.error("Failed to rename conversation:", err);
+        setError(err.message || "Failed to rename conversation.");
+      }
+    },
+    []
+  );
 
-  // Stop currently generating response
+  // Stop generation
   const stopGenerating = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -132,71 +161,61 @@ export function useChat() {
     setIsGenerating(false);
   }, []);
 
-  // Send message
+  // Send a message & stream response
   const sendMessage = useCallback(
-    async (prompt: string) => {
-      const trimmed = prompt.trim();
-      if (!trimmed || isGenerating) return;
+    async (content: string) => {
+      if (!content.trim() || isGenerating) return;
 
-      setError(null);
-      const userMsgId = "user-" + Date.now();
-      const assistantMsgId = "assistant-" + Date.now();
+      const userMessageId = `user-${Date.now()}`;
+      const assistantMsgId = `assistant-${Date.now()}`;
+      const now = new Date().toISOString();
 
-      // Optimistically add user message and blank assistant message
-      const userMsg: Message = {
-        id: userMsgId,
-        conversation_id: activeConversationId || "temp",
+      const userMessage: Message = {
+        id: userMessageId,
+        conversation_id: activeConversationId || "",
         role: "user",
-        content: trimmed,
-        timestamp: new Date().toISOString(),
+        content: content.trim(),
+        timestamp: now,
       };
 
-      const assistantMsg: Message = {
+      const placeholderAssistantMsg: Message = {
         id: assistantMsgId,
-        conversation_id: activeConversationId || "temp",
+        conversation_id: activeConversationId || "",
         role: "assistant",
         content: "",
-        timestamp: new Date().toISOString(),
+        timestamp: now,
       };
 
-      setMessages((prev) => [...prev, userMsg, assistantMsg]);
+      // Optimistically append messages to UI
+      setMessages((prev) => [...prev, userMessage, placeholderAssistantMsg]);
       setIsGenerating(true);
+      setError(null);
 
+      // Create new abort controller for this stream
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
       let accumulatedContent = "";
 
       await streamChat({
-        message: trimmed,
+        message: content.trim(),
         conversationId: activeConversationId || undefined,
         model: currentModel,
         signal: controller.signal,
         onStart: (data) => {
-          if (!activeConversationId) {
+          if (!activeConversationId && data.conversation_id) {
             setActiveConversationId(data.conversation_id);
+            setConversations((prev) => [
+              {
+                id: data.conversation_id,
+                title: data.title,
+                created_at: now,
+                updated_at: now,
+                message_count: 2,
+              },
+              ...prev,
+            ]);
           }
-          // Update conversations list with new or updated title
-          setConversations((prev) => {
-            const exists = prev.some((c) => c.id === data.conversation_id);
-            if (!exists) {
-              return [
-                {
-                  id: data.conversation_id,
-                  title: data.title,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  message_count: 2,
-                },
-                ...prev,
-              ];
-            }
-            return prev.map((c) =>
-              c.id === data.conversation_id
-                ? { ...c, title: data.title, updated_at: new Date().toISOString() }
-                : c
-            );
-          });
         },
         onToken: (token) => {
           accumulatedContent += token;
@@ -211,8 +230,13 @@ export function useChat() {
         onDone: (data) => {
           setIsGenerating(false);
           abortControllerRef.current = null;
-          // Refresh conversation list to maintain correct update ordering
-          api.getConversations().then(setConversations).catch(() => {});
+          if (data.message_id) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMsgId ? { ...msg, id: data.message_id! } : msg
+              )
+            );
+          }
         },
         onError: (err) => {
           setIsGenerating(false);
@@ -224,7 +248,7 @@ export function useChat() {
               msg.id === assistantMsgId && !msg.content
                 ? {
                     ...msg,
-                    content: `⚠️ **Error:** ${err}\n\n*Please ensure your Ollama instance is active at \`http://localhost:11434\` or check your connection.*`,
+                    content: `⚠️ **Error:** ${err}\n\nPlease ensure the Solix backend service is online and accessible.`,
                   }
                 : msg
             )
@@ -243,6 +267,7 @@ export function useChat() {
     currentModel,
     isGenerating,
     isLoadingHistory,
+    backendStatus,
     isBackendConnected,
     isProviderConnected,
     error,
@@ -256,4 +281,3 @@ export function useChat() {
     refreshData,
   };
 }
-

@@ -18,6 +18,7 @@ export default function SolixApp() {
     currentModel,
     isGenerating,
     isLoadingHistory,
+    backendStatus,
     isBackendConnected,
     isProviderConnected,
     selectConversation,
@@ -68,6 +69,7 @@ export default function SolixApp() {
           models={models}
           onSelectModel={setCurrentModel}
           isBackendConnected={isBackendConnected}
+          backendStatus={backendStatus}
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onNewChat={startNewChat}
           onOpenSettings={() => setIsSettingsOpen(true)}

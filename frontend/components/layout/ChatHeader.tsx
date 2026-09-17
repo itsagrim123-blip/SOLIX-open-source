@@ -4,11 +4,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { Menu, Settings } from "lucide-react";
 import { ModelInfo } from "@/types/chat";
 
+export type BackendStatus = "checking" | "online" | "offline";
+
 interface ChatHeaderProps {
   currentModel: string;
   models: ModelInfo[];
   onSelectModel: (modelId: string) => void;
-  isBackendConnected: boolean;
+  isBackendConnected?: boolean;
+  backendStatus?: BackendStatus;
   onOpenMobileMenu: () => void;
   onNewChat: () => void;
   onOpenSettings: () => void;
@@ -18,7 +21,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   currentModel,
   models,
   onSelectModel,
-  isBackendConnected,
+  isBackendConnected = true,
+  backendStatus,
   onOpenMobileMenu,
   onNewChat,
   onOpenSettings,
@@ -40,9 +44,26 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const currentStatus: BackendStatus =
+    backendStatus || (isBackendConnected ? "online" : "offline");
+
+  const statusPillClass =
+    currentStatus === "online"
+      ? ""
+      : currentStatus === "checking"
+      ? "checking"
+      : "offline";
+
+  const statusDotClass =
+    currentStatus === "online"
+      ? ""
+      : currentStatus === "checking"
+      ? "checking"
+      : "offline";
+
   return (
     <header className="h-[54px] sm:h-[60px] flex-none flex items-center justify-between px-3 sm:px-4 border-b border-[#96b4e6]/10 glass z-20 select-none relative pt-[env(safe-area-inset-top,0px)]">
-      {/* LEFT: Solix Icon + SOLIX + Small Model Indicator + Small Server Status Indicator */}
+      {/* LEFT: Solix Icon + SOLIX + Small Model Indicator + Server Status Indicator */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
         {/* Brand Logo & Name */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
@@ -102,17 +123,32 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           )}
         </div>
 
-        {/* Small Server Status Indicator: Green dot + Online vs Red dot + Offline */}
+        {/* Server Status Indicator (Handling Checking, Online, Offline states) */}
         <div
-          className={`status-pill !py-0.5 !px-2 sm:!py-1 sm:!px-2.5 !text-[11px] sm:!text-xs flex items-center gap-1.5 ${
-            isBackendConnected ? "" : "offline"
-          }`}
-          title={isBackendConnected ? "Server Online" : "Server Offline"}
+          className={`status-pill !py-0.5 !px-2 sm:!py-1 sm:!px-2.5 !text-[11px] sm:!text-xs flex items-center gap-1.5 ${statusPillClass}`}
+          title={
+            currentStatus === "online"
+              ? "Server Online"
+              : currentStatus === "checking"
+              ? "Checking backend health..."
+              : "Server Offline (Simulation mode active)"
+          }
         >
-          <span
-            className={`status-dot !w-1.5 !h-1.5 ${isBackendConnected ? "" : "offline"}`}
-          />
-          <span>{isBackendConnected ? "Online" : "Offline"}</span>
+          <span className={`status-dot !w-1.5 !h-1.5 ${statusDotClass}`} />
+          <span className="hidden sm:inline">
+            {currentStatus === "online"
+              ? "Server Online"
+              : currentStatus === "checking"
+              ? "Checking..."
+              : "Server Offline"}
+          </span>
+          <span className="sm:hidden">
+            {currentStatus === "online"
+              ? "Online"
+              : currentStatus === "checking"
+              ? "Checking"
+              : "Offline"}
+          </span>
         </div>
       </div>
 

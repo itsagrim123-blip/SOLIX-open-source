@@ -35,10 +35,12 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Configure CORS
+# Configure CORS (supports local, custom domain, and *.vercel.app preview deployments)
+logger.info(f"CORS origins: {settings.cors_origins_list}, regex: {settings.CORS_ORIGIN_REGEX}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=settings.CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
