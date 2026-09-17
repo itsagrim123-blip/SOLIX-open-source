@@ -1,0 +1,130 @@
+import { StreamPayload } from "@/types/chat";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export interface StreamChatParams {
+  message: string;
+  conversationId?: string;
+  model?: string;
+  systemPrompt?: string;
+  temperature?: number;
+  signal?: AbortSignal;
+  onStart?: (data: { conversation_id: string; title: string; provider?: string }) => void;
+  onToken?: (token: string) => void;
+  onDone?: (data: { conversation_id: string; message_id?: string; full_content?: string }) => void;
+  onError?: (error: string) => void;
+}
+
+/**
+ * Stream conversational responses from POST /api/chat via Server-Sent Events (SSE).
+ */
+export async function streamChat({
+  message,
+  conversationId,
+  model,
+  systemPrompt,
+  temperature,
+  signal,
+  onStart,
+  onToken,
+  onDone,
+  onError,
+}: StreamChatParams): Promise<void> {
+  const url = `${API_BASE_URL.replace(/\/$/, "")}/api/chat`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({
+        message,
+        conversation_id: conversationId || null,
+        model: model || null,
+        system_prompt: systemPrompt || null,
+        temperature: temperature ?? 0.7,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      let errDetail = `Server responded with ${response.status}: ${response.statusText}`;
+      try {
+        const body = await response.json();
+        if (body?.detail) errDetail = body.detail;
+      } catch {
+        // fallback
+      }
+      throw new Error(errDetail);
+    }
+
+    if (!response.body) {
+      throw new Error("No response stream body available from server.");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      // keep incomplete last line in buffer
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+        const dataStr = trimmed.slice(6).trim();
+        if (!dataStr) continue;
+
+        try {
+          const payload: StreamPayload = JSON.parse(dataStr);
+
+          switch (payload.type) {
+            case "start":
+              onStart?.({
+                conversation_id: payload.conversation_id,
+                title: payload.title,
+                provider: payload.provider,
+              });
+              break;
+            case "token":
+              onToken?.(payload.content);
+              break;
+            case "done":
+              onDone?.({
+                conversation_id: payload.conversation_id,
+                message_id: payload.message_id,
+                full_content: payload.full_content,
+              });
+              break;
+            case "error":
+              onError?.(payload.error);
+              break;
+          }
+        } catch (jsonErr) {
+          console.warn("Could not parse SSE JSON line:", dataStr, jsonErr);
+        }
+      }
+    }
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      // User pressed stop generation
+      return;
+    }
+    const message =
+      err.name === "TypeError" && err.message.includes("fetch")
+        ? `Could not reach Solix backend at ${API_BASE_URL}. Ensure it is running.`
+        : err.message || "Failed to process chat response.";
+    onError?.(message);
+  }
+}
+
