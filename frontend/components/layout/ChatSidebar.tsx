@@ -70,54 +70,63 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     setEditingId(null);
   };
 
-  const sidebarContent = (
+  const renderSidebarInner = (isMobile: boolean = false) => (
     <div className="flex flex-col h-full min-h-0 select-none overflow-hidden">
       {/* Brand Header */}
       <div className="sidebar-brand justify-between flex-shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="solix-logo-badge">✣</div>
-          {!isCollapsed && (
-            <span className="font-extrabold text-sm tracking-[0.3px] text-white">
+          <div className="solix-logo-badge !w-8 !h-8 sm:!w-[35px] sm:!h-[35px]">
+            ✣
+          </div>
+          {(!isCollapsed || isMobile) && (
+            <span className="font-extrabold text-sm sm:text-base tracking-[0.3px] text-white">
               SOLIX
             </span>
           )}
         </div>
 
         {/* Desktop Collapse Toggle */}
-        <button
-          onClick={onToggleCollapse}
-          className="hidden md:flex p-1.5 rounded-lg text-[#7888a2] hover:text-[#eef5ff] hover:bg-white/[0.06] transition-colors"
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
-          )}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={onToggleCollapse}
+            className="hidden md:flex p-1.5 rounded-lg text-[#7888a2] hover:text-[#eef5ff] hover:bg-white/[0.06] transition-colors"
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
+          </button>
+        )}
 
-        {/* Mobile Close Button */}
-        <button
-          onClick={onCloseMobile}
-          className="md:hidden p-1.5 rounded-lg text-[#7888a2] hover:text-[#eef5ff] hover:bg-white/[0.06]"
-          aria-label="Close sidebar"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Mobile Close Button (Touch optimized) */}
+        {isMobile && (
+          <button
+            onClick={onCloseMobile}
+            className="iconbtn !w-9 !h-9 flex items-center justify-center rounded-xl"
+            aria-label="Close sidebar"
+            title="Close sidebar"
+          >
+            <X className="w-4 h-4 text-[#aebbd0]" />
+          </button>
+        )}
       </div>
 
       {/* New Chat Button */}
-      <div className="pt-1 flex-shrink-0">
+      <div className="pt-2 flex-shrink-0">
         <button
           onClick={() => {
             onNewChat();
-            onCloseMobile();
+            if (isMobile) onCloseMobile();
           }}
-          className={`new-btn w-full ${isCollapsed ? "!px-0 !justify-center" : ""}`}
+          className={`new-btn w-full min-h-[42px] active:scale-[0.98] ${
+            isCollapsed && !isMobile ? "!px-0 !justify-center" : ""
+          }`}
           title="Start a new chat"
         >
-          {isCollapsed ? (
+          {isCollapsed && !isMobile ? (
             <Plus className="w-4 h-4 text-cyan-300" />
           ) : (
             <span>＋ New Chat</span>
@@ -126,46 +135,44 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       </div>
 
       {/* Search Input */}
-      {!isCollapsed && (
-        <div className="pt-1 flex-shrink-0">
+      {(!isCollapsed || isMobile) && (
+        <div className="pt-2 flex-shrink-0">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search conversations..."
-            className="sidebar-search"
+            className="sidebar-search min-h-[38px]"
           />
         </div>
       )}
 
       {/* Section Header */}
-      {!isCollapsed && (
-        <div className="sidebar-section">
-          Recent Chats
-        </div>
+      {(!isCollapsed || isMobile) && (
+        <div className="sidebar-section">Recent Chats</div>
       )}
 
       {/* Conversations Scroll Container (Strict internal scroll) */}
-      <div className="sidebar-chats mt-1">
+      <div className="sidebar-chats mt-1.5">
         {filteredConversations.map((conv) => {
           const isActive = activeConversationId === conv.id;
           const isEditing = editingId === conv.id;
 
-          if (isEditing && !isCollapsed) {
+          if (isEditing && (!isCollapsed || isMobile)) {
             return (
               <form
                 key={conv.id}
                 onSubmit={(e) => handleSaveRename(conv.id, e)}
-                className="px-2 py-1 flex-shrink-0"
+                className="px-1 py-1 flex-shrink-0"
               >
-                <div className="flex items-center gap-1 bg-[#080e1b] rounded-lg p-1 border border-cyan-400/40">
+                <div className="flex items-center gap-1 bg-[#080e1b] rounded-xl p-1.5 border border-cyan-400/50 shadow-inner">
                   <input
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     autoFocus
                     onBlur={() => setEditingId(null)}
-                    className="flex-1 bg-transparent px-1.5 py-0.5 text-xs text-white outline-none"
+                    className="flex-1 bg-transparent px-2 py-0.5 text-xs text-white outline-none font-sans"
                   />
                   <button
                     type="submit"
@@ -183,14 +190,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               key={conv.id}
               onClick={() => {
                 onSelectConversation(conv.id);
-                onCloseMobile();
+                if (isMobile) onCloseMobile();
               }}
-              className={`sidebar-chat-item group ${
+              className={`sidebar-chat-item group active:scale-[0.98] ${
                 isActive ? "active" : ""
-              } ${isCollapsed ? "!justify-center !px-0" : ""}`}
+              } ${isCollapsed && !isMobile ? "!justify-center !px-0" : "min-h-[40px]"}`}
               title={conv.title}
             >
-              {isCollapsed ? (
+              {isCollapsed && !isMobile ? (
                 <MessageSquare
                   className={`w-4 h-4 ${
                     isActive ? "text-cyan-400" : "text-[#7888a2]"
@@ -198,11 +205,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 />
               ) : (
                 <>
-                  <span className="truncate flex-1 text-left">
+                  <span className="truncate flex-1 text-left text-xs sm:text-[13px]">
                     {conv.title}
                   </span>
 
-                  {/* Rename & Delete controls visible on hover */}
+                  {/* Rename & Delete controls */}
                   <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity flex-shrink-0 pl-1">
                     <button
                       onClick={(e) => handleStartRename(conv, e)}
@@ -228,7 +235,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           );
         })}
 
-        {filteredConversations.length === 0 && !isCollapsed && (
+        {filteredConversations.length === 0 && (!isCollapsed || isMobile) && (
           <div className="p-3 text-center text-xs text-[#7888a2] italic">
             No chats found
           </div>
@@ -240,29 +247,29 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         <button
           onClick={() => {
             onOpenSettings();
-            onCloseMobile();
+            if (isMobile) onCloseMobile();
           }}
-          className={`sidebar-bottom-btn ${
-            isCollapsed ? "!justify-center !px-0" : ""
+          className={`sidebar-bottom-btn min-h-[40px] active:scale-[0.98] ${
+            isCollapsed && !isMobile ? "!justify-center !px-0" : ""
           }`}
           title="Settings"
         >
           <span className="text-sm">⚙</span>
-          {!isCollapsed && <span>Settings</span>}
+          {(!isCollapsed || isMobile) && <span>Settings</span>}
         </button>
 
         <button
           onClick={() => {
             onOpenAbout();
-            onCloseMobile();
+            if (isMobile) onCloseMobile();
           }}
-          className={`sidebar-bottom-btn ${
-            isCollapsed ? "!justify-center !px-0" : ""
+          className={`sidebar-bottom-btn min-h-[40px] active:scale-[0.98] ${
+            isCollapsed && !isMobile ? "!justify-center !px-0" : ""
           }`}
           title="About Solix"
         >
           <span className="text-sm">ⓘ</span>
-          {!isCollapsed && <span>About Solix</span>}
+          {(!isCollapsed || isMobile) && <span>About Solix</span>}
         </button>
       </div>
     </div>
@@ -270,31 +277,37 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar (md+) */}
       <aside
         className={`hidden md:flex flex-col h-[100dvh] h-screen glass border-r border-[#96b4e6]/10 transition-all duration-300 z-30 flex-none ${
           isCollapsed ? "w-[68px] p-2" : "solix-sidebar"
         }`}
       >
-        {sidebarContent}
+        {renderSidebarInner(false)}
       </aside>
 
       {/* Mobile Drawer Backdrop */}
       {isMobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden animate-fade-in"
+          aria-hidden="true"
         />
       )}
 
-      {/* Mobile Drawer Content */}
+      {/* Mobile Slide-Out Drawer with Safe Area Insets */}
       <div
-        className={`fixed top-0 bottom-0 left-0 w-[240px] h-[100dvh] h-screen glass border-r border-[#96b4e6]/10 z-50 md:hidden transition-transform duration-300 ${
+        className={`fixed top-0 bottom-0 left-0 w-[280px] max-w-[85vw] h-[100dvh] h-[100svh] glass border-r border-[#96b4e6]/15 z-50 md:hidden transition-transform duration-300 ease-out shadow-2xl flex flex-col ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
-        style={{ padding: "12px 10px" }}
+        style={{
+          paddingTop: "max(12px, env(safe-area-inset-top, 12px))",
+          paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))",
+          paddingLeft: "12px",
+          paddingRight: "12px",
+        }}
       >
-        {sidebarContent}
+        {renderSidebarInner(true)}
       </div>
     </>
   );

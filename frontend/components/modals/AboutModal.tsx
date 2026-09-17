@@ -134,3 +134,4 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     </div>
   );
 };
+

@@ -19,9 +19,14 @@ body {
   width: 100%;
   height: 100%;
   height: 100dvh;
+  height: 100svh;
   margin: 0;
   padding: 0;
   overflow: hidden !important;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   background-color: var(--bg-primary);
   color: #eef4ff;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -33,6 +38,7 @@ button,
 input,
 textarea {
   font: inherit;
+  touch-action: manipulation;
 }
 
 button {
@@ -41,8 +47,11 @@ button {
 
 /* App Background & Ambient Floating Orbs matching Reference */
 .app-container {
+  height: 100%;
   height: 100dvh;
+  height: 100svh;
   width: 100vw;
+  max-width: 100%;
   display: flex;
   overflow: hidden;
   position: relative;
@@ -221,18 +230,26 @@ button {
   box-shadow: 0 0 10px #94a3b8;
 }
 
-/* Sidebar Classes matching Reference */
-.solix-sidebar {
-  width: 230px;
-  height: 100%;
-  flex: none;
-  padding: 12px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  border-right: 1px solid rgba(150, 180, 230, 0.12);
-  position: relative;
-  z-index: 2;
+/* Sidebar Classes matching Reference - Desktop Only */
+@media (min-width: 768px) {
+  .solix-sidebar {
+    width: 230px;
+    height: 100%;
+    flex: none;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-right: 1px solid rgba(150, 180, 230, 0.12);
+    position: relative;
+    z-index: 2;
+  }
+}
+
+@media (max-width: 767px) {
+  .solix-sidebar {
+    display: none !important;
+  }
 }
 
 .sidebar-brand {
@@ -342,20 +359,28 @@ button {
   color: white;
 }
 
-/* Hero section matching reference */
+/* Hero section matching reference with mobile-first responsiveness */
 .solix-hero {
-  width: min(900px, calc(100% - 40px));
+  width: min(900px, calc(100% - 24px));
   margin: auto;
-  padding: 30px 0 18px;
+  padding: 18px 0 12px;
   text-align: center;
 }
 
+@media (min-width: 640px) {
+  .solix-hero {
+    width: min(900px, calc(100% - 40px));
+    padding: 30px 0 18px;
+  }
+}
+
 .solix-hero h1 {
-  font-size: clamp(30px, 4vw, 42px);
-  margin: 0 0 8px;
-  letter-spacing: -1.5px;
+  font-size: clamp(22px, 5.5vw, 40px);
+  margin: 0 0 6px;
+  letter-spacing: -1px;
   font-weight: 700;
   color: #eef4ff;
+  line-height: 1.2;
 }
 
 .solix-hero h1 span {
@@ -363,66 +388,101 @@ button {
 }
 
 .solix-hero .hero-sub {
-  margin: 0 auto 28px;
+  margin: 0 auto 18px;
   color: #8798b2;
-  font-size: 13px;
-  max-width: 520px;
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 480px;
+}
+
+@media (min-width: 640px) {
+  .solix-hero .hero-sub {
+    font-size: 13px;
+    margin: 0 auto 28px;
+  }
 }
 
 .solix-hero-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
   text-align: left;
 }
 
-@media (max-width: 850px) {
+@media (min-width: 768px) {
   .solix-hero-cards {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 560px) {
-  .solix-hero {
-    width: calc(100% - 24px);
-    padding-top: 20px;
-  }
-  .solix-hero-cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
   }
 }
 
 .solix-card-icon {
-  font-size: 21px;
-  margin-bottom: 10px;
+  font-size: 18px;
+  margin-bottom: 6px;
   color: #45d9ff;
   line-height: 1;
 }
 
+@media (min-width: 640px) {
+  .solix-card-icon {
+    font-size: 21px;
+    margin-bottom: 10px;
+  }
+}
+
 .reference-card b {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #eef4ff;
   display: block;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .reference-card b {
+    font-size: 13px;
+  }
 }
 
 .reference-card p {
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 10px;
+  line-height: 1.4;
   color: #8798b2;
-  margin: 6px 0 0;
+  margin: 4px 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .reference-card p {
+    font-size: 11px;
+    line-height: 1.5;
+    margin: 6px 0 0;
+  }
 }
 
 /* Suggestion Card with diagonal light sweep matching Reference */
 .reference-card {
   position: relative;
-  min-height: 105px;
-  padding: 17px;
-  border-radius: 16px;
+  min-height: 82px;
+  padding: 12px 10px;
+  border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
-  transition: 0.28s;
+  transition: transform 0.18s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   text-align: left;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (min-width: 640px) {
+  .reference-card {
+    min-height: 105px;
+    padding: 17px;
+    border-radius: 16px;
+  }
 }
 
 .reference-card::after {
@@ -432,24 +492,38 @@ button {
   background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.10), transparent);
   transform: rotate(10deg);
   transition: 0.5s;
+  pointer-events: none;
 }
 
-.reference-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(86, 208, 255, 0.4);
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.3), 0 0 25px rgba(0, 160, 255, 0.07);
+.reference-card:active {
+  transform: scale(0.97);
 }
 
-.reference-card:hover::after {
-  inset: 100% -100% -100% 55%;
+@media (hover: hover) {
+  .reference-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(86, 208, 255, 0.4);
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.3), 0 0 25px rgba(0, 160, 255, 0.07);
+  }
+
+  .reference-card:hover::after {
+    inset: 100% -100% -100% 55%;
+  }
 }
 
-/* Composer styling matching Reference */
+/* Composer styling matching Reference & Mobile Viewport */
 .composer-wrap {
   flex: none;
-  padding: 10px 20px 12px;
-  background: linear-gradient(to top, rgba(3, 6, 13, 0.96), rgba(3, 6, 13, 0.35), transparent);
+  padding: 8px 12px max(10px, env(safe-area-inset-bottom, 10px));
+  background: linear-gradient(to top, rgba(3, 6, 13, 0.98) 60%, rgba(3, 6, 13, 0.6) 85%, transparent);
   width: 100%;
+  z-index: 20;
+}
+
+@media (min-width: 640px) {
+  .composer-wrap {
+    padding: 10px 20px max(12px, env(safe-area-inset-bottom, 12px));
+  }
 }
 
 .composer-box {
@@ -457,12 +531,12 @@ button {
   margin: auto;
   border-radius: 17px;
   padding: 8px 12px 10px;
-  transition: 0.3s;
+  transition: all 0.25s ease;
 }
 
 .composer-box:focus-within {
-  border-color: rgba(74, 205, 255, 0.48);
-  box-shadow: 0 0 35px rgba(0, 180, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border-color: rgba(74, 205, 255, 0.55);
+  box-shadow: 0 0 30px rgba(0, 180, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .composer-send-btn {

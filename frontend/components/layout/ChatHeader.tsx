@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Menu,
-  Settings,
-} from "lucide-react";
+import { Menu, Settings } from "lucide-react";
 import { ModelInfo } from "@/types/chat";
 
 interface ChatHeaderProps {
@@ -44,38 +41,32 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   }, []);
 
   return (
-    <header className="h-[60px] flex-none flex items-center justify-between px-4 border-b border-[#96b4e6]/10 glass z-20 select-none relative">
-      {/* Top Left: Logo + SOLIX + | + Model Selector + Compact Status Pill */}
-      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-        {/* Mobile drawer toggle */}
-        <button
-          onClick={onOpenMobileMenu}
-          className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/[0.06] transition-colors cursor-pointer"
-          aria-label="Toggle navigation drawer"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
+    <header className="h-[54px] sm:h-[60px] flex-none flex items-center justify-between px-3 sm:px-4 border-b border-[#96b4e6]/10 glass z-20 select-none relative pt-[env(safe-area-inset-top,0px)]">
+      {/* LEFT: Solix Icon + SOLIX + Small Model Indicator + Small Server Status Indicator */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
         {/* Brand Logo & Name */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="solix-logo-badge">✣</div>
-          <strong className="font-extrabold tracking-[0.3px] text-white text-sm sm:text-base">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <div className="solix-logo-badge !w-7 !h-7 sm:!w-[35px] sm:!h-[35px] !text-sm sm:!text-[18px]">
+            ✣
+          </div>
+          <strong className="font-extrabold tracking-[0.3px] text-white text-xs sm:text-base">
             SOLIX
           </strong>
         </div>
 
-        {/* Subtle Separator */}
+        {/* Subtle Separator on larger screens */}
         <span className="opacity-20 hidden sm:inline text-slate-400">|</span>
 
-        {/* Model Selector Pill with Dropdown */}
-        <div className="relative hidden sm:block" ref={modelPickerRef}>
+        {/* Small Model Indicator & Dropdown */}
+        <div className="relative" ref={modelPickerRef}>
           <button
             type="button"
             onClick={() => setShowModelPicker(!showModelPicker)}
-            className="glass px-3 py-1.5 rounded-xl text-xs text-[#eaf1ff] hover:text-white hover:border-[#5ac8ff]/40 transition-all cursor-pointer font-mono flex items-center gap-1.5"
+            className="glass px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs text-[#eaf1ff] hover:text-white hover:border-[#5ac8ff]/40 transition-all cursor-pointer font-mono flex items-center gap-1 max-w-[85px] sm:max-w-none"
             title="Switch AI model"
+            aria-label="Switch AI model"
           >
-            <span>{currentModel}</span>
+            <span className="truncate">{currentModel}</span>
             <span className="text-[10px] opacity-70">⌄</span>
           </button>
 
@@ -111,51 +102,50 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           )}
         </div>
 
-        {/* Compact Glass Status Pill: Green dot + Server Online OR Red dot + Server Offline */}
+        {/* Small Server Status Indicator: Green dot + Online vs Red dot + Offline */}
         <div
-          className={`status-pill hidden sm:inline-flex ${
+          className={`status-pill !py-0.5 !px-2 sm:!py-1 sm:!px-2.5 !text-[11px] sm:!text-xs flex items-center gap-1.5 ${
             isBackendConnected ? "" : "offline"
           }`}
-          title={isBackendConnected ? "FastAPI backend is responsive" : "FastAPI backend is offline (Simulation mode active)"}
+          title={isBackendConnected ? "Server Online" : "Server Offline"}
         >
           <span
-            className={`status-dot ${isBackendConnected ? "" : "offline"}`}
-          />
-          <span>{isBackendConnected ? "Server Online" : "Server Offline"}</span>
-        </div>
-      </div>
-
-      {/* Top Right: New Chat + Settings (Matching Reference) */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Mobile Server Status dot */}
-        <div
-          className={`status-pill sm:hidden py-1 px-2.5 text-[11px] ${
-            isBackendConnected ? "" : "offline"
-          }`}
-        >
-          <span
-            className={`status-dot ${isBackendConnected ? "" : "offline"}`}
+            className={`status-dot !w-1.5 !h-1.5 ${isBackendConnected ? "" : "offline"}`}
           />
           <span>{isBackendConnected ? "Online" : "Offline"}</span>
         </div>
+      </div>
 
-        {/* ＋ New Chat Button */}
-        <button
-          onClick={onNewChat}
-          className="new-btn !h-9 px-3.5 text-xs sm:text-sm font-semibold cursor-pointer"
-          title="Start a new chat"
-        >
-          <span>＋ New Chat</span>
-        </button>
+      {/* RIGHT: Hamburger/Menu Button on Mobile, New Chat + Settings on Desktop */}
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        {/* Desktop Controls (md+) */}
+        <div className="hidden md:flex items-center gap-2">
+          <button
+            onClick={onNewChat}
+            className="new-btn !h-9 px-3.5 text-xs sm:text-sm font-semibold cursor-pointer"
+            title="Start a new chat"
+          >
+            <span>＋ New Chat</span>
+          </button>
 
-        {/* Settings Icon Button */}
+          <button
+            onClick={onOpenSettings}
+            className="iconbtn"
+            title="Settings"
+            aria-label="Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Mobile Hamburger Menu Button with 40x40 touch target */}
         <button
-          onClick={onOpenSettings}
-          className="iconbtn"
-          title="Settings"
-          aria-label="Settings"
+          onClick={onOpenMobileMenu}
+          className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl text-slate-300 hover:text-white active:scale-95 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-all cursor-pointer"
+          title="Open navigation menu"
+          aria-label="Open navigation menu"
         >
-          <Settings className="w-4 h-4" />
+          <Menu className="w-5 h-5" />
         </button>
       </div>
     </header>

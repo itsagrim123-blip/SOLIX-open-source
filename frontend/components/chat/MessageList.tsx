@@ -65,7 +65,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col">
         <WelcomeScreen onSelectPrompt={onSelectPrompt} modelName={modelName} />
       </div>
     );
@@ -75,7 +75,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     <div
       ref={scrollContainerRef}
       onScroll={handleScroll}
-      className="flex-1 min-h-0 overflow-y-auto relative divide-y divide-white/[0.02]"
+      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full relative divide-y divide-white/[0.02]"
     >
       {messages.map((msg, index) => {
         const isLast = index === messages.length - 1;
@@ -104,7 +104,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       {showScrollBottom && (
         <button
           onClick={scrollToBottom}
-          className="fixed bottom-28 right-6 z-20 p-2.5 rounded-full glass-panel-interactive shadow-glass text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95"
+          className="fixed bottom-24 sm:bottom-28 right-4 sm:right-6 z-20 p-2 sm:p-2.5 rounded-full glass text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-xl cursor-pointer"
           aria-label="Scroll to bottom"
         >
           <ArrowDown className="w-4 h-4" />
