@@ -102,7 +102,10 @@ export function useChat() {
 
     try {
       const detail = await api.getConversation(id);
-      setMessages(detail.messages || []);
+      const validMessages = (detail.messages || []).filter(
+        (m: Message) => m.content && m.content.trim() !== ""
+      );
+      setMessages(validMessages);
     } catch (err: any) {
       console.error("Failed to load conversation:", err);
       setError(err.message || "Failed to load conversation messages.");
@@ -260,13 +263,20 @@ export function useChat() {
         onDone: (data) => {
           setIsGenerating(false);
           abortControllerRef.current = null;
-          if (data.message_id) {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMsgId ? { ...msg, id: data.message_id! } : msg
-              )
-            );
-          }
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id === assistantMsgId) {
+                return {
+                  ...msg,
+                  id: data.message_id || msg.id,
+                  content:
+                    msg.content ||
+                    "I was unable to generate a response. Please check your model status and try again.",
+                };
+              }
+              return msg;
+            })
+          );
         },
         onError: (err) => {
           setIsGenerating(false);
