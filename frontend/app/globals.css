@@ -17,9 +17,8 @@
 html,
 body {
   width: 100%;
-  height: 100%;
   height: 100dvh;
-  height: 100svh;
+  min-height: 0;
   margin: 0;
   padding: 0;
   overflow: hidden !important;
@@ -46,11 +45,9 @@ button {
 }
 
 /* App Background & Ambient Floating Orbs matching Reference */
-/* App Background & Ambient Floating Orbs matching Reference */
 .app-container {
-  height: 100%;
   height: 100dvh;
-  height: 100svh;
+  min-height: 0;
   width: 100vw;
   max-width: 100%;
   display: flex;
@@ -519,15 +516,16 @@ button {
 /* Composer styling matching Reference & Mobile Viewport */
 .composer-wrap {
   flex: none;
+  flex-shrink: 0;
   width: 100%;
-  padding: 6px 16px max(16px, env(safe-area-inset-bottom, 16px));
+  padding: 6px 16px max(12px, env(safe-area-inset-bottom, 12px));
   background: linear-gradient(to top, rgba(3, 6, 13, 0.98) 70%, rgba(3, 6, 13, 0.6) 90%, transparent);
   z-index: 20;
 }
 
 @media (min-width: 640px) {
   .composer-wrap {
-    padding: 8px 24px max(20px, env(safe-area-inset-bottom, 20px));
+    padding: 8px 24px max(14px, env(safe-area-inset-bottom, 14px));
   }
 }
 

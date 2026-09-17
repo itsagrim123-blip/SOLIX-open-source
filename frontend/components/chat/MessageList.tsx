@@ -22,10 +22,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   onSelectPrompt,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
-  // Auto-scroll on new message content or while streaming
+  // Auto-scroll on new message content or while streaming strictly inside message container
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -34,7 +33,10 @@ export const MessageList: React.FC<MessageListProps> = ({
       container.scrollHeight - container.scrollTop - container.clientHeight < 240;
 
     if (isNearBottom || isGenerating) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: isGenerating ? "auto" : "smooth",
+      });
     }
   }, [messages, isGenerating]);
 
@@ -49,7 +51,12 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
   };
 
   if (isLoadingHistory) {
@@ -65,7 +72,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col justify-center">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full flex flex-col justify-center">
         <WelcomeScreen onSelectPrompt={onSelectPrompt} modelName={modelName} />
       </div>
     );
@@ -90,7 +97,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           );
         })}
 
-        <div ref={messagesEndRef} className="h-4 flex-shrink-0" />
+        <div className="h-4 flex-shrink-0" />
       </div>
 
       {/* Floating Scroll to Bottom Button */}

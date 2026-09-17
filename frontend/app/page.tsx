@@ -83,7 +83,7 @@ export default function SolixApp() {
       />
 
       {/* 2. Main Viewport Row (Sidebar + Chat Area) */}
-      <div className="flex-1 flex flex-row min-h-0 min-w-0 overflow-hidden relative z-10">
+      <div className="flex-1 flex flex-row h-full min-h-0 min-w-0 overflow-hidden relative z-10">
         {/* Sidebar Navigation */}
         <ChatSidebar
           conversations={conversations}
@@ -101,18 +101,16 @@ export default function SolixApp() {
           isProviderConnected={isProviderConnected}
         />
 
-        {/* Chat Area */}
-        <main className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden relative">
-          {/* Scrollable Messages Area */}
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            <MessageList
-              messages={messages}
-              isGenerating={isGenerating}
-              isLoadingHistory={isLoadingHistory}
-              modelName={currentModel}
-              onSelectPrompt={handleSelectSuggestion}
-            />
-          </div>
+        {/* Chat Workspace */}
+        <main className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden relative">
+          {/* Message Area */}
+          <MessageList
+            messages={messages}
+            isGenerating={isGenerating}
+            isLoadingHistory={isLoadingHistory}
+            modelName={currentModel}
+            onSelectPrompt={handleSelectSuggestion}
+          />
 
           {/* Fixed Glass Composer at Bottom */}
           <MessageComposer
