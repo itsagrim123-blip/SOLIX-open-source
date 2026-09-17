@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2, Menu, Plus, Settings, Sparkles } from "lucide-react";
 import { ModelInfo } from "@/types/chat";
+import { getModelBadge, getModelDescription, getModelLabel } from "@/lib/models";
 
 export type BackendStatus = "checking" | "online" | "offline";
 
@@ -89,7 +90,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           <button
             type="button"
             onClick={() => !isSwitchingModel && setShowModelPicker(!showModelPicker)}
-            className={`glass px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs text-slate-200 hover:text-white hover:border-cyan-400/30 transition-all cursor-pointer font-medium flex items-center gap-1.5 max-w-[110px] sm:max-w-[170px] ${
+            className={`glass px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs text-slate-200 hover:text-white hover:border-cyan-400/30 transition-all cursor-pointer font-medium flex items-center gap-1.5 max-w-[140px] sm:max-w-[210px] ${
               isSwitchingModel
                 ? "border-cyan-400/40 text-cyan-300 bg-cyan-500/10 cursor-wait"
                 : modelSwitchSuccess
@@ -102,51 +103,69 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           >
             {isSwitchingModel ? (
               <>
-                <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                <Loader2 className="w-3 h-3 animate-spin text-cyan-400 flex-shrink-0" />
                 <span className="truncate">
-                  {switchingModelTarget || currentModel}
+                  {getModelLabel(switchingModelTarget || currentModel)}
                 </span>
               </>
             ) : modelSwitchSuccess ? (
               <>
-                <Check className="w-3 h-3 text-emerald-400" />
-                <span className="truncate">{modelSwitchSuccess}</span>
+                <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                <span className="truncate">{getModelLabel(modelSwitchSuccess)}</span>
               </>
             ) : (
               <>
-                <span className="truncate">{currentModel}</span>
+                <span className="truncate">{getModelLabel(currentModel)}</span>
                 <ChevronDown className="w-3 h-3 opacity-60 ml-0.5 flex-shrink-0" />
               </>
             )}
           </button>
 
           {showModelPicker && (
-            <div className="absolute top-full left-0 mt-2 w-56 sm:w-60 rounded-xl glass p-2 z-50 animate-fade-in border border-white/10 shadow-2xl">
-              <div className="px-2.5 py-1 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Available Models
+            <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 rounded-2xl glass p-2.5 z-50 animate-fade-in border border-white/10 shadow-2xl">
+              <div className="px-2 py-1 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Select AI Model</span>
+                <span className="text-[10px] font-mono text-cyan-400/80">{models.length} available</span>
               </div>
-              <div className="max-h-48 overflow-y-auto space-y-0.5 mt-1">
-                {models.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      onSelectModel(m.id);
-                      setShowModelPicker(false);
-                    }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                      currentModel === m.id
-                        ? "bg-cyan-500/20 text-cyan-300 font-semibold"
-                        : "text-slate-300 hover:bg-white/[0.08] hover:text-white"
-                    }`}
-                  >
-                    <span className="truncate">{m.name}</span>
-                    {m.is_default && (
-                      <span className="text-[10px] text-cyan-400 font-mono px-1 py-0.2 rounded bg-cyan-400/10">
-                        def
-                      </span>
-                    )}
-                  </button>
-                ))}
+              <div className="max-h-64 overflow-y-auto space-y-1.5 mt-1.5 pr-0.5">
+                {models.map((m) => {
+                  const isSelected = currentModel === m.id;
+                  const label = getModelLabel(m.id);
+                  const desc = getModelDescription(m.id);
+                  const badge = getModelBadge(m.id);
+
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => {
+                        onSelectModel(m.id);
+                        setShowModelPicker(false);
+                      }}
+                      className={`w-full text-left p-2.5 rounded-xl text-xs flex flex-col gap-1 transition-all cursor-pointer border ${
+                        isSelected
+                          ? "bg-cyan-500/15 border-cyan-400/35 text-white shadow-sm"
+                          : "border-transparent text-slate-300 hover:bg-white/[0.06] hover:border-white/[0.08] hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-1.5 font-semibold text-xs text-white">
+                          <span>{label}</span>
+                          {m.is_default && (
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-400/15 text-cyan-300 border border-cyan-400/25">
+                              DEFAULT
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-slate-300 border border-white/[0.08]">
+                          {badge}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-normal leading-tight line-clamp-1">
+                        {desc}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

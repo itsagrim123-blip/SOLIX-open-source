@@ -4,13 +4,13 @@ import React, { useEffect } from "react";
 import {
   Cpu,
   Database,
-  Info,
-  Layers,
+  Lock,
   Sparkles,
   Workflow,
   X,
   Zap,
 } from "lucide-react";
+import { getModelLabel } from "@/lib/models";
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -50,10 +50,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({
             <div className="solix-logo-badge">✣</div>
             <div>
               <h2 className="text-base font-extrabold text-white tracking-wide flex items-center gap-2">
-                SOLIX <span className="text-[10px] font-mono font-normal text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 rounded">v1.0.0</span>
+                SOLIX <span className="text-[10px] font-mono font-normal text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 rounded">v1.2.0</span>
               </h2>
               <p className="text-xs text-[#8798b2]">
-                Intelligent Glassmorphic AI Assistant
+                Intelligent Local AI Workspace
               </p>
             </div>
           </div>
@@ -70,7 +70,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
         {/* Modal Body */}
         <div className="py-4 space-y-4 text-xs sm:text-sm max-h-[70vh] overflow-y-auto pr-1">
           <p className="text-[#aebbd0] leading-relaxed text-xs sm:text-sm">
-            Solix is a modern, privacy-first conversational workspace powered by local and cloud AI models. It combines low-latency SSE token streaming with an immersive dark glassmorphic design.
+            Solix is a modern, privacy-first conversational workspace powered by local and cloud AI models. It combines low-latency SSE token streaming with client-side IndexedDB isolation and an immersive dark glassmorphic design.
           </p>
 
           <div className="grid grid-cols-2 gap-2.5 pt-1">
@@ -80,7 +80,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                 <span>Active Model</span>
               </div>
               <p className="text-[#8798b2] text-[11px] font-mono truncate">
-                {currentModel}
+                {getModelLabel(currentModel)}
               </p>
             </div>
 
@@ -110,14 +110,19 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                 <span>Storage</span>
               </div>
               <p className="text-[#8798b2] text-[11px]">
-                Async SQLite Persistence
+                IndexedDB (Device Local)
               </p>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-cyan-500/[0.05] border border-cyan-400/20 text-[#aebbd0] text-xs leading-relaxed">
-            <strong className="text-cyan-300 block mb-1">Zero Cloud Dependency</strong>
-            Run your chat completely locally with Ollama (e.g. LLaMA 3.2, Mistral, Qwen, DeepSeek), or seamlessly fallback to intelligent offline simulation.
+          <div className="p-3.5 rounded-xl bg-cyan-500/[0.05] border border-cyan-400/20 text-[#aebbd0] text-xs leading-relaxed space-y-1.5">
+            <div className="flex items-center gap-1.5 text-cyan-300 font-semibold">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Complete Local Isolation</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Run your conversations with zero cloud leaks. Chats are rendered from your browser's private storage, and AI inference runs locally via Ollama (Qwen 3, Qwen 2.5 Coder, Gemma 3, Phi-4 Mini).
+            </p>
           </div>
         </div>
 
@@ -134,4 +139,3 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     </div>
   );
 };
-

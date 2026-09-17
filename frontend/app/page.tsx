@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { MessageComposer } from "@/components/chat/MessageComposer";
 import { MessageList } from "@/components/chat/MessageList";
 import { ChatHeader } from "@/components/layout/ChatHeader";
@@ -29,6 +29,7 @@ export default function SolixApp() {
     startNewChat,
     deleteConversation,
     renameConversation,
+    clearAllLocalChats,
     stopGenerating,
     sendMessage,
     setCurrentModel,
@@ -39,11 +40,29 @@ export default function SolixApp() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [composerPrefill, setComposerPrefill] = useState("");
-  const [temperature, setTemperature] = useState(0.7);
-  const [systemPrompt, setSystemPrompt] = useState("");
+  const [temperature, setTemperature] = useState<number>(0.7);
+  const [systemPrompt, setSystemPrompt] = useState<string>("");
+
+  // Load saved temperature & system prompt preferences from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const savedTemp = localStorage.getItem("solix_temperature");
+        if (savedTemp) setTemperature(parseFloat(savedTemp));
+        const savedPrompt = localStorage.getItem("solix_system_prompt");
+        if (savedPrompt) setSystemPrompt(savedPrompt);
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, []);
+
+  const handleSendMessage = (content: string) => {
+    sendMessage(content, { systemPrompt, temperature });
+  };
 
   const handleSelectSuggestion = (prompt: string) => {
-    sendMessage(prompt);
+    handleSendMessage(prompt);
   };
 
   return (
@@ -97,7 +116,7 @@ export default function SolixApp() {
 
           {/* Fixed Glass Composer at Bottom */}
           <MessageComposer
-            onSendMessage={sendMessage}
+            onSendMessage={handleSendMessage}
             onStopGenerating={stopGenerating}
             isGenerating={isGenerating}
             models={models}
@@ -124,6 +143,7 @@ export default function SolixApp() {
         onUpdateTemperature={setTemperature}
         systemPrompt={systemPrompt}
         onUpdateSystemPrompt={setSystemPrompt}
+        onClearChats={clearAllLocalChats}
       />
 
       {/* About Solix Modal */}
