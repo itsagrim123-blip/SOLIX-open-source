@@ -122,7 +122,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           </button>
 
           {showModelPicker && (
-            <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 rounded-2xl glass p-2.5 z-50 animate-fade-in border border-white/10 shadow-2xl">
+            <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 rounded-2xl bg-[#080d1a] border border-white/15 p-2.5 z-50 animate-fade-in shadow-2xl shadow-black/80">
               <div className="px-2 py-1 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
                 <span>Select AI Model</span>
                 <span className="text-[10px] font-mono text-cyan-400/80">{models.length} available</span>
