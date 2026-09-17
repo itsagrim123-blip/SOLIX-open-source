@@ -88,5 +88,18 @@ export const api = {
       { method: "DELETE" }
     );
   },
+
+  /** Switch active AI model on backend with real VRAM management and readiness verification */
+  async switchModel(
+    model: string
+  ): Promise<{ status: string; model: string; message: string; vram_usage?: number }> {
+    return request<{ status: string; model: string; message: string; vram_usage?: number }>(
+      "/api/models/switch",
+      {
+        method: "POST",
+        body: JSON.stringify({ model }),
+      }
+    );
+  },
 };
 

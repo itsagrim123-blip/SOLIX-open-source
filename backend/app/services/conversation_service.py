@@ -2,6 +2,7 @@ import re
 import uuid
 from typing import List, Optional
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.conversation import Conversation, Message, get_utc_now
 from app.models.schemas import ConversationSummary
@@ -62,9 +63,25 @@ async def get_conversation(
     stmt = (
         select(Conversation)
         .where(Conversation.id == conversation_id)
+        .options(selectinload(Conversation.messages))
+        .execution_options(populate_existing=True)
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def get_conversation_messages(
+    db: AsyncSession,
+    conversation_id: str,
+) -> List[Message]:
+    """Directly query all messages for a conversation ordered by timestamp."""
+    stmt = (
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.timestamp.asc())
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 
 async def update_conversation_title(

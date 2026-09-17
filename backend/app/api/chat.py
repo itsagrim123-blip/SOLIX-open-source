@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import AsyncSessionLocal, get_db
 from app.models.schemas import ChatRequest
 from app.providers.factory import get_active_provider
+from app.providers.ollama import ModelNotFoundError, OllamaConnectionError
 from app.services import conversation_service
 
 logger = logging.getLogger("solix.api.chat")
@@ -50,12 +51,15 @@ async def send_chat_message(
         content=user_prompt,
     )
 
-    # 3. Reload conversation history for context
-    fresh_conv = await conversation_service.get_conversation(db, conv_id)
+    # 3. Reliably load complete conversation history directly from database
+    raw_messages = await conversation_service.get_conversation_messages(db, conv_id)
     history = [
         {"role": m.role, "content": m.content}
-        for m in (fresh_conv.messages if fresh_conv else [])
+        for m in raw_messages
     ]
+    # Ensure current user message is always in history
+    if not history or history[-1].get("content") != user_prompt:
+        history.append({"role": "user", "content": user_prompt})
 
     # 4. Resolve AI provider
     provider, is_connected = await get_active_provider()
@@ -86,17 +90,27 @@ async def send_chat_message(
 
             full_response = "".join(full_content_chunks)
 
+            # If no content was generated at all, yield an identifiable error
+            if not full_response.strip():
+                logger.warning(f"[Chat] Stream ended with empty content for model '{payload.model}'")
+                err_data = {
+                    "type": "error",
+                    "error": f"The model '{payload.model or provider.name}' produced an empty response. Please verify model status and retry.",
+                    "conversation_id": conv_id,
+                }
+                yield f"data: {json.dumps(err_data)}\n\n"
+                return
+
             # Persist assistant response in DB
             assistant_msg_id = None
-            if full_response.strip():
-                async with AsyncSessionLocal() as save_db:
-                    saved_msg = await conversation_service.add_message(
-                        save_db,
-                        conversation_id=conv_id,
-                        role="assistant",
-                        content=full_response,
-                    )
-                    assistant_msg_id = saved_msg.id
+            async with AsyncSessionLocal() as save_db:
+                saved_msg = await conversation_service.add_message(
+                    save_db,
+                    conversation_id=conv_id,
+                    role="assistant",
+                    content=full_response,
+                )
+                assistant_msg_id = saved_msg.id
 
             done_data = {
                 "type": "done",
@@ -106,8 +120,26 @@ async def send_chat_message(
             }
             yield f"data: {json.dumps(done_data)}\n\n"
 
+        except ModelNotFoundError as exc:
+            logger.error(f"[Chat] ModelNotFoundError: {exc}")
+            err_data = {
+                "type": "error",
+                "error": str(exc),
+                "conversation_id": conv_id,
+            }
+            yield f"data: {json.dumps(err_data)}\n\n"
+
+        except OllamaConnectionError as exc:
+            logger.error(f"[Chat] OllamaConnectionError: {exc}")
+            err_data = {
+                "type": "error",
+                "error": str(exc),
+                "conversation_id": conv_id,
+            }
+            yield f"data: {json.dumps(err_data)}\n\n"
+
         except Exception as exc:
-            logger.error(f"Error during streaming: {exc}")
+            logger.error(f"[Chat] Error during streaming: {exc}", exc_info=True)
             err_data = {
                 "type": "error",
                 "error": str(exc),
@@ -124,4 +156,3 @@ async def send_chat_message(
             "X-Accel-Buffering": "no",
         },
     )
-

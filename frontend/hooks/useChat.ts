@@ -16,7 +16,7 @@ export function useChat() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const [currentModel, setCurrentModel] = useState<string>("llama3.2");
+  const [currentModel, setCurrentModel] = useState<string>("qwen3:1.7b");
   const [isSwitchingModel, setIsSwitchingModel] = useState<boolean>(false);
   const [switchingModelTarget, setSwitchingModelTarget] = useState<string | null>(null);
   const [modelSwitchSuccess, setModelSwitchSuccess] = useState<string | null>(null);
@@ -167,25 +167,28 @@ export function useChat() {
     setIsGenerating(false);
   }, []);
 
-  // Switch AI model with real backend confirmation
+  // Switch AI model with real backend confirmation and VRAM allocation
   const selectModel = useCallback(
     async (modelId: string) => {
       if (modelId === currentModel || isSwitchingModel) return;
       setIsSwitchingModel(true);
       setSwitchingModelTarget(modelId);
+      setError(null);
       try {
-        const modelsData = await api.getModels().catch(() => null);
-        if (modelsData?.models) {
-          setModels(modelsData.models);
+        const switchRes = await api.switchModel(modelId);
+        if (switchRes.status === "ready") {
+          const resolved = switchRes.model || modelId;
+          setCurrentModel(resolved);
+          setModelSwitchSuccess(resolved);
+          setTimeout(() => {
+            setModelSwitchSuccess((prev) => (prev === resolved ? null : prev));
+          }, 2500);
+        } else {
+          setError(switchRes.message || `Failed to switch to ${modelId}`);
         }
-        setCurrentModel(modelId);
-        setModelSwitchSuccess(modelId);
-        setTimeout(() => {
-          setModelSwitchSuccess((prev) => (prev === modelId ? null : prev));
-        }, 2200);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to switch model:", err);
-        setCurrentModel(modelId);
+        setError(err.message || `Failed to switch model to ${modelId}.`);
       } finally {
         setIsSwitchingModel(false);
         setSwitchingModelTarget(null);

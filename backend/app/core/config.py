@@ -12,8 +12,8 @@ class Settings(BaseSettings):
 
     # Ollama AI Configuration
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama3.2"
-    OLLAMA_TIMEOUT_SECONDS: float = 60.0
+    OLLAMA_MODEL: str = "qwen3:1.7b"
+    OLLAMA_TIMEOUT_SECONDS: float = 120.0
 
     # Database Configuration (Defaults to SQLite async, easily swapped for PostgreSQL)
     DATABASE_URL: str = "sqlite+aiosqlite:///./solix.db"

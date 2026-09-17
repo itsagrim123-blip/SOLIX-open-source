@@ -83,4 +83,21 @@ class HealthResponse(BaseModel):
     provider: str
     provider_connected: bool
     database: str
+    ollama: Optional[bool] = None
+    model: Optional[str] = None
+    model_available: Optional[bool] = None
+
+
+class SwitchModelRequest(BaseModel):
+    """Payload to switch active AI model."""
+    model: str = Field(..., min_length=1, description="Target AI model identifier")
+
+
+class SwitchModelResponse(BaseModel):
+    """Result of switching the active AI model."""
+    status: str = Field(..., description="'ready' or 'error'")
+    model: str
+    message: str
+    vram_usage: Optional[int] = None
+
 

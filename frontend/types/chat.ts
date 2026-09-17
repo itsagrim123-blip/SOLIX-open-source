@@ -46,6 +46,9 @@ export interface HealthResponse {
   provider: string;
   provider_connected: boolean;
   database: string;
+  ollama?: boolean;
+  model?: string;
+  model_available?: boolean;
 }
 
 export interface StreamStartPayload {
