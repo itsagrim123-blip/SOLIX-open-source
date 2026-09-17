@@ -44,7 +44,7 @@ export default function SolixApp() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-transparent">
+    <div className="flex h-screen h-[100dvh] w-screen overflow-hidden bg-transparent">
       {/* Sidebar Navigation */}
       <ChatSidebar
         conversations={conversations}
@@ -62,7 +62,7 @@ export default function SolixApp() {
       />
 
       {/* Main Chat Interface */}
-      <main className="flex-1 flex flex-col h-full min-w-0 relative z-10">
+      <main className="flex-1 flex flex-col h-screen h-[100dvh] min-h-0 min-w-0 overflow-hidden relative z-10">
         {/* Header */}
         <ChatHeader
           currentModel={currentModel}

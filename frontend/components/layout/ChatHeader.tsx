@@ -6,7 +6,6 @@ import {
   Plus,
   Settings,
   Sparkles,
-  User,
 } from "lucide-react";
 
 interface ChatHeaderProps {
@@ -25,13 +24,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onOpenSettings,
 }) => {
   return (
-    <header className="h-14 border-b border-white/[0.06] glass-panel-subtle flex items-center justify-between px-4 z-20 select-none">
+    <header className="h-14 flex-shrink-0 border-b border-white/[0.08] glass-panel-subtle flex items-center justify-between px-4 sm:px-6 z-20 select-none">
       {/* Left side: Mobile menu toggle + Solix brand badge + Active Model badge */}
       <div className="flex items-center gap-3">
         {/* Mobile Hamburger Toggle */}
         <button
           onClick={onOpenMobileMenu}
-          className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/[0.06]"
+          className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
           aria-label="Toggle navigation drawer"
         >
           <Menu className="w-5 h-5" />
@@ -39,7 +38,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
         {/* Solix Brand Badge */}
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500/20 via-blue-500/20 to-violet-500/20 border border-cyan-400/30 flex items-center justify-center shadow-glow-cyan">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-cyan-500/25 via-blue-500/20 to-violet-500/25 border border-cyan-400/35 flex items-center justify-center shadow-glow-cyan">
             <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
           </div>
           <span className="font-semibold text-sm tracking-wider text-white">
@@ -48,29 +47,31 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
 
         {/* Model Indicator Badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs">
+        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.07] text-xs shadow-inner">
           <div
             className={`w-1.5 h-1.5 rounded-full ${
-              isProviderConnected ? "bg-emerald-400" : "bg-amber-400"
+              isProviderConnected
+                ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                : "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"
             }`}
           />
-          <span className="text-slate-300 font-mono text-[11px]">
+          <span className="text-slate-300 font-mono text-[11px] tracking-wide">
             {currentModel}
           </span>
           {!isProviderConnected && (
-            <span className="text-[10px] text-amber-400/90 font-sans ml-1">
-              (Preview)
+            <span className="text-[10px] text-amber-400/90 font-sans ml-1 font-medium">
+              (Simulation)
             </span>
           )}
         </div>
       </div>
 
-      {/* Right side: New Chat + Settings + Profile */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      {/* Right side: New Chat + Settings (Anonymous, Product-focused) */}
+      <div className="flex items-center gap-2">
         {/* Quick New Chat button */}
         <button
           onClick={onNewChat}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-cyan-400/30 text-xs font-medium text-slate-200 transition-all"
+          className="glass-reflection flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-cyan-400/35 text-xs font-medium text-slate-200 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm"
           title="Start a new chat"
         >
           <Plus className="w-3.5 h-3.5 text-cyan-400" />
@@ -80,27 +81,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         {/* Settings button */}
         <button
           onClick={onOpenSettings}
-          className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
-          title="Settings"
+          className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] border border-transparent hover:border-white/[0.08] transition-all hover:scale-[1.03] active:scale-[0.97]"
+          title="Settings & Models"
           aria-label="Settings"
         >
           <Settings className="w-4 h-4" />
         </button>
-
-        {/* Profile Avatar */}
-        <div
-          className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-cyan-400/30 transition-all cursor-pointer"
-          title="Agrim Kaushik (Creator)"
-        >
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-[10px] font-bold text-white shadow-glow-cyan">
-            AK
-          </div>
-          <span className="hidden md:inline text-xs text-slate-300 font-medium">
-            Agrim Kaushik
-          </span>
-        </div>
       </div>
     </header>
   );
 };
-

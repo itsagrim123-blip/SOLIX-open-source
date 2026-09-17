@@ -68,15 +68,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in select-none">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in select-none"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-lg glass-panel rounded-2xl p-6 border border-white/10 shadow-glass-lg relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+            <div className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 shadow-glow-cyan">
               <Sliders className="w-4 h-4" />
             </div>
             <div>
@@ -84,14 +87,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 Solix Settings
               </h2>
               <p className="text-xs text-slate-400">
-                Configure your local AI provider and runtime preferences
+                Configure AI model, system parameters, and connection status
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -103,12 +106,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Status Section */}
           <div className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              System Health & Connectivity
+              System Health & Engine
             </h3>
             <div className="grid grid-cols-2 gap-2">
               {/* Backend API */}
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-2 text-slate-300 font-medium">
                   <Globe className="w-4 h-4 text-cyan-400" />
                   <span>FastAPI Backend</span>
                 </div>
@@ -120,8 +123,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Database */}
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-2 text-slate-300 font-medium">
                   <Database className="w-4 h-4 text-blue-400" />
                   <span>SQLite Async</span>
                 </div>
@@ -131,7 +134,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {/* Ollama Engine Status Banner */}
             <div
-              className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+              className={`p-3.5 rounded-xl border flex items-start gap-3 ${
                 isProviderConnected
                   ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
                   : "bg-amber-500/10 border-amber-500/30 text-amber-200"
@@ -139,15 +142,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             >
               <Terminal className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <div className="font-medium text-xs">
+                <div className="font-semibold text-xs">
                   {isProviderConnected
-                    ? "Local Ollama Connected & Ready"
+                    ? "Local Ollama Connected & Active"
                     : "Ollama Offline — Interactive Simulation Mode Active"}
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
                   {isProviderConnected
-                    ? "Local AI inferences are being streamed directly through your Ollama daemon."
-                    : "To connect your local LLM, install Ollama and run `ollama serve` and `ollama pull llama3.2`."}
+                    ? "Conversational inferences are streaming token-by-token from your local model."
+                    : "To connect your local LLM, run `ollama serve` and `ollama pull llama3.2` on your machine."}
                 </p>
               </div>
             </div>
@@ -162,7 +165,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <select
                 value={currentModel}
                 onChange={(e) => onSelectModel(e.target.value)}
-                className="w-full bg-[#0d121f] border border-white/10 rounded-xl px-3 py-2 text-slate-200 text-xs sm:text-sm outline-none focus:border-cyan-400/40 transition-colors"
+                className="w-full bg-[#080d19] border border-white/10 rounded-xl px-3 py-2.5 text-slate-100 text-xs sm:text-sm outline-none focus:border-cyan-400/50 transition-colors shadow-inner"
               >
                 {models.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -179,7 +182,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Temperature (Creativity)
               </label>
-              <span className="font-mono text-xs text-cyan-400">
+              <span className="font-mono text-xs text-cyan-400 font-semibold">
                 {localTemp.toFixed(1)}
               </span>
             </div>
@@ -192,7 +195,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onChange={(e) => setLocalTemp(parseFloat(e.target.value))}
               className="w-full accent-cyan-400 cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+            <div className="flex justify-between text-[10px] text-slate-400 font-mono">
               <span>0.0 (Precise)</span>
               <span>0.7 (Balanced)</span>
               <span>1.5 (Creative)</span>
@@ -202,29 +205,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* System Prompt */}
           <div className="space-y-2">
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              System Prompt / Persona
+              System Prompt
             </label>
             <textarea
               value={localPrompt}
               onChange={(e) => setLocalPrompt(e.target.value)}
               placeholder="You are Solix, an elite AI assistant specializing in clear, accurate, and structured insights..."
               rows={3}
-              className="w-full bg-[#0d121f] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-400/40 resize-none transition-colors"
+              className="w-full bg-[#080d19] border border-white/10 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-400/50 resize-none transition-colors shadow-inner font-mono"
             />
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-4 border-t border-white/[0.06] flex items-center justify-end gap-2">
+        <div className="pt-4 border-t border-white/[0.08] flex items-center justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors"
+            className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 rounded-xl text-xs font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-glow-cyan transition-all"
+            className="glass-reflection px-4 py-2 rounded-xl text-xs font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-glow-cyan transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             Apply Changes
           </button>
@@ -233,4 +236,3 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     </div>
   );
 };
-

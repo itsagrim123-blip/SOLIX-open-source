@@ -13,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className="antialiased bg-[#07090e] text-slate-100 min-h-screen relative overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
+    <html lang="en" className="dark h-full">
+      <body className="antialiased bg-[#07090e] text-slate-100 h-full h-[100dvh] overflow-hidden relative selection:bg-cyan-500/30 selection:text-cyan-200">
         {/* Subtle Ambient Background Light Orbs */}
         <div
           className="ambient-glow-cyan -top-40 -left-40 animate-ambient-pulse"
@@ -22,12 +22,12 @@ export default function RootLayout({
         />
         <div
           className="ambient-glow-violet top-1/3 -right-40 animate-ambient-pulse"
-          style={{ animationDelay: "4s" }}
+          style={{ animationDelay: "6s" }}
           aria-hidden="true"
         />
         <div
-          className="ambient-glow-cyan -bottom-40 left-1/3 animate-ambient-pulse"
-          style={{ animationDelay: "8s" }}
+          className="ambient-glow-blue -bottom-40 left-1/4 animate-ambient-pulse"
+          style={{ animationDelay: "12s" }}
           aria-hidden="true"
         />
 
@@ -36,4 +36,3 @@ export default function RootLayout({
     </html>
   );
 }
-

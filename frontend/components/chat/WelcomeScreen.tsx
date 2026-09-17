@@ -30,7 +30,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     {
       icon: <Brain className="w-5 h-5 text-cyan-400" />,
       title: "Explain a concept",
-      subtitle: "Understand quantum computing or zero-knowledge proofs",
+      subtitle: "Understand quantum superposition or zero-knowledge proofs",
       prompt: "Explain the fundamentals of quantum computing and superposition in simple, intuitive terms.",
     },
     {
@@ -60,40 +60,40 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   ];
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto px-4 py-8 text-center animate-fade-in select-none">
+    <div className="flex-1 my-auto flex flex-col items-center justify-center max-w-4xl mx-auto px-4 py-8 text-center animate-fade-in select-none">
       {/* Solix Emblem */}
       <div className="relative mb-6">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-blue-500/20 to-violet-500/20 border border-white/10 flex items-center justify-center shadow-glass backdrop-blur-xl group hover:border-cyan-400/40 transition-all">
-          <Sparkles className="w-8 h-8 text-cyan-400 group-hover:scale-110 transition-transform" />
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500/25 via-blue-500/20 to-violet-500/25 border border-cyan-400/35 flex items-center justify-center shadow-glow-cyan backdrop-blur-xl group hover:border-cyan-400/50 hover:scale-105 transition-all">
+          <Sparkles className="w-8 h-8 text-cyan-300 group-hover:rotate-12 transition-transform duration-300" />
         </div>
-        <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/10 to-violet-500/10 rounded-2xl blur-xl -z-10" />
+        <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500/15 to-violet-500/15 rounded-2xl blur-xl -z-10" />
       </div>
 
       {/* Main Title */}
-      <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mb-2">
+      <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white mb-2">
         How can <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-sky-300 to-violet-400">Solix</span> help you today?
       </h1>
-      <p className="text-sm text-slate-400 mb-8 max-w-md">
-        Your intelligent conversational companion powered by local and cloud AI models.
+      <p className="text-xs sm:text-sm text-slate-400 mb-8 max-w-md font-normal">
+        Your intelligent conversational workspace powered by local and cloud AI models.
       </p>
 
-      {/* Suggestion Cards Grid */}
+      {/* Suggestion Cards Grid with Glass Reflection */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full max-w-3xl text-left">
         {suggestions.map((item, idx) => (
           <button
             key={idx}
             onClick={() => onSelectPrompt(item.prompt)}
-            className="group relative p-4 rounded-xl glass-panel-interactive text-left focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
+            className="glass-reflection group relative p-4 rounded-2xl glass-panel-interactive text-left focus:outline-none focus:ring-1 focus:ring-cyan-400/40 cursor-pointer"
           >
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] group-hover:border-cyan-400/30 group-hover:bg-cyan-500/10 transition-colors">
+              <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] group-hover:border-cyan-400/30 group-hover:bg-cyan-500/10 transition-colors shadow-inner flex-shrink-0">
                 {item.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-medium text-slate-200 group-hover:text-cyan-300 transition-colors">
                   {item.title}
                 </h3>
-                <p className="text-xs text-slate-400 line-clamp-2 mt-0.5 leading-relaxed">
+                <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
                   {item.subtitle}
                 </p>
               </div>
@@ -104,4 +104,3 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     </div>
   );
 };
-

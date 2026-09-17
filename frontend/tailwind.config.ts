@@ -47,16 +47,16 @@ const config: Config = {
         "3xl": "32px",
       },
       animation: {
-        "ambient-pulse": "ambientPulse 12s ease-in-out infinite alternate",
+        "ambient-pulse": "ambientPulse 24s ease-in-out infinite alternate",
         "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "fade-in": "fadeIn 0.25s ease-out forwards",
         "slide-in-right": "slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards",
       },
       keyframes: {
         ambientPulse: {
-          "0%": { transform: "translate(0, 0) scale(1)", opacity: "0.4" },
-          "50%": { transform: "translate(30px, -20px) scale(1.08)", opacity: "0.6" },
-          "100%": { transform: "translate(-20px, 20px) scale(0.95)", opacity: "0.4" },
+          "0%": { transform: "translate(0, 0) scale(1)", opacity: "0.45" },
+          "50%": { transform: "translate(40px, -25px) scale(1.06)", opacity: "0.6" },
+          "100%": { transform: "translate(-30px, 30px) scale(0.96)", opacity: "0.45" },
         },
         fadeIn: {
           from: { opacity: "0", transform: "translateY(4px)" },

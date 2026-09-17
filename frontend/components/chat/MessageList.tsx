@@ -33,7 +33,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
     // Only auto-scroll if user is near bottom
     const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < 160;
+      container.scrollHeight - container.scrollTop - container.clientHeight < 180;
 
     if (isNearBottom || isGenerating) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -56,16 +56,16 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   if (isLoadingHistory) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-slate-400 gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-cyan-400/20 border-t-cyan-400 animate-spin" />
-        <span className="text-xs tracking-wider uppercase">Loading conversation...</span>
+        <span className="text-xs tracking-wider uppercase font-mono">Loading conversation...</span>
       </div>
     );
   }
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex flex-col overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
         <WelcomeScreen onSelectPrompt={onSelectPrompt} modelName={modelName} />
       </div>
     );
@@ -75,7 +75,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     <div
       ref={scrollContainerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto relative divide-y divide-white/[0.02]"
+      className="flex-1 min-h-0 overflow-y-auto relative divide-y divide-white/[0.02]"
     >
       {messages.map((msg, index) => {
         const isLast = index === messages.length - 1;
@@ -93,7 +93,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         messages.length > 0 &&
         messages[messages.length - 1].role === "assistant" &&
         !messages[messages.length - 1].content && (
-          <div className="max-w-3xl mx-auto px-4 py-3">
+          <div className="max-w-3xl mx-auto px-4 py-4">
             <TypingIndicator />
           </div>
         )}
@@ -104,7 +104,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       {showScrollBottom && (
         <button
           onClick={scrollToBottom}
-          className="fixed bottom-28 right-6 z-20 p-2.5 rounded-full glass-panel-interactive shadow-glass text-slate-300 hover:text-white transition-all hover:scale-105"
+          className="fixed bottom-28 right-6 z-20 p-2.5 rounded-full glass-panel-interactive shadow-glass text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95"
           aria-label="Scroll to bottom"
         >
           <ArrowDown className="w-4 h-4" />
@@ -113,4 +113,3 @@ export const MessageList: React.FC<MessageListProps> = ({
     </div>
   );
 };
-
