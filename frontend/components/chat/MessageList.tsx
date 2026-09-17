@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { Message } from "@/types/chat";
 import { MessageItem } from "./MessageItem";
-import { TypingIndicator } from "./TypingIndicator";
 import { WelcomeScreen } from "./WelcomeScreen";
 
 interface MessageListProps {
@@ -26,14 +25,13 @@ export const MessageList: React.FC<MessageListProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
-  // Auto-scroll on new message content
+  // Auto-scroll on new message content or while streaming
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    // Only auto-scroll if user is near bottom
     const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < 180;
+      container.scrollHeight - container.scrollTop - container.clientHeight < 240;
 
     if (isNearBottom || isGenerating) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -56,16 +54,18 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   if (isLoadingHistory) {
     return (
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-slate-400 gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-cyan-400/20 border-t-cyan-400 animate-spin" />
-        <span className="text-xs tracking-wider uppercase font-mono">Loading conversation...</span>
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-slate-400 gap-3 select-none">
+        <div className="w-7 h-7 rounded-full border-2 border-cyan-400/20 border-t-cyan-400 animate-spin" />
+        <span className="text-xs tracking-wider uppercase font-mono text-slate-500">
+          Loading conversation...
+        </span>
       </div>
     );
   }
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col justify-center">
         <WelcomeScreen onSelectPrompt={onSelectPrompt} modelName={modelName} />
       </div>
     );
@@ -75,37 +75,31 @@ export const MessageList: React.FC<MessageListProps> = ({
     <div
       ref={scrollContainerRef}
       onScroll={handleScroll}
-      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full relative divide-y divide-white/[0.02]"
+      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full relative"
     >
-      {messages.map((msg, index) => {
-        const isLast = index === messages.length - 1;
-        return (
-          <MessageItem
-            key={msg.id}
-            message={msg}
-            isStreaming={isLast && isGenerating && msg.role === "assistant"}
-          />
-        );
-      })}
+      {/* Centered Conversation Column */}
+      <div className="max-w-[880px] w-[calc(100%-32px)] mx-auto py-5 sm:py-7 flex flex-col gap-4 sm:gap-5 min-h-0">
+        {messages.map((msg, index) => {
+          const isLast = index === messages.length - 1;
+          return (
+            <MessageItem
+              key={msg.id}
+              message={msg}
+              isStreaming={isLast && isGenerating && msg.role === "assistant"}
+            />
+          );
+        })}
 
-      {/* Typing indicator if generating and last assistant message hasn't emitted tokens yet */}
-      {isGenerating &&
-        messages.length > 0 &&
-        messages[messages.length - 1].role === "assistant" &&
-        !messages[messages.length - 1].content && (
-          <div className="max-w-3xl mx-auto px-4 py-4">
-            <TypingIndicator />
-          </div>
-        )}
-
-      <div ref={messagesEndRef} className="h-6" />
+        <div ref={messagesEndRef} className="h-4 flex-shrink-0" />
+      </div>
 
       {/* Floating Scroll to Bottom Button */}
       {showScrollBottom && (
         <button
           onClick={scrollToBottom}
-          className="fixed bottom-24 sm:bottom-28 right-4 sm:right-6 z-20 p-2 sm:p-2.5 rounded-full glass text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-xl cursor-pointer"
+          className="absolute bottom-4 right-4 sm:right-8 z-30 p-2 sm:p-2.5 rounded-full glass text-slate-300 hover:text-white transition-all hover:scale-105 active:scale-95 shadow-xl cursor-pointer border border-white/10"
           aria-label="Scroll to bottom"
+          title="Scroll to bottom"
         >
           <ArrowDown className="w-4 h-4" />
         </button>

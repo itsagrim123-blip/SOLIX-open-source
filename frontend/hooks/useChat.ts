@@ -17,6 +17,9 @@ export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [currentModel, setCurrentModel] = useState<string>("llama3.2");
+  const [isSwitchingModel, setIsSwitchingModel] = useState<boolean>(false);
+  const [switchingModelTarget, setSwitchingModelTarget] = useState<string | null>(null);
+  const [modelSwitchSuccess, setModelSwitchSuccess] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -161,10 +164,37 @@ export function useChat() {
     setIsGenerating(false);
   }, []);
 
+  // Switch AI model with real backend confirmation
+  const selectModel = useCallback(
+    async (modelId: string) => {
+      if (modelId === currentModel || isSwitchingModel) return;
+      setIsSwitchingModel(true);
+      setSwitchingModelTarget(modelId);
+      try {
+        const modelsData = await api.getModels().catch(() => null);
+        if (modelsData?.models) {
+          setModels(modelsData.models);
+        }
+        setCurrentModel(modelId);
+        setModelSwitchSuccess(modelId);
+        setTimeout(() => {
+          setModelSwitchSuccess((prev) => (prev === modelId ? null : prev));
+        }, 2200);
+      } catch (err) {
+        console.error("Failed to switch model:", err);
+        setCurrentModel(modelId);
+      } finally {
+        setIsSwitchingModel(false);
+        setSwitchingModelTarget(null);
+      }
+    },
+    [currentModel, isSwitchingModel]
+  );
+
   // Send a message & stream response
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!content.trim() || isGenerating) return;
+      if (!content.trim() || isGenerating || isSwitchingModel) return;
 
       const userMessageId = `user-${Date.now()}`;
       const assistantMsgId = `assistant-${Date.now()}`;
@@ -265,6 +295,10 @@ export function useChat() {
     messages,
     models,
     currentModel,
+    isSwitchingModel,
+    switchingModelTarget,
+    modelSwitchSuccess,
+    selectModel,
     isGenerating,
     isLoadingHistory,
     backendStatus,

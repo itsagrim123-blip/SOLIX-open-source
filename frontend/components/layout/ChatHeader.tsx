@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Menu, Settings } from "lucide-react";
+import { Check, ChevronDown, Loader2, Menu, Plus, Settings, Sparkles } from "lucide-react";
 import { ModelInfo } from "@/types/chat";
 
 export type BackendStatus = "checking" | "online" | "offline";
@@ -12,6 +12,9 @@ interface ChatHeaderProps {
   onSelectModel: (modelId: string) => void;
   isBackendConnected?: boolean;
   backendStatus?: BackendStatus;
+  isSwitchingModel?: boolean;
+  switchingModelTarget?: string | null;
+  modelSwitchSuccess?: string | null;
   onOpenMobileMenu: () => void;
   onNewChat: () => void;
   onOpenSettings: () => void;
@@ -23,6 +26,9 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onSelectModel,
   isBackendConnected = true,
   backendStatus,
+  isSwitchingModel = false,
+  switchingModelTarget = null,
+  modelSwitchSuccess = null,
   onOpenMobileMenu,
   onNewChat,
   onOpenSettings,
@@ -62,38 +68,61 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       : "offline";
 
   return (
-    <header className="h-[54px] sm:h-[60px] flex-none flex items-center justify-between px-3 sm:px-4 border-b border-[#96b4e6]/10 glass z-20 select-none relative pt-[env(safe-area-inset-top,0px)]">
-      {/* LEFT: Solix Icon + SOLIX + Small Model Indicator + Server Status Indicator */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+    <header className="h-[56px] sm:h-[60px] flex-none flex items-center justify-between px-3 sm:px-5 border-b border-white/[0.08] glass z-30 select-none relative pt-[env(safe-area-inset-top,0px)]">
+      {/* LEFT: Solix Logo + Brand + Model + Server Status */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {/* Brand Logo & Name */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-          <div className="solix-logo-badge !w-7 !h-7 sm:!w-[35px] sm:!h-[35px] !text-sm sm:!text-[18px]">
-            ✣
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-500 to-violet-600 flex items-center justify-center text-white shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
-          <strong className="font-extrabold tracking-[0.3px] text-white text-xs sm:text-base">
+          <strong className="font-bold tracking-tight text-white text-sm sm:text-base">
             SOLIX
           </strong>
         </div>
 
-        {/* Subtle Separator on larger screens */}
-        <span className="opacity-20 hidden sm:inline text-slate-400">|</span>
+        {/* Subtle Separator */}
+        <span className="opacity-20 hidden sm:inline text-slate-500 font-light">|</span>
 
-        {/* Small Model Indicator & Dropdown */}
+        {/* Model Selector Dropdown */}
         <div className="relative" ref={modelPickerRef}>
           <button
             type="button"
-            onClick={() => setShowModelPicker(!showModelPicker)}
-            className="glass px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs text-[#eaf1ff] hover:text-white hover:border-[#5ac8ff]/40 transition-all cursor-pointer font-mono flex items-center gap-1 max-w-[85px] sm:max-w-none"
+            onClick={() => !isSwitchingModel && setShowModelPicker(!showModelPicker)}
+            className={`glass px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs text-slate-200 hover:text-white hover:border-cyan-400/30 transition-all cursor-pointer font-medium flex items-center gap-1.5 max-w-[110px] sm:max-w-[170px] ${
+              isSwitchingModel
+                ? "border-cyan-400/40 text-cyan-300 bg-cyan-500/10 cursor-wait"
+                : modelSwitchSuccess
+                ? "border-emerald-400/40 text-emerald-300 bg-emerald-500/10"
+                : ""
+            }`}
             title="Switch AI model"
             aria-label="Switch AI model"
+            disabled={isSwitchingModel}
           >
-            <span className="truncate">{currentModel}</span>
-            <span className="text-[10px] opacity-70">⌄</span>
+            {isSwitchingModel ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                <span className="truncate">
+                  {switchingModelTarget || currentModel}
+                </span>
+              </>
+            ) : modelSwitchSuccess ? (
+              <>
+                <Check className="w-3 h-3 text-emerald-400" />
+                <span className="truncate">{modelSwitchSuccess}</span>
+              </>
+            ) : (
+              <>
+                <span className="truncate">{currentModel}</span>
+                <ChevronDown className="w-3 h-3 opacity-60 ml-0.5 flex-shrink-0" />
+              </>
+            )}
           </button>
 
           {showModelPicker && (
-            <div className="absolute top-full left-0 mt-2 w-56 rounded-2xl glass p-2 z-50 animate-fade-in border border-white/10 shadow-2xl">
-              <div className="px-2.5 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="absolute top-full left-0 mt-2 w-56 sm:w-60 rounded-xl glass p-2 z-50 animate-fade-in border border-white/10 shadow-2xl">
+              <div className="px-2.5 py-1 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                 Available Models
               </div>
               <div className="max-h-48 overflow-y-auto space-y-0.5 mt-1">
@@ -112,7 +141,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   >
                     <span className="truncate">{m.name}</span>
                     {m.is_default && (
-                      <span className="text-[10px] text-cyan-400 font-mono px-1 py-0.5 rounded bg-cyan-400/10">
+                      <span className="text-[10px] text-cyan-400 font-mono px-1 py-0.2 rounded bg-cyan-400/10">
                         def
                       </span>
                     )}
@@ -123,7 +152,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           )}
         </div>
 
-        {/* Server Status Indicator (Handling Checking, Online, Offline states) */}
+        {/* Server Status Pill */}
         <div
           className={`status-pill !py-0.5 !px-2 sm:!py-1 sm:!px-2.5 !text-[11px] sm:!text-xs flex items-center gap-1.5 ${statusPillClass}`}
           title={
@@ -152,21 +181,22 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
       </div>
 
-      {/* RIGHT: Hamburger/Menu Button on Mobile, New Chat + Settings on Desktop */}
-      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-        {/* Desktop Controls (md+) */}
+      {/* RIGHT: New Chat + Settings on Desktop, Hamburger on Mobile */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Desktop Controls */}
         <div className="hidden md:flex items-center gap-2">
           <button
             onClick={onNewChat}
-            className="new-btn !h-9 px-3.5 text-xs sm:text-sm font-semibold cursor-pointer"
+            className="new-btn !h-8 px-3 text-xs font-semibold cursor-pointer active:scale-95"
             title="Start a new chat"
           >
-            <span>＋ New Chat</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Chat</span>
           </button>
 
           <button
             onClick={onOpenSettings}
-            className="iconbtn"
+            className="iconbtn !w-8 !h-8"
             title="Settings"
             aria-label="Settings"
           >
@@ -174,14 +204,24 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           </button>
         </div>
 
-        {/* Mobile Hamburger Menu Button with 40x40 touch target */}
+        {/* Mobile New Chat Button */}
+        <button
+          onClick={onNewChat}
+          className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:text-white active:scale-95 bg-white/[0.04] border border-white/[0.08]"
+          title="New Chat"
+          aria-label="New Chat"
+        >
+          <Plus className="w-4 h-4 text-cyan-400" />
+        </button>
+
+        {/* Mobile Hamburger Menu Button */}
         <button
           onClick={onOpenMobileMenu}
-          className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl text-slate-300 hover:text-white active:scale-95 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-all cursor-pointer"
+          className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:text-white active:scale-95 bg-white/[0.04] border border-white/[0.08]"
           title="Open navigation menu"
           aria-label="Open navigation menu"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-4 h-4" />
         </button>
       </div>
     </header>
