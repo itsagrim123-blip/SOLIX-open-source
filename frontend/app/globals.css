@@ -6,6 +6,21 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes dragonGlow {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 16px rgba(6, 182, 212, 0.25));
+  }
+  50% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 28px rgba(6, 182, 212, 0.5));
+  }
+}
+
+.animate-dragon-glow {
+  animation: dragonGlow 2.2s ease-in-out infinite;
+}
+
 :root {
   --bg: #0d0e10;
   --panel: #141518;

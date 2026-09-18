@@ -20,12 +20,14 @@ import { CodeEditorPanel } from "./CodeEditorPanel";
 import { AIPanel } from "./AIPanel";
 import { TerminalPanel } from "./TerminalPanel";
 import { DiffReviewModal } from "./DiffReviewModal";
+import { SolixLogo } from "@/components/brand/SolixLogo";
 
 interface WorkspaceViewProps {
   onBackToChat?: () => void;
+  workspace: ReturnType<typeof useWorkspace>;
 }
 
-export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat }) => {
+export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, workspace }) => {
   const {
     workspaces,
     activeWorkspace,
@@ -78,7 +80,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat }) =>
     rejectPatch,
     webSearchEnabled,
     setWebSearchEnabled,
-  } = useWorkspace();
+  } = workspace;
 
   // Mobile navigation tab
   const [mobileTab, setMobileTab] = useState<"files" | "editor" | "ai" | "terminal">("editor");
@@ -118,11 +120,24 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat }) =>
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 bg-[#0d0e10] text-[#dedfe2] overflow-hidden select-none">
-      {/* Workspace Top Toolbar */}
-      <div className="h-12 px-3 border-b border-[#292b30] bg-[#141518] flex items-center justify-between shrink-0 gap-2 z-10">
-        {/* Left: Project Selector & Workspace Switching */}
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#191b20] border border-[#2e3137]">
+      {/* Workspace Top Header (Unified Full-Screen Header) */}
+      <div className="h-[52px] px-3.5 border-b border-[#26282e] bg-[#121316] flex items-center justify-between shrink-0 gap-2 z-20 select-none">
+        {/* LEFT: Brand Logo + 'Solix · Workspace' + Divider + Project Selector & Badges */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Solix Dragon Logo & Title */}
+          <div className="flex items-center gap-2 shrink-0">
+            <SolixLogo size="sm" px={26} />
+            <div className="flex items-center gap-1.5 text-sm font-semibold">
+              <span className="text-white tracking-wide">Solix</span>
+              <span className="text-[#555860]">·</span>
+              <span className="text-cyan-400 font-medium">Workspace</span>
+            </div>
+          </div>
+
+          <span className="h-4 w-px bg-[#2a2c33] mx-1 shrink-0 hidden sm:inline-block" />
+
+          {/* Project Selector Dropdown */}
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#18191e] border border-[#2e3138] hover:border-[#3d414a] transition-colors">
             <Code2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <select
               aria-label="Select active workspace"
@@ -131,7 +146,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat }) =>
                 const ws = workspaces.find((w) => w.id === e.target.value);
                 if (ws) selectWorkspace(ws);
               }}
-              className="bg-transparent text-xs font-semibold text-[#dedfe2] outline-none cursor-pointer max-w-[140px] truncate"
+              className="bg-transparent text-xs font-semibold text-[#dedfe2] outline-none cursor-pointer max-w-[130px] sm:max-w-[170px] truncate"
             >
               {workspaces.map((ws) => (
                 <option key={ws.id} value={ws.id} className="bg-[#141518] text-[#dedfe2]">
@@ -143,7 +158,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat }) =>
 
           <button
             onClick={() => setIsCreatingWorkspace(true)}
-            className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors"
+            className="p-1.5 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors"
             title="Create New Project"
             aria-label="Create New Project"
           >
@@ -152,7 +167,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat }) =>
 
           <button
             onClick={() => refreshWorkspace()}
-            className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors"
+            className="p-1.5 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors"
             title="Refresh Files"
             aria-label="Refresh Files"
           >
@@ -160,19 +175,29 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat }) =>
           </button>
 
           {/* Sandboxed Badge */}
-          <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             Local Sandbox
           </span>
 
-          <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          <span className="hidden lg:inline-flex items-center gap-1 text-[10.5px] font-mono font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
             <Sparkles className="w-2.5 h-2.5" />
             qwen2.5-coder:7b
           </span>
         </div>
 
-        {/* Center/Right: Action Buttons & Run / Test Controls */}
-        <div className="flex items-center gap-1.5">
+        {/* RIGHT: Test, Run, and Mode Switcher Pill */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => testProject()}
+            disabled={isRunning}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-[#191b20] hover:bg-[#22252c] text-[#dedfe2] border border-[#2e3138] hover:border-[#3d414a] transition-colors cursor-pointer"
+            title="Run Unit Tests"
+          >
+            <PlayCircle className="w-3 h-3 text-cyan-400" />
+            <span>Test</span>
+          </button>
+
           <button
             onClick={() => runProject()}
             disabled={isRunning}
@@ -187,27 +212,24 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat }) =>
             <span>{isRunning ? "Running..." : "Run"}</span>
           </button>
 
-          <button
-            onClick={() => testProject()}
-            disabled={isRunning}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-[#1d2026] hover:bg-[#252830] text-[#dedfe2] border border-[#2e3137] hover:border-[#3d4149] transition-colors cursor-pointer"
-            title="Run Unit Tests"
-          >
-            <PlayCircle className="w-3 h-3 text-cyan-400" />
-            <span>Test</span>
-          </button>
-
-          {/* Quick Chat Switcher */}
-          {onBackToChat && (
+          {/* Mode Switcher Pill (matches ChatHeader & ChatSidebar) */}
+          <div className="inline-flex items-center p-0.5 rounded-lg bg-[#15171a] border border-[#2a2c33] text-xs">
             <button
               onClick={onBackToChat}
-              className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors ml-1 cursor-pointer"
-              title="Return to Main Chat"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[#8f9299] hover:text-white transition-all font-medium cursor-pointer"
+              title="Return to Normal Chat"
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Normal Chat</span>
+              <span>Chat</span>
             </button>
-          )}
+            <button
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-xs font-semibold cursor-default"
+              title="Currently in Workspace Mode"
+            >
+              <Code2 className="w-3.5 h-3.5" />
+              <span>Workspace</span>
+            </button>
+          </div>
         </div>
       </div>
 
