@@ -18,6 +18,7 @@ interface ChatSidebarProps {
   onCloseMobile: () => void;
   activeView?: "chat" | "coding";
   onSelectView?: (view: "chat" | "coding") => void;
+  transitionState?: "idle" | "entering" | "active" | "exiting";
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -33,6 +34,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onCloseMobile,
   activeView = "chat",
   onSelectView,
+  transitionState = "idle",
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -255,7 +257,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   return (
     <>
       {/* Desktop Fixed Sidebar */}
-      <aside className="solix-sidebar solix-sidebar-desktop">
+      <aside
+        className={`solix-sidebar solix-sidebar-desktop ${
+          transitionState === "entering"
+            ? "solix-sidebar-entering"
+            : transitionState === "exiting"
+            ? "solix-sidebar-returning"
+            : ""
+        }`}
+      >
         {renderSidebarContent(false)}
       </aside>
 

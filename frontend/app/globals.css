@@ -6,19 +6,193 @@
   to { transform: rotate(360deg); }
 }
 
-@keyframes dragonGlow {
-  0%, 100% {
-    transform: scale(1);
-    filter: drop-shadow(0 0 16px rgba(6, 182, 212, 0.25));
+/* ========================================================================= */
+/* Solix Workspace Mode Transition Animation Suite (Apple/Netflix Style)     */
+/* Total Duration: 650-800ms (720ms Entering, 700ms Exiting)                */
+/* ========================================================================= */
+
+/* Phase 2: Chat Sidebar Smooth Collapse (0-220ms) */
+.solix-sidebar-entering {
+  transform: translateX(-105%) !important;
+  opacity: 0 !important;
+  filter: blur(4px) !important;
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              filter 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events: none !important;
+}
+
+/* Reverse: Chat Sidebar Return (200-600ms) */
+.solix-sidebar-returning {
+  animation: solixSidebarReturn 400ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
+}
+
+@keyframes solixSidebarReturn {
+  0% {
+    transform: translateX(-105%);
+    opacity: 0;
+    filter: blur(4px);
   }
-  50% {
-    transform: scale(1.03);
-    filter: drop-shadow(0 0 28px rgba(6, 182, 212, 0.5));
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+    filter: blur(0);
   }
 }
 
-.animate-dragon-glow {
-  animation: dragonGlow 2.2s ease-in-out infinite;
+/* Phase 2: Main Chat Content Smooth Collapse (0-220ms) */
+.solix-main-entering {
+  transform: scale(0.97) !important;
+  opacity: 0 !important;
+  filter: blur(3px) !important;
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              filter 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events: none !important;
+}
+
+/* Reverse: Main Chat Content Return (200-600ms) */
+.solix-main-returning {
+  animation: solixMainReturn 400ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
+}
+
+@keyframes solixMainReturn {
+  0% {
+    transform: scale(0.97);
+    opacity: 0;
+    filter: blur(3px);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Phase 3 & 5: Solix Dragon Logo Reveal & Exit (Entering: 720ms) */
+@keyframes solixLogoEnterAnimation {
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
+    filter: blur(4px);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.0);
+    filter: blur(0);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.0);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+    filter: blur(2px);
+  }
+}
+
+.solix-logo-enter {
+  animation: solixLogoEnterAnimation 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Solix Dragon Logo Reveal & Exit (Exiting / Returning to Chat: 700ms) */
+@keyframes solixLogoExitAnimation {
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
+    filter: blur(4px);
+  }
+  26% {
+    opacity: 1;
+    transform: scale(1.0);
+    filter: blur(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.0);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+    filter: blur(2px);
+  }
+}
+
+.solix-logo-exit {
+  animation: solixLogoExitAnimation 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Subtle Ambient Glow Aura Behind Logo */
+@keyframes solixGlowPulseAnimation {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  30% {
+    opacity: 0.55;
+    transform: scale(1.0);
+  }
+  65% {
+    opacity: 0.55;
+    transform: scale(1.0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+.solix-glow-enter {
+  animation: solixGlowPulseAnimation 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.solix-glow-exit {
+  animation: solixGlowPulseAnimation 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Phase 4: Workspace Shell Reveal (350-720ms) */
+@keyframes solixWorkspaceReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.97);
+    pointer-events: none;
+  }
+  38% {
+    opacity: 0;
+    transform: scale(0.97);
+    pointer-events: none;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.0);
+    pointer-events: auto;
+  }
+}
+
+.solix-workspace-entering {
+  animation: solixWorkspaceReveal 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Reverse: Workspace Collapse (0-220ms) */
+@keyframes solixWorkspaceCollapse {
+  0% {
+    opacity: 1;
+    transform: scale(1.0);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.97);
+    filter: blur(3px);
+  }
+}
+
+.solix-workspace-exiting {
+  animation: solixWorkspaceCollapse 220ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none !important;
 }
 
 :root {

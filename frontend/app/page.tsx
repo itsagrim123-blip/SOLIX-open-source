@@ -9,6 +9,7 @@ import { AboutModal } from "@/components/modals/AboutModal";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 import { WorkspaceView } from "@/components/workspace/WorkspaceView";
 import { WorkspaceTransitionOverlay } from "@/components/workspace/WorkspaceTransitionOverlay";
+import { playWorkspaceTransitionSFX } from "@/lib/sound";
 import { useChat } from "@/hooks/useChat";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
@@ -52,15 +53,17 @@ export default function SolixApp() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
-  // Active View State: 'chat' | 'coding'
-  const [activeView, setActiveView] = useState<"chat" | "coding">("chat");
-
-  // Cinematic Transition States
-  const [transitionStage, setTransitionStage] = useState<
-    "idle" | "fading-out" | "showing-logo" | "fading-in"
+  // Dedicated Workspace Mode Transition State Machine: "idle" | "entering" | "active" | "exiting"
+  const [workspaceTransition, setWorkspaceTransition] = useState<
+    "idle" | "entering" | "active" | "exiting"
   >("idle");
-  const [transitionTarget, setTransitionTarget] = useState<"chat" | "coding">("chat");
-  const transitionTimeoutRef = useRef<NodeJS.Timeout[]>([]);
+  const transitionTimersRef = useRef<NodeJS.Timeout[]>([]);
+
+  // Derived active view for subcomponent indicators
+  const activeView: "chat" | "coding" =
+    workspaceTransition === "active" || workspaceTransition === "entering"
+      ? "coding"
+      : "chat";
 
   const [composerPrefill, setComposerPrefill] = useState("");
   const [temperature, setTemperature] = useState<number>(0.7);
@@ -80,25 +83,30 @@ export default function SolixApp() {
     }
   }, []);
 
-  // Cleanup pending transition timeouts on unmount
+  // Cleanup pending transition timers on unmount
   useEffect(() => {
     return () => {
-      transitionTimeoutRef.current.forEach(clearTimeout);
+      transitionTimersRef.current.forEach(clearTimeout);
     };
   }, []);
 
-  // Mode Switch Handler with Cinematic Solix Dragon Transition
+  // Mode Switch Handler with Cinematic Solix Dragon Transition & SFX (650-800ms)
   const handleSwitchView = useCallback(
     (target: "chat" | "coding") => {
-      if (target === activeView && transitionStage === "idle") return;
+      // Prevent re-triggering while a transition is actively in flight
+      if (workspaceTransition === "entering" || workspaceTransition === "exiting") {
+        return;
+      }
+      if (target === "coding" && workspaceTransition === "active") return;
+      if (target === "chat" && workspaceTransition === "idle") return;
 
-      // Check prefers-reduced-motion for accessibility
+      // Check prefers-reduced-motion for accessibility (instant 0ms switch)
       const prefersReducedMotion =
         typeof window !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       if (prefersReducedMotion) {
-        setActiveView(target);
+        setWorkspaceTransition(target === "coding" ? "active" : "idle");
         if (target === "coding") {
           setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
         }
@@ -106,39 +114,41 @@ export default function SolixApp() {
       }
 
       // Clear any prior active timeouts
-      transitionTimeoutRef.current.forEach(clearTimeout);
-      transitionTimeoutRef.current = [];
+      transitionTimersRef.current.forEach(clearTimeout);
+      transitionTimersRef.current = [];
 
-      setTransitionTarget(target);
-      setTransitionStage("fading-out");
+      if (target === "coding") {
+        // 1. Play failure-safe Workspace SFX at the exact start (0ms)
+        playWorkspaceTransitionSFX();
 
-      // 1. Initial fade-out of current interface (130ms) -> Show Solix Logo Overlay
-      const t1 = setTimeout(() => {
-        setTransitionStage("showing-logo");
-      }, 130);
+        // 2. Start entering transition (0-220ms: Chat collapses, 150-450ms: logo reveals, 350-700ms: workspace reveals)
+        setWorkspaceTransition("entering");
 
-      // 2. Switch the active view behind the backdrop blur (350ms)
-      const t2 = setTimeout(() => {
-        setActiveView(target);
-        // Prompt Monaco Editor to resize to full window
-        window.dispatchEvent(new Event("resize"));
-      }, 350);
+        // 3. Trigger Monaco resize during expansion (350ms)
+        const t1 = setTimeout(() => {
+          window.dispatchEvent(new Event("resize"));
+        }, 350);
 
-      // 3. Begin fading out overlay to reveal target view (520ms)
-      const t3 = setTimeout(() => {
-        setTransitionStage("fading-in");
-        window.dispatchEvent(new Event("resize"));
-      }, 520);
+        // 4. Conclude transition into active fullscreen workspace (720ms)
+        const t2 = setTimeout(() => {
+          setWorkspaceTransition("active");
+          window.dispatchEvent(new Event("resize"));
+        }, 720);
 
-      // 4. Conclude transition and restore complete interactivity (650ms)
-      const t4 = setTimeout(() => {
-        setTransitionStage("idle");
-        window.dispatchEvent(new Event("resize"));
-      }, 650);
+        transitionTimersRef.current = [t1, t2];
+      } else {
+        // Reverse transition: Workspace -> Chat (0-220ms: workspace collapses, 120-450ms: logo, 180-600ms: chat returns)
+        setWorkspaceTransition("exiting");
 
-      transitionTimeoutRef.current.push(t1, t2, t3, t4);
+        // Conclude reverse transition into idle chat (700ms)
+        const t1 = setTimeout(() => {
+          setWorkspaceTransition("idle");
+        }, 700);
+
+        transitionTimersRef.current = [t1];
+      }
     },
-    [activeView, transitionStage]
+    [workspaceTransition]
   );
 
   const handleSendMessage = (content: string) => {
@@ -155,16 +165,14 @@ export default function SolixApp() {
       {/* 1. Normal Chat Mode Container (Sidebar + ChatHeader + Message Stream)    */}
       {/* ========================================================================= */}
       <div
-        className={`w-full h-full flex transition-all duration-300 ease-out ${
-          activeView === "chat"
+        className={`w-full h-full flex ${
+          workspaceTransition === "idle"
             ? "opacity-100 scale-100 pointer-events-auto relative z-10"
-            : "opacity-0 scale-98 pointer-events-none absolute inset-0 invisible z-0"
-        } ${
-          transitionStage === "fading-out" && transitionTarget === "coding"
-            ? "blur-[5px] opacity-25 scale-[0.985]"
-            : ""
+            : workspaceTransition === "active"
+            ? "opacity-0 pointer-events-none absolute inset-0 invisible z-0"
+            : "pointer-events-none relative z-10"
         }`}
-        aria-hidden={activeView !== "chat"}
+        aria-hidden={workspaceTransition === "active"}
       >
         {/* Left Full-Height Sidebar (255px) */}
         <ChatSidebar
@@ -180,10 +188,19 @@ export default function SolixApp() {
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           activeView={activeView}
           onSelectView={handleSwitchView}
+          transitionState={workspaceTransition}
         />
 
         {/* Main Content Column on Right */}
-        <main className="solix-main">
+        <main
+          className={`solix-main ${
+            workspaceTransition === "entering"
+              ? "solix-main-entering"
+              : workspaceTransition === "exiting"
+              ? "solix-main-returning"
+              : ""
+          }`}
+        >
           {/* Topbar (58px) */}
           <ChatHeader
             currentModel={currentModel}
@@ -241,16 +258,16 @@ export default function SolixApp() {
       {/* 2. Full-Screen Workspace Container (100vw x 100dvh, NO sidebar or gap)    */}
       {/* ========================================================================= */}
       <div
-        className={`fixed inset-0 w-screen h-[100dvh] transition-all duration-300 ease-out bg-[#0d0e10] ${
-          activeView === "coding"
+        className={`fixed inset-0 w-screen h-[100dvh] bg-[#0d0e10] ${
+          workspaceTransition === "active"
             ? "opacity-100 scale-100 pointer-events-auto visible z-30"
-            : "opacity-0 scale-98 pointer-events-none invisible z-0"
-        } ${
-          transitionStage === "fading-out" && transitionTarget === "chat"
-            ? "blur-[5px] opacity-25 scale-[0.985]"
-            : ""
+            : workspaceTransition === "entering"
+            ? "visible z-30 pointer-events-none solix-workspace-entering"
+            : workspaceTransition === "exiting"
+            ? "visible z-30 pointer-events-none solix-workspace-exiting"
+            : "opacity-0 scale-98 pointer-events-none invisible absolute inset-0 z-0"
         }`}
-        aria-hidden={activeView !== "coding"}
+        aria-hidden={workspaceTransition !== "active" && workspaceTransition !== "entering"}
       >
         <WorkspaceView
           onBackToChat={() => handleSwitchView("chat")}
@@ -259,12 +276,9 @@ export default function SolixApp() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. Cinematic Solix Logo Transition Overlay                                */}
+      {/* 3. Pure Centered Solix Dragon Logo Transition (No loading screen/spinners) */}
       {/* ========================================================================= */}
-      <WorkspaceTransitionOverlay
-        stage={transitionStage}
-        targetView={transitionTarget}
-      />
+      <WorkspaceTransitionOverlay state={workspaceTransition} />
 
       {/* Settings Modal */}
       <SettingsModal
