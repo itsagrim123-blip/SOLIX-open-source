@@ -46,7 +46,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
     return (
       <div className="solix-user-msg animate-fade-in">
-        <div className="flex flex-col items-end group">
+        <div className="solix-user-wrapper flex flex-col items-end group">
           <div className="solix-user-bubble">
             {hasFiles && (
               <div className="flex flex-col gap-2 mb-2 pb-2 border-b border-white/10">
@@ -99,7 +99,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 </div>
               </div>
             )}
-            <p className="whitespace-pre-wrap m-0">{message.content}</p>
+            <p className="solix-user-text">{message.content}</p>
           </div>
           <div className="flex items-center gap-1.5 mt-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {formattedTime && (

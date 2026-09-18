@@ -219,7 +219,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                 className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
               >
                 {isUser ? (
-                  <div className="max-w-[88%] bg-[#1a1c22] border border-[#2e3138] rounded-xl px-3 py-2 text-xs text-[#eeeeec] leading-relaxed break-words">
+                  <div className="w-fit max-w-[88%] bg-[#1a1c22] border border-[#2e3138] rounded-xl px-3 py-2 text-xs text-[#eeeeec] leading-relaxed whitespace-pre-wrap [overflow-wrap:break-word] [word-break:normal]">
                     {msg.content}
                   </div>
                 ) : (

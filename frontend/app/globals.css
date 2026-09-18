@@ -726,16 +726,40 @@ button {
   width: 100%;
 }
 
+.solix-user-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: 75%;
+  min-width: 0;
+}
+
 .solix-user-bubble {
-  max-width: 80%;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
   background: var(--panel-soft);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 12px 18px;
+  padding: 12px 16px;
   color: var(--text);
   font-size: 15px;
   line-height: 1.55;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+.solix-user-msg > .solix-user-bubble {
+  max-width: 75%;
+}
+
+.solix-user-text {
+  margin: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+  white-space: pre-wrap;
 }
 
 .solix-assistant-msg {
@@ -941,10 +965,15 @@ button {
     gap: 20px;
     padding: 20px 0 16px;
   }
+  .solix-user-wrapper {
+    max-width: 88%;
+  }
   .solix-user-bubble {
-    max-width: 90%;
     font-size: 14.5px;
-    padding: 11px 15px;
+    padding: 10px 14px;
+  }
+  .solix-user-msg > .solix-user-bubble {
+    max-width: 88%;
   }
   .prose-solix {
     font-size: 15px;
