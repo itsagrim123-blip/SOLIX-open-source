@@ -6,8 +6,8 @@ export const metadata: Metadata = {
   description: "Your intelligent conversational workspace powered by local and cloud AI models.",
   keywords: ["Solix", "AI", "Ollama", "Chatbot", "Glassmorphism", "Next.js"],
   icons: {
-    icon: "/solix-logo.jpg",
-    apple: "/solix-logo.jpg",
+    icon: "/solix-logo.png",
+    apple: "/solix-logo.png",
   },
 };
 

@@ -3,9 +3,9 @@ import Image from "next/image";
 type SolixLogoSize = "sm" | "md" | "lg";
 
 const SIZE_MAP: Record<SolixLogoSize, number> = {
-  sm: 26,
-  md: 32,
-  lg: 40,
+  sm: 28,
+  md: 36,
+  lg: 48,
 };
 
 interface SolixLogoProps {
@@ -20,13 +20,12 @@ export function SolixLogo({ size = "sm", px, className = "" }: SolixLogoProps) {
 
   return (
     <Image
-      src="/solix-logo.jpg"
+      src="/solix-logo.png"
       alt="Solix"
       width={dim}
       height={dim}
-      className={`rounded-[6px] object-cover flex-shrink-0 ${className}`}
+      className={`object-contain flex-shrink-0 mix-blend-screen ${className}`}
       priority
     />
   );
 }
-

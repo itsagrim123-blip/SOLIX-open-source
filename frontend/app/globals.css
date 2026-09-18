@@ -79,25 +79,25 @@ button {
 }
 
 .solix-brand {
-  height: 42px;
+  height: 48px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 9px;
+  gap: 12px;
+  padding: 0 4px;
   font-weight: 700;
   font-size: 15px;
+  letter-spacing: 0.18em;
   color: var(--text);
   flex-shrink: 0;
 }
 
 .solix-logo {
-  width: 27px;
-  height: 27px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  overflow: hidden;
 }
 
 .solix-new-chat {

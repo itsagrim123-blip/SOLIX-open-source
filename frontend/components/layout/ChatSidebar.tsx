@@ -60,9 +60,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       <div className="flex items-center justify-between">
         <div className="solix-brand">
           <div className="solix-logo">
-            <SolixLogo size="sm" />
+            <SolixLogo size="md" px={36} />
           </div>
-          <span>SOLIX</span>
+          <span className="tracking-[0.2em]">SOLIX</span>
         </div>
         {isMobile && (
           <button
