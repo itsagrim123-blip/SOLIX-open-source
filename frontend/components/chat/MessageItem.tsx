@@ -6,6 +6,7 @@ import { Message } from "@/types/chat";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { SolixLogo } from "@/components/brand/SolixLogo";
 import { SourceCards } from "./SourceCards";
+import { formatFileSize, getFileIcon } from "./MessageComposer";
 
 interface MessageItemProps {
   message: Message;
@@ -40,10 +41,28 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   })();
 
   if (isUser) {
+    const hasFiles = message.files && message.files.length > 0;
+
     return (
       <div className="solix-user-msg animate-fade-in">
         <div className="flex flex-col items-end group">
           <div className="solix-user-bubble">
+            {hasFiles && (
+              <div className="flex flex-wrap gap-1.5 mb-2 pb-1.5 border-b border-white/10">
+                {message.files!.map((f) => (
+                  <div
+                    key={f.id}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#191b1f] border border-[#2e3138] text-[11px] text-[#eeeeec]"
+                  >
+                    {getFileIcon(f.type, f.name)}
+                    <span className="truncate max-w-[150px] font-medium" title={f.name}>
+                      {f.name}
+                    </span>
+                    <span className="text-[9px] text-[#8f9299]">({formatFileSize(f.size)})</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <p className="whitespace-pre-wrap m-0">{message.content}</p>
           </div>
           <div className="flex items-center gap-1.5 mt-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity">

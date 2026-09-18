@@ -67,9 +67,27 @@ async def send_chat_message(
     if not history or history[-1].get("content") != user_prompt:
         history.append({"role": "user", "content": user_prompt})
 
+    # ── File Intelligence context retrieval ────────────────────────────────────
+    file_context_str: Optional[str] = None
+    retrieved_chunks_count: int = 0
+    if payload.file_ids:
+        from app.services.files import file_service
+        all_chunks = file_service.get_chunks(payload.file_ids)
+        if all_chunks:
+            retrieved_chunks = file_service.retriever.retrieve(
+                query=user_prompt,
+                chunks=all_chunks,
+                file_ids=payload.file_ids,
+            )
+            retrieved_chunks_count = len(retrieved_chunks)
+            file_context_str = file_service.retriever.build_context_block(retrieved_chunks)
+            logger.info(f"[Chat] File Intelligence: Retrieved {retrieved_chunks_count} chunks from {len(payload.file_ids)} attached files")
+        else:
+            logger.warning(f"[Chat] File Intelligence: No chunks found for file IDs: {payload.file_ids}")
+
     # ── Web Search path ────────────────────────────────────────────────────────
     if payload.web_search:
-        logger.info(f"[Chat] Web Search mode — conv={conv_id}")
+        logger.info(f"[Chat] Web Search mode — conv={conv_id} (files: {len(payload.file_ids or [])})")
 
         async def web_search_sse_stream() -> AsyncGenerator[str, None]:
             # Emit start event first so the frontend knows the conv_id
@@ -82,6 +100,15 @@ async def send_chat_message(
                 "web_search": True,
             }
             yield f"data: {json.dumps(start_data)}\n\n"
+
+            if payload.file_ids:
+                file_status_data = {
+                    "type": "file_status",
+                    "status": "ready",
+                    "chunk_count": retrieved_chunks_count,
+                    "conversation_id": conv_id,
+                }
+                yield f"data: {json.dumps(file_status_data)}\n\n"
 
             full_response = ""
             sources = []
@@ -99,6 +126,7 @@ async def send_chat_message(
                 conversation_id=conv_id,
                 history=history,
                 temperature=payload.temperature,
+                file_context=file_context_str,
             ):
                 # Capture done payload to persist to DB
                 if sse_line.startswith("data: "):
@@ -134,7 +162,7 @@ async def send_chat_message(
             },
         )
 
-    # ── Normal chat path (unchanged) ──────────────────────────────────────────
+    # ── Normal chat path ──────────────────────────────────────────────────────
     provider, is_connected = await get_active_provider()
 
     async def sse_event_stream() -> AsyncGenerator[str, None]:
@@ -150,12 +178,25 @@ async def send_chat_message(
         }
         yield f"data: {json.dumps(start_data)}\n\n"
 
+        if payload.file_ids:
+            file_status_data = {
+                "type": "file_status",
+                "status": "ready",
+                "chunk_count": retrieved_chunks_count,
+                "conversation_id": conv_id,
+            }
+            yield f"data: {json.dumps(file_status_data)}\n\n"
+
+        effective_system_prompt = payload.system_prompt or "You are Solix AI, a helpful, precise, and thoughtful AI assistant."
+        if file_context_str:
+            effective_system_prompt = f"{effective_system_prompt}\n\n{file_context_str}"
+
         try:
             async for token in provider.generate_stream(
                 messages=history,
                 model=payload.model,
                 temperature=payload.temperature,
-                system_prompt=payload.system_prompt,
+                system_prompt=effective_system_prompt,
             ):
                 full_content_chunks.append(token)
                 token_data = {"type": "token", "content": token}

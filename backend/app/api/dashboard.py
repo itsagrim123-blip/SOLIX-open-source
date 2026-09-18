@@ -53,6 +53,8 @@ async def get_dashboard_status():
     )
 
     stats = metrics_service.get_stats()
+    from app.services.files import file_service
+    file_stats = file_service.get_stats()
 
     return {
         "status": "healthy" if is_ollama_connected else "degraded",
@@ -73,6 +75,11 @@ async def get_dashboard_status():
             "ollama": "connected" if is_ollama_connected else "offline",
             "web_search": web_search_status,
             "tavily": "configured" if tavily_configured else "not_configured",
+            "file_intelligence": "ready",
+            "files_processed": file_stats["files_processed"],
+            "files_active": file_stats["files_active"],
+            "file_errors": file_stats["errors"],
+            "file_avg_time_ms": file_stats["avg_processing_time_ms"],
         },
         "models": {
             "normal": {

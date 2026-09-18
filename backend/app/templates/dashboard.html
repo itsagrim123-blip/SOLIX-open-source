@@ -688,7 +688,7 @@
 
   <!-- ── Service Health ──────────────────────────────────── -->
   <div class="section-title">Core Services</div>
-  <div class="grid-3">
+  <div class="grid-4">
     <!-- API Core -->
     <div class="card">
       <div class="card-top">
@@ -723,6 +723,18 @@
       </div>
       <div class="card-title">Tavily Web Search</div>
       <div class="card-meta" id="webSearchMeta">Configured · Grounded Citations</div>
+    </div>
+
+    <!-- File Intelligence Engine -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-label">File Intelligence</span>
+        <div id="fileIntelBadge" class="badge online">
+          <span class="badge-dot"></span> Ready
+        </div>
+      </div>
+      <div class="card-title">Solix File Engine</div>
+      <div class="card-meta" id="fileIntelMeta">Local Parsers · BM25 RAG · Multi-Format</div>
     </div>
   </div>
 
@@ -929,6 +941,17 @@
         webSearchBadge.className = "badge degraded";
         webSearchBadge.innerHTML = '<span class="badge-dot"></span> Not Configured';
         document.getElementById("webSearchMeta").textContent = "Set TAVILY_API_KEY in backend .env to enable";
+      }
+
+      // File Intelligence Badge & Meta
+      const fileIntelBadge = document.getElementById("fileIntelBadge");
+      if (fileIntelBadge) {
+        fileIntelBadge.className = "badge online";
+        fileIntelBadge.innerHTML = '<span class="badge-dot"></span> Ready';
+        const processed = data.services.files_processed || 0;
+        const active = data.services.files_active || 0;
+        const errors = data.services.file_errors || 0;
+        document.getElementById("fileIntelMeta").textContent = `${processed} files processed · ${active} active · ${errors} errors`;
       }
 
       // Normal Model

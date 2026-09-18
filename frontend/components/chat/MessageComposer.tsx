@@ -1,8 +1,24 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, ChevronDown, Globe, Loader2, Paperclip, Sliders, Square } from "lucide-react";
-import { ModelInfo } from "@/types/chat";
+import {
+  Archive,
+  ArrowUp,
+  Check,
+  ChevronDown,
+  FileCode,
+  FileText,
+  Globe,
+  Image as ImageIcon,
+  Loader2,
+  Paperclip,
+  RotateCw,
+  Sliders,
+  Square,
+  Table,
+  X,
+} from "lucide-react";
+import { AttachedFile, ModelInfo } from "@/types/chat";
 import { getModelBadge, getModelDescription, getModelLabel } from "@/lib/models";
 
 interface MessageComposerProps {
@@ -19,6 +35,47 @@ interface MessageComposerProps {
   webSearchEnabled?: boolean;
   onToggleWebSearch?: () => void;
   webSearchStatus?: "idle" | "searching" | "reading" | "generating";
+  attachedFiles?: AttachedFile[];
+  onUploadFiles?: (files: FileList | File[]) => void;
+  onRemoveFile?: (fileId: string) => void;
+  onRetryFile?: (fileId: string) => void;
+  fileStatusLabel?: string | null;
+}
+
+export function formatFileSize(bytes: number): string {
+  if (!bytes || bytes === 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function getFileIcon(type: string, name: string) {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  if (type === "pdf" || ext === "pdf") {
+    return <FileText className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />;
+  }
+  if (
+    ["code", "py", "js", "ts", "tsx", "jsx", "html", "css", "java", "c", "cpp", "cs", "go", "rs", "sql", "sh"].includes(type) ||
+    ["py", "js", "ts", "tsx", "jsx", "html", "css", "json", "yaml", "yml", "xml", "sql", "sh", "bat", "ps1"].includes(ext)
+  ) {
+    return <FileCode className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />;
+  }
+  if (
+    ["spreadsheet", "xlsx", "xls", "ods", "csv", "tsv"].includes(type) ||
+    ["xlsx", "xls", "ods", "csv", "tsv"].includes(ext)
+  ) {
+    return <Table className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />;
+  }
+  if (
+    ["image", "png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "tiff", "tif"].includes(type) ||
+    ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "tiff", "tif"].includes(ext)
+  ) {
+    return <ImageIcon className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />;
+  }
+  if (["archive", "zip"].includes(type) || ext === "zip") {
+    return <Archive className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />;
+  }
+  return <FileText className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />;
 }
 
 export const MessageComposer: React.FC<MessageComposerProps> = ({
@@ -35,11 +92,18 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   webSearchEnabled = false,
   onToggleWebSearch,
   webSearchStatus = "idle",
+  attachedFiles = [],
+  onUploadFiles,
+  onRemoveFile,
+  onRetryFile,
+  fileStatusLabel = null,
 }) => {
   const [content, setContent] = useState(initialValue);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelPickerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync initialValue changes
   useEffect(() => {
@@ -86,48 +150,194 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
     }
   };
 
+  const isAnyFileUploading = attachedFiles.some(
+    (f) => f.status === "uploading" || f.status === "processing"
+  );
+  const hasReadyFiles = attachedFiles.some((f) => f.status === "ready");
+
   const handleSubmit = () => {
-    if (!content.trim() || isGenerating || isSwitchingModel) return;
-    onSendMessage(content.trim());
+    const trimmed = content.trim();
+    if ((!trimmed && !hasReadyFiles) || isGenerating || isSwitchingModel || isAnyFileUploading) return;
+    
+    // Default prompt if file is attached without text
+    const finalMessage = trimmed || "Please summarize and analyze the attached file(s).";
+    onSendMessage(finalMessage);
     setContent("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
   };
 
-  // Dynamic search status label
-  const searchStatusLabel = (() => {
-    if (!isGenerating || !webSearchEnabled) return null;
-    switch (webSearchStatus) {
-      case "searching": return "Searching the web…";
-      case "reading": return "Reading sources…";
-      case "generating": return "Generating answer…";
-      default: return null;
+  // Drag and Drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      onUploadFiles?.(e.dataTransfer.files);
     }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onUploadFiles?.(e.target.files);
+      e.target.value = "";
+    }
+  };
+
+  // Dynamic status label
+  const activeStatusLabel = (() => {
+    if (!isGenerating) return null;
+    if (fileStatusLabel) return fileStatusLabel;
+    if (webSearchEnabled) {
+      switch (webSearchStatus) {
+        case "searching": return "Searching the web…";
+        case "reading": return "Reading sources…";
+        case "generating": return "Generating answer…";
+        default: return null;
+      }
+    }
+    return null;
   })();
 
+  const placeholderText = attachedFiles.length > 0
+    ? "Ask anything about attached files, or Message Solix…"
+    : webSearchEnabled
+    ? "Search the web with Solix…"
+    : "Message Solix…";
+
   return (
-    <div className="solix-composer-wrap">
-      {/* Web search status indicator — lives in the message area, never shifts layout */}
-      {searchStatusLabel && (
+    <div
+      className="solix-composer-wrap"
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Hidden File Input for Paperclip click */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={handleFileInputChange}
+        aria-label="Upload files"
+      />
+
+      {/* Live status indicator */}
+      {activeStatusLabel && (
         <div className="solix-search-status">
           <span className="solix-search-spinner" aria-hidden="true" />
-          <span>{searchStatusLabel}</span>
+          <span>{activeStatusLabel}</span>
         </div>
       )}
 
-      <div className="solix-composer">
+      <div
+        className={`solix-composer transition-all duration-200 ${
+          isDragging ? "ring-2 ring-cyan-500/60 bg-cyan-950/15 border-cyan-500/40" : ""
+        }`}
+      >
+        {/* Drag Overlay Notice */}
+        {isDragging && (
+          <div className="px-4 py-3 text-center text-xs font-semibold text-cyan-300 animate-pulse bg-cyan-950/30 border-b border-cyan-800/40 rounded-t-xl flex items-center justify-center gap-2">
+            <Paperclip className="w-4 h-4" />
+            <span>Drop files here to attach to Solix File Intelligence</span>
+          </div>
+        )}
+
+        {/* Attached Files Tray */}
+        {attachedFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-3 pt-3 pb-2 border-b border-[#292b30]/60 max-h-36 overflow-y-auto">
+            {attachedFiles.map((file) => {
+              const isError = file.status === "error";
+              const isReady = file.status === "ready";
+              const isProcessing = file.status === "processing";
+              const isUploading = file.status === "uploading";
+
+              return (
+                <div
+                  key={file.id}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs border transition-all ${
+                    isError
+                      ? "bg-rose-950/30 border-rose-800/50 text-rose-200"
+                      : isReady
+                      ? "bg-[#17191d] border-[#303238] text-[#eeeeec] shadow-xs"
+                      : "bg-[#141518] border-[#292b30] text-[#a5a7ad]"
+                  }`}
+                >
+                  {getFileIcon(file.type, file.name)}
+
+                  <div className="flex flex-col min-w-0 max-w-[130px] sm:max-w-[190px]">
+                    <span className="font-medium text-[11px] truncate text-[#eeeeec]" title={file.name}>
+                      {file.name}
+                    </span>
+                    <span className="text-[9px] text-[#8f9299]">
+                      {isUploading ? (
+                        <span className="text-cyan-400 font-mono">Uploading {file.progress}%</span>
+                      ) : isProcessing ? (
+                        <span className="text-amber-400">Processing…</span>
+                      ) : isReady ? (
+                        <span className="text-emerald-400">✓ Ready · {formatFileSize(file.size)}</span>
+                      ) : (
+                        <span className="text-rose-400 truncate" title={file.error || "Failed"}>
+                          ⚠ {file.error || "Failed"}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {isError && onRetryFile && (
+                    <button
+                      type="button"
+                      onClick={() => onRetryFile(file.id)}
+                      className="p-1 hover:text-[#eeeeec] text-[#8f9299] transition-colors cursor-pointer"
+                      title="Retry upload"
+                      aria-label="Retry upload"
+                    >
+                      <RotateCw className="w-3 h-3" />
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => onRemoveFile?.(file.id)}
+                    className="p-1 hover:text-rose-400 text-[#8f9299] transition-colors cursor-pointer"
+                    title="Remove file"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Text Input Area */}
         <textarea
           ref={textareaRef}
           value={content}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder={webSearchEnabled ? "Search the web with Solix…" : "Message Solix…"}
+          placeholder={placeholderText}
           rows={1}
           className="solix-textarea"
           aria-label="Chat input message"
         />
 
+        {/* Bottom Toolbar */}
         <div className="solix-composer-bar">
           <div className="solix-composer-left">
             {/* Model Selector Pill */}
@@ -230,9 +440,10 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
             {/* Attachment Button */}
             <button
               type="button"
-              className="solix-small-btn icon active:scale-95"
-              title="Attach context (Optional)"
-              aria-label="Attachment"
+              onClick={() => fileInputRef.current?.click()}
+              className="solix-small-btn icon active:scale-95 cursor-pointer"
+              title="Attach documents, code, images, spreadsheets"
+              aria-label="Attach file"
             >
               <Paperclip className="w-3.5 h-3.5" />
             </button>
@@ -240,7 +451,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
             {/* Tools Button */}
             <button
               type="button"
-              className="solix-small-btn icon active:scale-95"
+              className="solix-small-btn icon active:scale-95 cursor-default"
               title="Assistant capabilities"
               aria-label="Tools"
             >
@@ -264,7 +475,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!content.trim() || isSwitchingModel}
+                disabled={(!content.trim() && !hasReadyFiles) || isSwitchingModel || isAnyFileUploading}
                 className="solix-send-btn active:scale-95"
                 title="Send message (Enter)"
                 aria-label="Send message"
@@ -278,8 +489,12 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
 
       {/* Subtle Disclaimer */}
       <div className="solix-disclaimer">
-        {webSearchEnabled
+        {webSearchEnabled && attachedFiles.length > 0
+          ? "File Intelligence + Web Search · Qwen 3 8B · Grounded Citations"
+          : webSearchEnabled
           ? "Web Search · Qwen 3 8B · Sources verified by backend"
+          : attachedFiles.length > 0
+          ? "File Intelligence · Local RAG · Citations grounded in documents"
           : "Solix can make mistakes. Verify important information."}
       </div>
     </div>

@@ -8,6 +8,17 @@ export interface SearchSource {
   snippet?: string;
 }
 
+export interface AttachedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  status: "uploading" | "processing" | "ready" | "error";
+  progress: number;
+  error?: string;
+  chunkCount?: number;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -18,6 +29,8 @@ export interface Message {
   webSearch?: boolean;
   /** Source citations for web-search assistant messages */
   sources?: SearchSource[];
+  /** Attached files associated with this message */
+  files?: { id: string; name: string; size: number; type: string }[];
 }
 
 export interface ConversationSummary {
@@ -111,6 +124,13 @@ export interface StreamSourcesPayload {
   conversation_id: string;
 }
 
+export interface StreamFileStatusPayload {
+  type: "file_status";
+  status: string;
+  chunk_count?: number;
+  conversation_id: string;
+}
+
 export type StreamPayload =
   | StreamStartPayload
   | StreamTokenPayload
@@ -118,4 +138,5 @@ export type StreamPayload =
   | StreamErrorPayload
   | StreamSearchStartedPayload
   | StreamSearchResultsPayload
-  | StreamSourcesPayload;
+  | StreamSourcesPayload
+  | StreamFileStatusPayload;

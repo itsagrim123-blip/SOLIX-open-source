@@ -101,5 +101,83 @@ export const api = {
       }
     );
   },
+
+  /** Upload a file to Solix with real progress tracking */
+  uploadFile(
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<{
+    file_id: string;
+    filename: string;
+    content_type: string;
+    detected_type: string;
+    size_bytes: number;
+    status: string;
+    chunk_count: number;
+    error?: string;
+  }> {
+    return new Promise((resolve, reject) => {
+      const url = getApiUrl("/api/files/upload");
+      const formData = new FormData();
+      formData.append("files", file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url, true);
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            onProgress(percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const res = JSON.parse(xhr.responseText);
+            resolve(Array.isArray(res) ? res[0] : res);
+          } catch (e) {
+            reject(new Error("Invalid response format from server"));
+          }
+        } else {
+          let errMessage = `Upload failed with status ${xhr.status}`;
+          try {
+            const errData = JSON.parse(xhr.responseText);
+            if (errData?.detail) {
+              errMessage = typeof errData.detail === "string" ? errData.detail : JSON.stringify(errData.detail);
+            }
+          } catch {
+            // fallback
+          }
+          reject(new Error(errMessage));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error(`Unable to upload file to Solix backend at ${API_BASE_URL}.`));
+      };
+
+      xhr.send(formData);
+    });
+  },
+
+  /** Delete an uploaded file from server */
+  async deleteFile(fileId: string): Promise<{ success: boolean; file_id: string }> {
+    return request<{ success: boolean; file_id: string }>(
+      `/api/files/${encodeURIComponent(fileId)}`,
+      { method: "DELETE" }
+    );
+  },
+
+  /** Check processing status of an uploaded file */
+  async getFileStatus(
+    fileId: string
+  ): Promise<{ file_id: string; status: string; filename: string; chunk_count: number; error?: string }> {
+    return request<{ file_id: string; status: string; filename: string; chunk_count: number; error?: string }>(
+      `/api/files/${encodeURIComponent(fileId)}/status`
+    );
+  },
 };
 

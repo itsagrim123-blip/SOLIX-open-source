@@ -8,6 +8,7 @@ export interface StreamChatParams {
   systemPrompt?: string;
   temperature?: number;
   webSearch?: boolean;
+  fileIds?: string[];
   signal?: AbortSignal;
   onStart?: (data: { conversation_id: string; title: string; provider?: string }) => void;
   onToken?: (token: string) => void;
@@ -21,6 +22,7 @@ export interface StreamChatParams {
   onSearchStarted?: (data: { query: string }) => void;
   onSearchResults?: (data: { count: number }) => void;
   onSources?: (sources: SearchSource[]) => void;
+  onFileStatus?: (data: { status: string; chunk_count?: number }) => void;
 }
 
 /**
@@ -34,6 +36,7 @@ export async function streamChat({
   systemPrompt,
   temperature,
   webSearch = false,
+  fileIds,
   signal,
   onStart,
   onToken,
@@ -42,6 +45,7 @@ export async function streamChat({
   onSearchStarted,
   onSearchResults,
   onSources,
+  onFileStatus,
 }: StreamChatParams): Promise<void> {
   const url = getApiUrl("/api/chat");
 
@@ -59,6 +63,7 @@ export async function streamChat({
         system_prompt: systemPrompt || null,
         temperature: temperature ?? 0.7,
         web_search: webSearch,
+        file_ids: fileIds && fileIds.length > 0 ? fileIds : null,
       }),
       signal,
     });
@@ -131,6 +136,9 @@ export async function streamChat({
               break;
             case "sources":
               onSources?.(payload.sources);
+              break;
+            case "file_status":
+              onFileStatus?.({ status: payload.status, chunk_count: payload.chunk_count });
               break;
           }
         } catch (jsonErr) {

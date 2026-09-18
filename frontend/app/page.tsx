@@ -35,6 +35,11 @@ export default function SolixApp() {
     webSearchEnabled,
     toggleWebSearch,
     webSearchStatus,
+    attachedFiles,
+    uploadFiles,
+    removeFile,
+    retryFile,
+    fileStatusLabel,
   } = useChat();
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -125,6 +130,11 @@ export default function SolixApp() {
             webSearchEnabled={webSearchEnabled}
             onToggleWebSearch={toggleWebSearch}
             webSearchStatus={webSearchStatus}
+            attachedFiles={attachedFiles}
+            onUploadFiles={uploadFiles}
+            onRemoveFile={removeFile}
+            onRetryFile={retryFile}
+            fileStatusLabel={fileStatusLabel}
           />
         </section>
       </main>

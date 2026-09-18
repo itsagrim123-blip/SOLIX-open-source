@@ -66,6 +66,7 @@ class ChatRequest(BaseModel):
     system_prompt: Optional[str] = Field(default=None, description="Optional custom system prompt")
     temperature: Optional[float] = Field(default=0.7, ge=0.0, le=2.0)
     web_search: bool = Field(default=False, description="If true, use Tavily web search + OLLAMA_WEB_MODEL")
+    file_ids: Optional[List[str]] = Field(default=None, description="List of attached file IDs for File Intelligence")
 
 
 class ModelInfo(BaseModel):
@@ -99,6 +100,9 @@ class HealthResponse(BaseModel):
     normal_model: Optional[str] = None
     web_model: Optional[str] = None
     web_search: Optional[str] = None
+    file_intelligence: Optional[str] = "ready"
+    ocr: Optional[str] = "unavailable"
+    vision: Optional[str] = "unavailable"
     streaming: Optional[str] = "enabled"
 
 

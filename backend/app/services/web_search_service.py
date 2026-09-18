@@ -122,6 +122,7 @@ class WebSearchService:
         conversation_id: str,
         history: List[Dict[str, str]],
         temperature: Optional[float] = 0.7,
+        file_context: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         """
         Run the full web-search pipeline and yield raw SSE event strings.
@@ -165,7 +166,10 @@ class WebSearchService:
 
         # ── Step 3: build prompt context ───────────────────────────────────────
         context_block = _build_context_block(results)
-        full_system_prompt = _WEB_SEARCH_SYSTEM_PROMPT + context_block
+        full_system_prompt = _WEB_SEARCH_SYSTEM_PROMPT
+        if file_context:
+            full_system_prompt += f"\n\n{file_context}\n\n"
+        full_system_prompt += context_block
 
         # Replace the last user message content with query (already last in history)
         messages_for_llm = history  # history already has user message appended

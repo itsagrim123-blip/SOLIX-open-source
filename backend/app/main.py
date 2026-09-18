@@ -5,7 +5,7 @@ import os
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from app.api import chat, conversations, dashboard, health, models
+from app.api import chat, conversations, dashboard, files, health, models
 from app.core.auth import verify_dashboard_access
 from app.core.config import settings
 from app.core.database import init_db
@@ -96,6 +96,7 @@ app.include_router(health.router, prefix="/api")
 app.include_router(models.router, prefix="/api")
 app.include_router(conversations.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(files.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 
 

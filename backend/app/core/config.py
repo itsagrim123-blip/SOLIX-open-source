@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     DASHBOARD_PASSWORD: Optional[str] = None
     DASHBOARD_MAX_LOGS: int = 500
 
+    # File Intelligence Configuration
+    MAX_FILE_SIZE_MB: int = 25
+    MAX_FILES_PER_REQUEST: int = 10
+    FILE_STORAGE_PATH: str = "./storage/uploads"
+    VISION_MODEL: str = "gemma3:4b"
+    EMBEDDING_MODEL: Optional[str] = None
+    OCR_ENABLED: bool = True
+    MAX_CONTEXT_CHUNKS: int = 8
+
     # Database Configuration (Defaults to SQLite async, easily swapped for PostgreSQL)
     DATABASE_URL: str = "sqlite+aiosqlite:///./solix.db"
 

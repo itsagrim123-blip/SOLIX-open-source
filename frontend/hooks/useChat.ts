@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { conversationStore } from "@/lib/storage/conversationStore";
 import { streamChat } from "@/lib/stream";
 import {
+  AttachedFile,
   ConversationSummary,
   Message,
   ModelInfo,
@@ -27,6 +28,10 @@ export function useChat() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
   const [isProviderConnected, setIsProviderConnected] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // File Intelligence state
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [fileStatusLabel, setFileStatusLabel] = useState<string | null>(null);
 
   // Web Search state
   const [webSearchEnabled, setWebSearchEnabled] = useState<boolean>(false);
@@ -197,6 +202,86 @@ export function useChat() {
     setWebSearchEnabled((prev) => !prev);
   }, []);
 
+  // File Intelligence upload and attachment management
+  const uploadFiles = useCallback(async (incoming: FileList | File[]) => {
+    const fileArray = Array.from(incoming);
+    if (!fileArray.length) return;
+
+    if (attachedFiles.length + fileArray.length > 10) {
+      setError("Maximum 10 files allowed per request.");
+      return;
+    }
+
+    const newItems: AttachedFile[] = fileArray.map((f) => ({
+      id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: f.name,
+      size: f.size,
+      type: f.name.split(".").pop()?.toLowerCase() || "file",
+      status: "uploading",
+      progress: 0,
+    }));
+
+    setAttachedFiles((prev) => [...prev, ...newItems]);
+
+    fileArray.forEach(async (file, idx) => {
+      const tempId = newItems[idx].id;
+      try {
+        const result = await api.uploadFile(file, (percent) => {
+          setAttachedFiles((prev) =>
+            prev.map((item) =>
+              item.id === tempId ? { ...item, progress: percent } : item
+            )
+          );
+        });
+
+        setAttachedFiles((prev) =>
+          prev.map((item) =>
+            item.id === tempId
+              ? {
+                  ...item,
+                  id: result.file_id,
+                  name: result.filename,
+                  type: result.detected_type || item.type,
+                  status: result.status === "ready" ? "ready" : "error",
+                  chunkCount: result.chunk_count,
+                  error: result.error,
+                  progress: 100,
+                }
+              : item
+          )
+        );
+      } catch (err: any) {
+        setAttachedFiles((prev) =>
+          prev.map((item) =>
+            item.id === tempId
+              ? {
+                  ...item,
+                  status: "error",
+                  error: err.message || "Upload failed",
+                  progress: 0,
+                }
+              : item
+          )
+        );
+      }
+    });
+  }, [attachedFiles.length]);
+
+  const removeFile = useCallback(async (fileId: string) => {
+    setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId));
+    if (!fileId.startsWith("temp-")) {
+      try {
+        await api.deleteFile(fileId);
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  const retryFile = useCallback((fileId: string) => {
+    removeFile(fileId);
+  }, [removeFile]);
+
   // Switch AI model with real backend confirmation and VRAM allocation
   const selectModel = useCallback(
     async (modelId: string) => {
@@ -242,12 +327,29 @@ export function useChat() {
 
       let targetConvId = activeConversationId;
 
+      // Extract ready attached files
+      const readyFiles = attachedFiles.filter((f) => f.status === "ready");
+      const fileSummaries = readyFiles.map((f) => ({
+        id: f.id,
+        name: f.name,
+        size: f.size,
+        type: f.type,
+      }));
+      const fileIds = readyFiles.map((f) => f.id);
+
+      // Clear composer attachment tray once submitted
+      setAttachedFiles([]);
+      if (fileIds.length > 0) {
+        setFileStatusLabel("Processing attached files…");
+      }
+
       const userMessage: Message = {
         id: userMessageId,
         conversation_id: targetConvId || "",
         role: "user",
         content: content.trim(),
         timestamp: now,
+        files: fileSummaries.length > 0 ? fileSummaries : undefined,
       };
 
       const placeholderAssistantMsg: Message = {
@@ -285,6 +387,7 @@ export function useChat() {
         systemPrompt: options?.systemPrompt,
         temperature: options?.temperature,
         webSearch: isWebSearch,
+        fileIds: fileIds.length > 0 ? fileIds : undefined,
         signal: controller.signal,
 
         onStart: async (data) => {
@@ -361,9 +464,18 @@ export function useChat() {
           );
         },
 
+        onFileStatus: (data) => {
+          if (data.chunk_count && data.chunk_count > 0) {
+            setFileStatusLabel(`Indexed ${data.chunk_count} relevant sections from files`);
+          } else {
+            setFileStatusLabel("Reading attached files…");
+          }
+        },
+
         onDone: async (data) => {
           setIsGenerating(false);
           setWebSearchStatus("idle");
+          setFileStatusLabel(null);
           abortControllerRef.current = null;
 
           // Sources may arrive via onSources or inside done payload
@@ -405,6 +517,7 @@ export function useChat() {
         onError: async (err) => {
           setIsGenerating(false);
           setWebSearchStatus("idle");
+          setFileStatusLabel(null);
           abortControllerRef.current = null;
           setError(err);
 
@@ -435,7 +548,7 @@ export function useChat() {
         },
       });
     },
-    [activeConversationId, currentModel, isGenerating, isSwitchingModel, webSearchEnabled, webSearchStatus]
+    [activeConversationId, attachedFiles, currentModel, isGenerating, isSwitchingModel, webSearchEnabled, webSearchStatus]
   );
 
   return {
@@ -463,6 +576,12 @@ export function useChat() {
     sendMessage,
     setCurrentModel,
     refreshData,
+    // File Intelligence
+    attachedFiles,
+    uploadFiles,
+    removeFile,
+    retryFile,
+    fileStatusLabel,
     // Web Search
     webSearchEnabled,
     toggleWebSearch,

@@ -24,6 +24,11 @@ async def health_check():
     tavily_configured = bool(settings.TAVILY_API_KEY and settings.TAVILY_API_KEY.strip())
     web_search_state = "ready" if tavily_configured and web_model_available else ("configured" if tavily_configured else "not_configured")
 
+    from app.services.files import file_service
+    file_stats = file_service.get_stats()
+    vision_available = await file_service.vision_provider.is_available()
+    ocr_available = file_service.ocr_provider.is_available()
+
     return HealthResponse(
         status="healthy" if is_connected else "degraded",
         version=settings.APP_VERSION,
@@ -36,6 +41,9 @@ async def health_check():
         normal_model="available" if model_available else "not_installed",
         web_model="available" if web_model_available else "not_installed",
         web_search=web_search_state,
+        file_intelligence="ready",
+        ocr="available" if ocr_available else "unavailable",
+        vision="available" if vision_available else "unavailable",
         streaming="enabled",
     )
 
