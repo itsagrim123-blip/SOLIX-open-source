@@ -1,0 +1,484 @@
+"use client";
+
+import React, { useState } from "react";
+import {
+  Code2,
+  FolderTree,
+  MessageSquare,
+  Play,
+  PlayCircle,
+  Plus,
+  RefreshCw,
+  Server,
+  Sparkles,
+  Terminal as TerminalIcon,
+  X,
+} from "lucide-react";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { FileExplorer } from "./FileExplorer";
+import { CodeEditorPanel } from "./CodeEditorPanel";
+import { AIPanel } from "./AIPanel";
+import { TerminalPanel } from "./TerminalPanel";
+import { DiffReviewModal } from "./DiffReviewModal";
+
+interface WorkspaceViewProps {
+  onBackToChat?: () => void;
+}
+
+export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat }) => {
+  const {
+    workspaces,
+    activeWorkspace,
+    selectWorkspace,
+    createNewWorkspace,
+    fileTree,
+    refreshWorkspace,
+    isLoading,
+    error,
+
+    // Editor & Tabs
+    openFiles,
+    activeFile,
+    openFile,
+    closeFile,
+    fileContents,
+    dirtyFiles,
+    updateContent,
+    saveFile,
+    createFileOrDir,
+    deleteFileOrDir,
+    renameFileOrDir,
+    selectedCode,
+    setSelectedCode,
+    selectedLineRange,
+    setSelectedLineRange,
+
+    // Execution & Terminal
+    isRunning,
+    terminalOutput,
+    lastResult,
+    terminalTab,
+    setTerminalTab,
+    runProject,
+    testProject,
+    stopProject,
+    clearTerminal,
+
+    // Git
+    gitStatus,
+
+    // AI
+    messages,
+    isAIGenerating,
+    sendCodingMessage,
+    activePatch,
+    isReviewingDiff,
+    setIsReviewingDiff,
+    applyPatch,
+    rejectPatch,
+    webSearchEnabled,
+    setWebSearchEnabled,
+  } = useWorkspace();
+
+  // Mobile navigation tab
+  const [mobileTab, setMobileTab] = useState<"files" | "editor" | "ai" | "terminal">("editor");
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+
+  const handleCreateWorkspace = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWorkspaceName.trim()) return;
+    try {
+      await createNewWorkspace(newWorkspaceName.trim());
+      setNewWorkspaceName("");
+      setIsCreatingWorkspace(false);
+    } catch (err: any) {
+      alert(err.message || "Failed to create workspace");
+    }
+  };
+
+  const handleDebugError = (errorDetails: string) => {
+    sendCodingMessage(
+      `Please investigate and fix the following runtime error:\n\n\`\`\`\n${errorDetails}\n\`\`\``,
+      { customAction: "debug" }
+    );
+    // On mobile, automatically switch to the AI tab to see the diagnostic & fix
+    setMobileTab("ai");
+  };
+
+  if (isLoading && !activeWorkspace) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#0d0e10] text-[#8f9299] gap-3">
+        <div className="w-8 h-8 border-2 border-[#292b30] border-t-cyan-400 rounded-full animate-spin" />
+        <div className="text-sm font-medium">Initializing Coding Workspace...</div>
+        <div className="text-xs text-[#666970]">Mounting local sandbox & indexer</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-[#0d0e10] text-[#dedfe2] overflow-hidden select-none">
+      {/* Workspace Top Toolbar */}
+      <div className="h-12 px-3 border-b border-[#292b30] bg-[#141518] flex items-center justify-between shrink-0 gap-2 z-10">
+        {/* Left: Project Selector & Workspace Switching */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#191b20] border border-[#2e3137]">
+            <Code2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <select
+              aria-label="Select active workspace"
+              value={activeWorkspace?.id || ""}
+              onChange={(e) => {
+                const ws = workspaces.find((w) => w.id === e.target.value);
+                if (ws) selectWorkspace(ws);
+              }}
+              className="bg-transparent text-xs font-semibold text-[#dedfe2] outline-none cursor-pointer max-w-[140px] truncate"
+            >
+              {workspaces.map((ws) => (
+                <option key={ws.id} value={ws.id} className="bg-[#141518] text-[#dedfe2]">
+                  {ws.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={() => setIsCreatingWorkspace(true)}
+            className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors"
+            title="Create New Project"
+            aria-label="Create New Project"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => refreshWorkspace()}
+            className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors"
+            title="Refresh Files"
+            aria-label="Refresh Files"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Sandboxed Badge */}
+          <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            Local Sandbox
+          </span>
+
+          <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <Sparkles className="w-2.5 h-2.5" />
+            qwen2.5-coder:7b
+          </span>
+        </div>
+
+        {/* Center/Right: Action Buttons & Run / Test Controls */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => runProject()}
+            disabled={isRunning}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+              isRunning
+                ? "bg-[#24262b] text-[#8f9299] cursor-not-allowed"
+                : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm hover:shadow-emerald-950/40 cursor-pointer"
+            }`}
+            title="Run Project (Ctrl+Enter)"
+          >
+            <Play className={`w-3 h-3 ${isRunning ? "animate-pulse" : "fill-current"}`} />
+            <span>{isRunning ? "Running..." : "Run"}</span>
+          </button>
+
+          <button
+            onClick={() => testProject()}
+            disabled={isRunning}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-[#1d2026] hover:bg-[#252830] text-[#dedfe2] border border-[#2e3137] hover:border-[#3d4149] transition-colors cursor-pointer"
+            title="Run Unit Tests"
+          >
+            <PlayCircle className="w-3 h-3 text-cyan-400" />
+            <span>Test</span>
+          </button>
+
+          {/* Quick Chat Switcher */}
+          {onBackToChat && (
+            <button
+              onClick={onBackToChat}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors ml-1 cursor-pointer"
+              title="Return to Main Chat"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Normal Chat</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile Tab Switcher Bar (visible only on screens < 1024px) */}
+      <div className="lg:hidden flex items-center justify-around bg-[#121316] border-b border-[#25272c] py-1 px-2 shrink-0">
+        <button
+          onClick={() => setMobileTab("files")}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
+            mobileTab === "files"
+              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-semibold"
+              : "text-[#8f9299] hover:text-[#dedfe2]"
+          }`}
+        >
+          <FolderTree className="w-3.5 h-3.5" />
+          <span>Files</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab("editor")}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
+            mobileTab === "editor"
+              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-semibold"
+              : "text-[#8f9299] hover:text-[#dedfe2]"
+          }`}
+        >
+          <Code2 className="w-3.5 h-3.5" />
+          <span>Editor</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab("terminal")}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
+            mobileTab === "terminal"
+              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-semibold"
+              : "text-[#8f9299] hover:text-[#dedfe2]"
+          }`}
+        >
+          <TerminalIcon className="w-3.5 h-3.5" />
+          <span>Terminal</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab("ai")}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
+            mobileTab === "ai"
+              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-semibold"
+              : "text-[#8f9299] hover:text-[#dedfe2]"
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Solix AI</span>
+        </button>
+      </div>
+
+      {/* Main Workspace Body */}
+      {/* 1. Desktop Layout (lg:flex, 3 columns + bottom terminal) */}
+      <div className="hidden lg:flex flex-1 min-h-0 min-w-0 overflow-hidden">
+        {/* Left Column: File Explorer (240px) */}
+        <div className="w-60 shrink-0 h-full border-r border-[#26282e] flex flex-col bg-[#111215]">
+          <FileExplorer
+            tree={fileTree}
+            activeFile={activeFile}
+            onSelectFile={openFile}
+            onCreateFileOrDir={createFileOrDir}
+            onDeletePath={deleteFileOrDir}
+            onRenamePath={renameFileOrDir}
+          />
+        </div>
+
+        {/* Center Column: Code Editor + Collapsible Bottom Terminal */}
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden border-r border-[#26282e]">
+          {/* Top: Code Editor */}
+          <div className="flex-1 min-h-0 overflow-hidden relative">
+            <CodeEditorPanel
+              openFiles={openFiles}
+              activeFile={activeFile}
+              fileContents={fileContents}
+              dirtyFiles={dirtyFiles}
+              onSelectFile={openFile}
+              onCloseFile={closeFile}
+              onUpdateContent={updateContent}
+              onSaveFile={saveFile}
+              onRun={() => runProject()}
+              onTest={() => testProject()}
+              isRunning={isRunning}
+              onSelectionChange={(code, range) => {
+                setSelectedCode(code);
+                setSelectedLineRange(range);
+              }}
+            />
+          </div>
+
+          {/* Bottom: Terminal Panel */}
+          <div className="shrink-0 bg-[#0f1013] border-t border-[#26282e]">
+            <TerminalPanel
+              output={terminalOutput}
+              lastResult={lastResult}
+              isRunning={isRunning}
+              onClear={clearTerminal}
+              onStop={stopProject}
+              onDebugError={handleDebugError}
+              gitStatus={gitStatus}
+              activeTab={terminalTab}
+              onTabChange={setTerminalTab}
+            />
+          </div>
+        </div>
+
+        {/* Right Column: AI Coding Panel (380px) */}
+        <div className="w-[380px] shrink-0 h-full flex flex-col bg-[#121316]">
+          <AIPanel
+            messages={messages}
+            isGenerating={isAIGenerating}
+            onSendMessage={sendCodingMessage}
+            activeFile={activeFile}
+            selectedCode={selectedCode}
+            selectedLineRange={selectedLineRange}
+            onReviewPatch={(patch) => {
+              setIsReviewingDiff(true);
+            }}
+            onApplyPatch={applyPatch}
+            webSearchEnabled={webSearchEnabled}
+            onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+          />
+        </div>
+      </div>
+
+      {/* 2. Mobile Layout (< lg:flex, single active panel full width) */}
+      <div className="flex-1 lg:hidden min-h-0 min-w-0 overflow-hidden flex flex-col">
+        {mobileTab === "files" && (
+          <div className="flex-1 min-h-0 bg-[#111215]">
+            <FileExplorer
+              tree={fileTree}
+              activeFile={activeFile}
+              onSelectFile={(path) => {
+                openFile(path);
+                setMobileTab("editor");
+              }}
+              onCreateFileOrDir={createFileOrDir}
+              onDeletePath={deleteFileOrDir}
+              onRenamePath={renameFileOrDir}
+            />
+          </div>
+        )}
+
+        {mobileTab === "editor" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <CodeEditorPanel
+              openFiles={openFiles}
+              activeFile={activeFile}
+              fileContents={fileContents}
+              dirtyFiles={dirtyFiles}
+              onSelectFile={openFile}
+              onCloseFile={closeFile}
+              onUpdateContent={updateContent}
+              onSaveFile={saveFile}
+              onRun={() => {
+                runProject();
+                setMobileTab("terminal");
+              }}
+              onTest={() => {
+                testProject();
+                setMobileTab("terminal");
+              }}
+              isRunning={isRunning}
+              onSelectionChange={(code, range) => {
+                setSelectedCode(code);
+                setSelectedLineRange(range);
+              }}
+            />
+          </div>
+        )}
+
+        {mobileTab === "terminal" && (
+          <div className="flex-1 min-h-0 flex flex-col bg-[#0f1013]">
+            <TerminalPanel
+              output={terminalOutput}
+              lastResult={lastResult}
+              isRunning={isRunning}
+              onClear={clearTerminal}
+              onStop={stopProject}
+              onDebugError={handleDebugError}
+              gitStatus={gitStatus}
+              activeTab={terminalTab}
+              onTabChange={setTerminalTab}
+            />
+          </div>
+        )}
+
+        {mobileTab === "ai" && (
+          <div className="flex-1 min-h-0 flex flex-col bg-[#121316]">
+            <AIPanel
+              messages={messages}
+              isGenerating={isAIGenerating}
+              onSendMessage={sendCodingMessage}
+              activeFile={activeFile}
+              selectedCode={selectedCode}
+              selectedLineRange={selectedLineRange}
+              onReviewPatch={(patch) => {
+                setIsReviewingDiff(true);
+              }}
+              onApplyPatch={applyPatch}
+              webSearchEnabled={webSearchEnabled}
+              onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Diff Review Modal */}
+      <DiffReviewModal
+        patch={activePatch}
+        originalContent={activePatch ? fileContents[activePatch.file] || "" : ""}
+        isOpen={isReviewingDiff}
+        onApply={applyPatch}
+        onReject={rejectPatch}
+      />
+
+      {/* New Project Modal */}
+      {isCreatingWorkspace && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm bg-[#141518] border border-[#2e3137] rounded-xl p-4 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white">Create New Coding Project</h3>
+              <button
+                onClick={() => setIsCreatingWorkspace(false)}
+                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateWorkspace} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-[#8f9299] mb-1">
+                  Project Name
+                </label>
+                <input
+                  type="text"
+                  value={newWorkspaceName}
+                  onChange={(e) => setNewWorkspaceName(e.target.value)}
+                  placeholder="e.g. My Algorithm Project"
+                  autoFocus
+                  className="w-full px-3 py-1.5 text-xs bg-[#191a1e] border border-[#2e3137] rounded-lg text-white placeholder-[#666970] focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="text-[11px] text-[#666970]">
+                A sandboxed environment will be created with starter templates and test suites.
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingWorkspace(false)}
+                  className="px-3 py-1.5 text-xs font-medium text-[#8f9299] hover:text-white rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newWorkspaceName.trim()}
+                  className="px-3 py-1.5 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg transition-colors cursor-pointer"
+                >
+                  Create Project
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Loader2, Menu } from "lucide-react";
+import { Check, ChevronDown, Code2, Loader2, Menu, MessageSquare } from "lucide-react";
 import { ModelInfo } from "@/types/chat";
 import { getModelBadge, getModelDescription, getModelLabel } from "@/lib/models";
 
@@ -19,6 +19,8 @@ interface ChatHeaderProps {
   onOpenMobileMenu: () => void;
   onNewChat: () => void;
   onOpenSettings: () => void;
+  activeView?: "chat" | "coding";
+  onSelectView?: (view: "chat" | "coding") => void;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -33,6 +35,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onOpenMobileMenu,
   onNewChat,
   onOpenSettings,
+  activeView = "chat",
+  onSelectView,
 }) => {
   const [showModelPicker, setShowModelPicker] = useState(false);
   const modelPickerRef = useRef<HTMLDivElement>(null);
@@ -184,8 +188,36 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
       </div>
 
-      {/* RIGHT: New Chat & Settings */}
+      {/* RIGHT: Mode Switcher, New Chat & Settings */}
       <div className="solix-top-actions">
+        {/* Mode Switcher Pill */}
+        <div className="hidden sm:inline-flex items-center p-0.5 rounded-lg bg-[#141518] border border-[#292b30] text-xs">
+          <button
+            onClick={() => onSelectView?.("chat")}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
+              activeView === "chat"
+                ? "bg-[#252830] text-white shadow-xs"
+                : "text-[#8f9299] hover:text-white"
+            }`}
+            title="Normal Chat"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Chat</span>
+          </button>
+          <button
+            onClick={() => onSelectView?.("coding")}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
+              activeView === "coding"
+                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-xs"
+                : "text-[#8f9299] hover:text-cyan-400"
+            }`}
+            title="Coding Workspace"
+          >
+            <Code2 className="w-3.5 h-3.5" />
+            <span>Workspace</span>
+          </button>
+        </div>
+
         <button
           onClick={onNewChat}
           className="solix-top-btn cursor-pointer"

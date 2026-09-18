@@ -7,6 +7,7 @@ import { ChatHeader } from "@/components/layout/ChatHeader";
 import { ChatSidebar } from "@/components/layout/ChatSidebar";
 import { AboutModal } from "@/components/modals/AboutModal";
 import { SettingsModal } from "@/components/modals/SettingsModal";
+import { WorkspaceView } from "@/components/workspace/WorkspaceView";
 import { useChat } from "@/hooks/useChat";
 
 export default function SolixApp() {
@@ -45,6 +46,7 @@ export default function SolixApp() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [activeView, setActiveView] = useState<"chat" | "coding">("chat");
   const [composerPrefill, setComposerPrefill] = useState("");
   const [temperature, setTemperature] = useState<number>(0.7);
   const [systemPrompt, setSystemPrompt] = useState<string>("");
@@ -85,6 +87,8 @@ export default function SolixApp() {
         onOpenAbout={() => setIsAboutOpen(true)}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        activeView={activeView}
+        onSelectView={setActiveView}
       />
 
       {/* 2. Main Content Column on Right */}
@@ -102,41 +106,48 @@ export default function SolixApp() {
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onNewChat={startNewChat}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          activeView={activeView}
+          onSelectView={setActiveView}
         />
 
-        {/* Chat Workspace */}
-        <section className="solix-workspace">
-          {/* Messages or Welcome Screen */}
-          <MessageList
-            messages={messages}
-            isGenerating={isGenerating}
-            isLoadingHistory={isLoadingHistory}
-            modelName={currentModel}
-            onSelectPrompt={handleSelectSuggestion}
-          />
+        {/* View Switch: Coding Workspace vs Normal Chat */}
+        {activeView === "coding" ? (
+          <WorkspaceView onBackToChat={() => setActiveView("chat")} />
+        ) : (
+          /* Chat Workspace */
+          <section className="solix-workspace">
+            {/* Messages or Welcome Screen */}
+            <MessageList
+              messages={messages}
+              isGenerating={isGenerating}
+              isLoadingHistory={isLoadingHistory}
+              modelName={currentModel}
+              onSelectPrompt={handleSelectSuggestion}
+            />
 
-          {/* Floating Composer at Bottom */}
-          <MessageComposer
-            onSendMessage={handleSendMessage}
-            onStopGenerating={stopGenerating}
-            isGenerating={isGenerating}
-            models={models}
-            currentModel={currentModel}
-            onSelectModel={selectModel}
-            isSwitchingModel={isSwitchingModel}
-            switchingModelTarget={switchingModelTarget}
-            modelSwitchSuccess={modelSwitchSuccess}
-            initialValue={composerPrefill}
-            webSearchEnabled={webSearchEnabled}
-            onToggleWebSearch={toggleWebSearch}
-            webSearchStatus={webSearchStatus}
-            attachedFiles={attachedFiles}
-            onUploadFiles={uploadFiles}
-            onRemoveFile={removeFile}
-            onRetryFile={retryFile}
-            fileStatusLabel={fileStatusLabel}
-          />
-        </section>
+            {/* Floating Composer at Bottom */}
+            <MessageComposer
+              onSendMessage={handleSendMessage}
+              onStopGenerating={stopGenerating}
+              isGenerating={isGenerating}
+              models={models}
+              currentModel={currentModel}
+              onSelectModel={selectModel}
+              isSwitchingModel={isSwitchingModel}
+              switchingModelTarget={switchingModelTarget}
+              modelSwitchSuccess={modelSwitchSuccess}
+              initialValue={composerPrefill}
+              webSearchEnabled={webSearchEnabled}
+              onToggleWebSearch={toggleWebSearch}
+              webSearchStatus={webSearchStatus}
+              attachedFiles={attachedFiles}
+              onUploadFiles={uploadFiles}
+              onRemoveFile={removeFile}
+              onRetryFile={retryFile}
+              fileStatusLabel={fileStatusLabel}
+            />
+          </section>
+        )}
       </main>
 
       {/* Settings Modal */}

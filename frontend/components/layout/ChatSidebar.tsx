@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Check, Edit2, Plus, Trash2, X } from "lucide-react";
+import { Check, Code2, Edit2, MessageSquare, Plus, Trash2, X } from "lucide-react";
 import { ConversationSummary } from "@/types/chat";
 import { SolixLogo } from "@/components/brand/SolixLogo";
 
@@ -16,6 +16,8 @@ interface ChatSidebarProps {
   onOpenAbout: () => void;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
+  activeView?: "chat" | "coding";
+  onSelectView?: (view: "chat" | "coding") => void;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -29,6 +31,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onOpenAbout,
   isMobileOpen,
   onCloseMobile,
+  activeView = "chat",
+  onSelectView,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,9 +80,43 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         )}
       </div>
 
+      {/* View Mode Navigation: Chat vs Coding Workspace */}
+      <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#101114] border border-[#25272c] rounded-xl my-2 shrink-0">
+        <button
+          onClick={() => {
+            onSelectView?.("chat");
+            if (isMobile) onCloseMobile();
+          }}
+          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeView === "chat"
+              ? "bg-[#1f2127] text-white shadow-xs border border-[#32353c]"
+              : "text-[#8f9299] hover:text-white"
+          }`}
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          <span>Chat</span>
+        </button>
+
+        <button
+          onClick={() => {
+            onSelectView?.("coding");
+            if (isMobile) onCloseMobile();
+          }}
+          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeView === "coding"
+              ? "bg-cyan-500/15 text-cyan-400 shadow-xs border border-cyan-500/30"
+              : "text-[#8f9299] hover:text-cyan-300"
+          }`}
+        >
+          <Code2 className="w-3.5 h-3.5" />
+          <span>Workspace</span>
+        </button>
+      </div>
+
       {/* New Chat Button */}
       <button
         onClick={() => {
+          onSelectView?.("chat");
           onNewChat();
           if (isMobile) onCloseMobile();
         }}
@@ -140,6 +178,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             <div
               key={conv.id}
               onClick={() => {
+                onSelectView?.("chat");
                 onSelectConversation(conv.id);
                 if (isMobile) onCloseMobile();
               }}

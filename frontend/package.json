@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "clsx": "^2.1.1",
     "highlight.js": "^11.11.1",
     "lucide-react": "^1.16.0",

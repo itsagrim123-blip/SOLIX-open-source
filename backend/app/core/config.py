@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     OCR_ENABLED: bool = True
     MAX_CONTEXT_CHUNKS: int = 8
 
+    # Coding Workspace Configuration
+    OLLAMA_CODING_MODEL: str = "qwen2.5-coder:7b"
+    WORKSPACE_STORAGE_PATH: str = "./storage/workspaces"
+    EXECUTION_TIMEOUT_SECONDS: float = 30.0
+    EXECUTION_MAX_OUTPUT_CHARS: int = 50000
+    SAFE_EXECUTION_DEV_MODE: bool = True
+
     # Database Configuration (Defaults to SQLite async, easily swapped for PostgreSQL)
     DATABASE_URL: str = "sqlite+aiosqlite:///./solix.db"
 
