@@ -42,6 +42,14 @@
   - Strict prompt injection defenses marking external content as untrusted reference data.
   - Toggle on/off seamlessly per-message via the composer Globe button.
 
+- 📊 **Backend Infrastructure & Monitoring Dashboard**:
+  - Built-in server dashboard served directly at `GET /` on the FastAPI backend domain.
+  - Live service health indicators (API, Ollama daemon, Tavily search engine, database).
+  - Model status monitor verifying availability of both normal (`qwen3:1.7b`) and web search (`qwen3:8b`) models.
+  - Real-time live log stream via Server-Sent Events (SSE) with log level filters, instant search, and smart auto-scroll.
+  - Live server telemetry: real-time uptime, request counters, error rates, and average latency.
+  - Optional HTTP Basic Auth security layer (`DASHBOARD_USERNAME` & `DASHBOARD_PASSWORD`).
+
 - 🧠 **Extensible AI Provider Abstraction**:
   - Decoupled `AIProvider` base interface — never locked into a single vendor.
   - Native **Ollama** integration connecting to local models (`llama3.2`, `mistral`, `deepseek-r1`, `qwen2.5-coder`).

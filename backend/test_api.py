@@ -82,6 +82,58 @@ async def run_tests():
             # Second event will be error if no API key is configured, which is graceful
             print(f"Web search correctly started, events yielded: {[e['type'] for e in web_events]}")
 
+        # 9. Test Root Dashboard HTML Page
+        print("\nTesting Backend Dashboard (GET /):")
+        res = await client.get("/")
+        assert res.status_code == 200
+        assert "text/html" in res.headers.get("content-type", "")
+        assert "Solix Backend" in res.text
+        assert "solix-logo.png" in res.text
+        print("Root dashboard HTML successfully loaded.")
+
+        # 10. Test Root Machine-Readable Health (GET /health)
+        print("\nTesting Root Machine-Readable Health (GET /health):")
+        res = await client.get("/health")
+        assert res.status_code == 200
+        health_data = res.json()
+        assert "status" in health_data
+        assert "streaming" in health_data
+        assert health_data["streaming"] == "enabled"
+        print(f"Root health verified: status={health_data['status']}, ollama={health_data.get('ollama')}")
+
+        # 11. Test Static Logo Asset
+        print("\nTesting Static Logo Asset (GET /static/solix-logo.png):")
+        res = await client.get("/static/solix-logo.png")
+        assert res.status_code == 200
+        assert "image/png" in res.headers.get("content-type", "")
+        print(f"Static logo verified: {len(res.content)} bytes received.")
+
+        # 12. Test Dashboard Status & Stats Endpoints
+        print("\nTesting Dashboard Status & Stats API:")
+        res_status = await client.get("/api/dashboard/status")
+        assert res_status.status_code == 200
+        dash_status = res_status.json()
+        assert "services" in dash_status
+        assert "models" in dash_status
+        assert "uptime_seconds" in dash_status
+        print(f"Dashboard status verified: {dash_status['services']}")
+
+        res_stats = await client.get("/api/dashboard/stats")
+        assert res_stats.status_code == 200
+        dash_stats = res_stats.json()
+        assert "total_requests" in dash_stats
+        assert dash_stats["total_requests"] > 0
+        print(f"Dashboard stats verified: total={dash_stats['total_requests']}, successful={dash_stats['successful_requests']}")
+
+        # 13. Test Dashboard Logs API
+        print("\nTesting Dashboard Logs API:")
+        res_logs = await client.get("/api/dashboard/logs")
+        assert res_logs.status_code == 200
+        dash_logs = res_logs.json()
+        assert "logs" in dash_logs
+        assert len(dash_logs["logs"]) > 0
+        print(f"Dashboard logs verified: {dash_logs['count']} logs recorded in memory buffer.")
+
     print("\n--- ALL BACKEND TESTS PASSED SUCCESSFULLY! ---")
 
 if __name__ == "__main__":

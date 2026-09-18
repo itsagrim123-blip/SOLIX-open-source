@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     TAVILY_MAX_RESULTS: int = 8
     TAVILY_SEARCH_TIMEOUT: float = 15.0
 
+    # Backend Monitoring Dashboard Configuration
+    DASHBOARD_ENABLED: bool = True
+    DASHBOARD_USERNAME: Optional[str] = None
+    DASHBOARD_PASSWORD: Optional[str] = None
+    DASHBOARD_MAX_LOGS: int = 500
+
     # Database Configuration (Defaults to SQLite async, easily swapped for PostgreSQL)
     DATABASE_URL: str = "sqlite+aiosqlite:///./solix.db"
 

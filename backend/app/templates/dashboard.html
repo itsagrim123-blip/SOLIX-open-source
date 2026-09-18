@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solix Backend — Infrastructure Monitoring Dashboard</title>
+  <link rel="icon" type="image/png" href="/static/solix-logo.png">
+  <style>
+    :root {
+      --bg: #0d0e10;
+      --panel: #141518;
+      --panel-soft: #191a1e;
+      --card-bg: #131518;
+      --border: #292b30;
+      --border-dark: #303238;
+      --border-light: #3a3d43;
+      --text: #eeeeec;
+      --muted: #8f9299;
+      --label: #666970;
+      --accent: #eeeeec;
+      --hover: #1a1c20;
+      
+      --emerald: #10b981;
+      --emerald-bg: rgba(16, 185, 129, 0.1);
+      --emerald-border: rgba(16, 185, 129, 0.25);
+      
+      --blue: #60a5fa;
+      --blue-bg: rgba(96, 165, 250, 0.1);
+      --blue-border: rgba(96, 165, 250, 0.25);
+      
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.1);
+      --amber-border: rgba(245, 158, 11, 0.25);
+      
+      --rose: #ef4444;
+      --rose-bg: rgba(239, 68, 68, 0.1);
+      --rose-border: rgba(239, 68, 68, 0.25);
+      
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #25282e;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #353942;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+
+    /* ── Header ────────────────────────────────────────── */
+    header.dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+      mix-blend-screen: screen;
+      flex-shrink: 0;
+    }
+
+    .brand-text h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: #eeeeec;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .badge.online {
+      background: var(--emerald-bg);
+      color: var(--emerald);
+      border: 1px solid var(--emerald-border);
+    }
+    .badge.online .badge-dot {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .badge.degraded {
+      background: var(--amber-bg);
+      color: var(--amber);
+      border: 1px solid var(--amber-border);
+    }
+
+    .badge.offline {
+      background: var(--rose-bg);
+      color: var(--rose);
+      border: 1px solid var(--rose-border);
+    }
+
+    .btn-refresh {
+      background: #191a1e;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-refresh:hover {
+      background: #202227;
+      color: #eeeeec;
+      border-color: var(--border-light);
+    }
+    .btn-refresh.spinning svg {
+      animation: spin 0.75s linear infinite;
+    }
+
+    /* ── Section Headings ──────────────────────────────── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--label);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Grids ─────────────────────────────────────────── */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    /* ── Cards ─────────────────────────────────────────── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .card:hover {
+      border-color: var(--border-light);
+      background: #15171a;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #eeeeec;
+      margin-bottom: 4px;
+    }
+
+    .card-meta {
+      font-size: 11px;
+      color: var(--label);
+      font-family: var(--font-mono);
+      word-break: break-all;
+    }
+
+    /* Model Cards specific */
+    .model-badge-tag {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: #1b1d22;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      display: inline-block;
+      margin-top: 6px;
+    }
+
+    /* Stat Tiles */
+    .stat-tile {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .stat-val {
+      font-size: 22px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: #eeeeec;
+      line-height: 1.2;
+      margin: 4px 0 2px;
+    }
+    .stat-sub {
+      font-size: 10px;
+      color: var(--label);
+    }
+
+    /* ── Live Logs Terminal ────────────────────────────── */
+    .logs-panel {
+      background: #0b0c0e;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .logs-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: #121417;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .logs-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logs-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #eeeeec;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stream-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--emerald);
+      padding: 2px 7px;
+      background: var(--emerald-bg);
+      border: 1px solid var(--emerald-border);
+      border-radius: 4px;
+    }
+
+    .stream-indicator.paused {
+      color: var(--amber);
+      background: var(--amber-bg);
+      border-color: var(--amber-border);
+    }
+
+    .logs-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .log-filter-group {
+      display: inline-flex;
+      background: #17191d;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 2px;
+    }
+
+    .filter-btn {
+      background: transparent;
+      border: 0;
+      color: var(--muted);
+      padding: 3px 9px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+    .filter-btn:hover {
+      color: #eeeeec;
+    }
+    .filter-btn.active {
+      background: #25282e;
+      color: #eeeeec;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .log-search-input {
+      background: #17191d;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 4px 10px;
+      color: #eeeeec;
+      font-size: 11px;
+      outline: none;
+      width: 160px;
+      transition: width 0.2s ease, border-color 0.15s ease;
+    }
+    .log-search-input:focus {
+      width: 210px;
+      border-color: var(--border-light);
+    }
+    .log-search-input::placeholder {
+      color: var(--label);
+    }
+
+    .btn-clear {
+      background: #17191d;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 7px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-clear:hover {
+      background: #22252b;
+      color: #eeeeec;
+      border-color: var(--border-light);
+    }
+
+    .logs-body-wrap {
+      position: relative;
+    }
+
+    .logs-body {
+      height: 360px;
+      overflow-y: auto;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.6;
+      background: #0b0c0e;
+      color: #d1d5db;
+    }
+
+    .log-entry {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+      word-break: break-all;
+    }
+
+    .log-entry:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .log-time {
+      color: var(--label);
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .log-level {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .log-level.info {
+      color: #93c5fd;
+      background: rgba(59, 130, 246, 0.12);
+    }
+    .log-level.warning {
+      color: #fcd34d;
+      background: rgba(245, 158, 11, 0.15);
+    }
+    .log-level.error {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.18);
+    }
+    .log-level.debug {
+      color: #cbd5e1;
+      background: rgba(148, 163, 184, 0.12);
+    }
+
+    .log-req {
+      color: #38bdf8;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .log-logger {
+      color: #6ee7b7;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .log-msg {
+      color: #e2e8f0;
+      flex: 1;
+    }
+
+    .logs-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--label);
+      font-style: italic;
+    }
+
+    /* Floating Scroll Notice */
+    .new-logs-btn {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #25282e;
+      color: var(--blue);
+      border: 1px solid var(--blue-border);
+      border-radius: 9999px;
+      padding: 5px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      animation: bounce 1.5s infinite;
+      z-index: 10;
+    }
+
+    /* ── Models Table Section ──────────────────────────── */
+    .models-table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .models-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 12px;
+    }
+
+    .models-table th {
+      background: #16181c;
+      padding: 10px 16px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .models-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      color: #eeeeec;
+    }
+
+    .models-table tr:hover td {
+      background: #17191d;
+    }
+
+    /* Footer */
+    footer.dashboard-footer {
+      text-align: center;
+      padding: 16px 0;
+      color: var(--label);
+      font-size: 11px;
+      border-top: 1px solid var(--border);
+      margin-top: 32px;
+    }
+
+    /* Keyframes */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.9); }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translate(-50%, 0); }
+      50% { transform: translate(-50%, -4px); }
+    }
+
+    /* ── Responsive Queries ────────────────────────────── */
+    @media (max-width: 1024px) {
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+      .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px 12px 32px;
+      }
+      header.dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .header-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+      .grid-4 {
+        grid-template-columns: 1fr;
+      }
+      .logs-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .logs-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .log-search-input {
+        width: 100%;
+      }
+      .log-search-input:focus {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .log-filter-group {
+        width: 100%;
+        justify-content: space-around;
+      }
+      .log-entry {
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- ── Top Header ──────────────────────────────────────── -->
+  <header class="dashboard-header">
+    <div class="brand">
+      <img src="/static/solix-logo.png" alt="Solix" class="brand-logo" />
+      <div class="brand-text">
+        <h1>Solix Backend</h1>
+        <p>Infrastructure &amp; AI Engine Monitoring Dashboard</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div id="backendStatusBadge" class="badge online">
+        <span class="badge-dot"></span>
+        <span id="backendStatusText">Connecting…</span>
+      </div>
+      <span id="serverVersion" class="badge" style="background:#1a1c21; border:1px solid var(--border); color:var(--muted)">v1.0.0</span>
+      <button id="btnRefresh" class="btn-refresh" title="Refresh status and metrics">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Service Health ──────────────────────────────────── -->
+  <div class="section-title">Core Services</div>
+  <div class="grid-3">
+    <!-- API Core -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-label">FastAPI Engine</span>
+        <div id="apiHealthBadge" class="badge online">
+          <span class="badge-dot"></span> Healthy
+        </div>
+      </div>
+      <div class="card-title">Solix API Server</div>
+      <div class="card-meta" id="apiServerMeta">Python · Async SQLite</div>
+    </div>
+
+    <!-- Ollama AI Engine -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-label">Local Inference</span>
+        <div id="ollamaHealthBadge" class="badge online">
+          <span class="badge-dot"></span> Connected
+        </div>
+      </div>
+      <div class="card-title">Ollama Daemon</div>
+      <div class="card-meta" id="ollamaMeta">Checking local endpoint…</div>
+    </div>
+
+    <!-- Web Search / Tavily -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-label">Search Provider</span>
+        <div id="webSearchHealthBadge" class="badge online">
+          <span class="badge-dot"></span> Ready
+        </div>
+      </div>
+      <div class="card-title">Tavily Web Search</div>
+      <div class="card-meta" id="webSearchMeta">Configured · Grounded Citations</div>
+    </div>
+  </div>
+
+  <!-- ── Models Configuration ────────────────────────────── -->
+  <div class="section-title">Model Topology</div>
+  <div class="grid-2">
+    <!-- Normal Chat Model -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-label">Normal Chat Model</span>
+        <div id="normalModelBadge" class="badge online">
+          <span class="badge-dot"></span> Available
+        </div>
+      </div>
+      <div class="card-title" id="normalModelTitle">Qwen 3 · 1.7B</div>
+      <div class="card-meta">Default active model for general user conversations</div>
+      <span class="model-badge-tag" id="normalModelTag">qwen3:1.7b</span>
+    </div>
+
+    <!-- Web Search Model -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-label">Web Search Model (Dedicated)</span>
+        <div id="webModelBadge" class="badge online">
+          <span class="badge-dot"></span> Available
+        </div>
+      </div>
+      <div class="card-title" id="webModelTitle">Qwen 3 · 8B</div>
+      <div class="card-meta">Dedicated model enforced server-side for grounded web searches</div>
+      <span class="model-badge-tag" id="webModelTag" style="border-color:var(--blue-border); color:var(--blue)">qwen3:8b · STRICT</span>
+    </div>
+  </div>
+
+  <!-- ── Telemetry & Metrics ─────────────────────────────── -->
+  <div class="section-title">Performance Telemetry</div>
+  <div class="grid-4">
+    <div class="stat-tile">
+      <div class="card-label">Server Uptime</div>
+      <div class="stat-val" id="statUptime">0s</div>
+      <div class="stat-sub">Since process initialization</div>
+    </div>
+    <div class="stat-tile">
+      <div class="card-label">Total Requests</div>
+      <div class="stat-val" id="statTotalReqs">0</div>
+      <div class="stat-sub" id="statReqBreakdown">0 success · 0 errors</div>
+    </div>
+    <div class="stat-tile">
+      <div class="card-label">Web Search Calls</div>
+      <div class="stat-val" id="statWebSearches">0</div>
+      <div class="stat-sub">Tavily + Qwen 3 8B pipelines</div>
+    </div>
+    <div class="stat-tile">
+      <div class="card-label">Avg Response Time</div>
+      <div class="stat-val" id="statAvgLatency">0 ms</div>
+      <div class="stat-sub" id="statReqPerMin">0 req / min</div>
+    </div>
+  </div>
+
+  <!-- ── Live Terminal Logs ──────────────────────────────── -->
+  <div class="section-title">Real-Time Event Stream</div>
+  <div class="logs-panel">
+    <div class="logs-header">
+      <div class="logs-header-left">
+        <div class="logs-title">
+          <span>Server Logs</span>
+          <span id="sseStatusIndicator" class="stream-indicator">
+            <span class="badge-dot"></span> LIVE
+          </span>
+        </div>
+      </div>
+
+      <div class="logs-controls">
+        <!-- Level Filters -->
+        <div class="log-filter-group" id="logFilters">
+          <button class="filter-btn active" data-level="ALL">ALL</button>
+          <button class="filter-btn" data-level="INFO">INFO</button>
+          <button class="filter-btn" data-level="WARNING">WARN</button>
+          <button class="filter-btn" data-level="ERROR">ERR</button>
+          <button class="filter-btn" data-level="DEBUG">DBG</button>
+        </div>
+
+        <!-- Search input -->
+        <input type="text" id="logSearch" class="log-search-input" placeholder="Search logs…" />
+
+        <!-- Clear Logs -->
+        <button id="btnClearLogs" class="btn-clear">Clear</button>
+      </div>
+    </div>
+
+    <div class="logs-body-wrap">
+      <div id="logsBody" class="logs-body">
+        <div class="logs-empty">Connecting to live log stream…</div>
+      </div>
+      <!-- Floating button when user scrolls up -->
+      <button id="btnNewLogs" class="new-logs-btn">↓ New logs available</button>
+    </div>
+  </div>
+
+  <!-- ── Installed Ollama Models ─────────────────────────── -->
+  <div class="section-title">Installed Ollama Models</div>
+  <div class="models-table-card">
+    <table class="models-table">
+      <thead>
+        <tr>
+          <th>Model Identifier</th>
+          <th>Family</th>
+          <th>Disk Size</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody id="installedModelsList">
+        <tr><td colspan="4" style="text-align:center; color:var(--muted)">Loading installed models…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Footer ──────────────────────────────────────────── -->
+  <footer class="dashboard-footer">
+    Solix AI Infrastructure Dashboard &bull; FastAPI + Ollama + Tavily &bull; Same-Origin Developer Console
+  </footer>
+</div>
+
+<script>
+(function() {
+  // State
+  let allLogs = [];
+  let currentLevelFilter = "ALL";
+  let currentSearchQuery = "";
+  let isAutoScroll = true;
+  let unreadCount = 0;
+  let sseSource = null;
+
+  const logsBody = document.getElementById("logsBody");
+  const btnNewLogs = document.getElementById("btnNewLogs");
+  const sseStatusIndicator = document.getElementById("sseStatusIndicator");
+  const btnRefresh = document.getElementById("btnRefresh");
+
+  // Format bytes helper
+  function formatBytes(bytes) {
+    if (!bytes || bytes === 0) return "N/A";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  }
+
+  // Escape HTML helper
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // Update Status & Models View
+  async function fetchStatus() {
+    try {
+      const res = await fetch("/api/dashboard/status");
+      if (!res.ok) throw new Error("Status API returned " + res.status);
+      const data = await res.json();
+
+      // Top Status Badge
+      const statusBadge = document.getElementById("backendStatusBadge");
+      const statusText = document.getElementById("backendStatusText");
+      if (data.status === "healthy") {
+        statusBadge.className = "badge online";
+        statusText.textContent = "Backend Online";
+      } else {
+        statusBadge.className = "badge degraded";
+        statusText.textContent = "Backend Degraded";
+      }
+
+      document.getElementById("serverVersion").textContent = "v" + data.version;
+
+      // API Core
+      document.getElementById("apiServerMeta").textContent = `${data.system.backend} · Python ${data.system.python_version} · ${data.system.database.toUpperCase()}`;
+
+      // Ollama Badge & Meta
+      const ollamaBadge = document.getElementById("ollamaHealthBadge");
+      if (data.services.ollama === "connected") {
+        ollamaBadge.className = "badge online";
+        ollamaBadge.innerHTML = '<span class="badge-dot"></span> Connected';
+        document.getElementById("ollamaMeta").textContent = `${data.installed_models.length} local models installed`;
+      } else {
+        ollamaBadge.className = "badge offline";
+        ollamaBadge.innerHTML = '<span class="badge-dot"></span> Offline';
+        document.getElementById("ollamaMeta").textContent = "Cannot reach Ollama daemon at port 11434";
+      }
+
+      // Web Search Badge & Meta
+      const webSearchBadge = document.getElementById("webSearchHealthBadge");
+      if (data.services.web_search === "ready") {
+        webSearchBadge.className = "badge online";
+        webSearchBadge.innerHTML = '<span class="badge-dot"></span> Ready';
+        document.getElementById("webSearchMeta").textContent = "Tavily Engine · Qwen 3 8B Synthesizer";
+      } else if (data.services.web_search === "model_missing") {
+        webSearchBadge.className = "badge degraded";
+        webSearchBadge.innerHTML = '<span class="badge-dot"></span> Model Missing';
+        document.getElementById("webSearchMeta").textContent = "Tavily configured but qwen3:8b is not installed";
+      } else {
+        webSearchBadge.className = "badge degraded";
+        webSearchBadge.innerHTML = '<span class="badge-dot"></span> Not Configured';
+        document.getElementById("webSearchMeta").textContent = "Set TAVILY_API_KEY in backend .env to enable";
+      }
+
+      // Normal Model
+      const normalModel = data.models.normal;
+      document.getElementById("normalModelTitle").textContent = normalModel.name;
+      document.getElementById("normalModelTag").textContent = normalModel.name;
+      const normalBadge = document.getElementById("normalModelBadge");
+      if (normalModel.available) {
+        normalBadge.className = "badge online";
+        normalBadge.innerHTML = '<span class="badge-dot"></span> Available';
+      } else {
+        normalBadge.className = "badge offline";
+        normalBadge.innerHTML = '<span class="badge-dot"></span> Not Installed';
+      }
+
+      // Web Search Model
+      const webModel = data.models.web_search;
+      document.getElementById("webModelTitle").textContent = webModel.name;
+      document.getElementById("webModelTag").textContent = webModel.name + " · STRICT";
+      const webBadge = document.getElementById("webModelBadge");
+      if (webModel.available) {
+        webBadge.className = "badge online";
+        webBadge.innerHTML = '<span class="badge-dot"></span> Available';
+      } else {
+        webBadge.className = "badge offline";
+        webBadge.innerHTML = '<span class="badge-dot"></span> Not Installed';
+      }
+
+      // Installed Models Table
+      const tbody = document.getElementById("installedModelsList");
+      if (!data.installed_models || data.installed_models.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--muted)">No models installed in Ollama. Run: ollama pull qwen3:1.7b</td></tr>';
+      } else {
+        tbody.innerHTML = data.installed_models.map(m => `
+          <tr>
+            <td style="font-weight:600; font-family:var(--font-mono)">${escapeHtml(m.name)}</td>
+            <td style="color:var(--muted)">${escapeHtml(m.family || 'Ollama')}</td>
+            <td style="font-family:var(--font-mono); color:var(--muted)">${formatBytes(m.size)}</td>
+            <td>
+              ${m.name.includes("qwen3:8b") 
+                ? '<span class="badge online" style="font-size:10px; padding:2px 6px">Web Search</span>' 
+                : (m.is_default 
+                  ? '<span class="badge" style="background:#1b1d22; border:1px solid var(--border); font-size:10px; padding:2px 6px">Default Chat</span>' 
+                  : '<span style="color:var(--label); font-size:11px">General</span>')}
+            </td>
+          </tr>
+        `).join('');
+      }
+
+    } catch (err) {
+      console.error("Failed to fetch status:", err);
+      const statusBadge = document.getElementById("backendStatusBadge");
+      statusBadge.className = "badge offline";
+      document.getElementById("backendStatusText").textContent = "Disconnected";
+    }
+  }
+
+  // Update Telemetry Stats
+  async function fetchStats() {
+    try {
+      const res = await fetch("/api/dashboard/stats");
+      if (!res.ok) return;
+      const stats = await res.json();
+
+      document.getElementById("statUptime").textContent = stats.uptime_formatted || "0s";
+      document.getElementById("statTotalReqs").textContent = stats.total_requests || 0;
+      document.getElementById("statReqBreakdown").textContent = `${stats.successful_requests || 0} success · ${stats.failed_requests || 0} errors`;
+      document.getElementById("statWebSearches").textContent = stats.web_search_requests || 0;
+      document.getElementById("statAvgLatency").textContent = `${stats.avg_response_time_ms || 0} ms`;
+      document.getElementById("statReqPerMin").textContent = `${stats.requests_per_minute || 0} req / min`;
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+    }
+  }
+
+  // Render filtered logs
+  function renderLogs() {
+    const filtered = allLogs.filter(entry => {
+      // Level check
+      if (currentLevelFilter !== "ALL" && entry.level !== currentLevelFilter) {
+        return false;
+      }
+      // Search check
+      if (currentSearchQuery) {
+        const q = currentSearchQuery.toLowerCase();
+        const msg = (entry.message || "").toLowerCase();
+        const logger = (entry.logger || "").toLowerCase();
+        const req = (entry.request_id || "").toLowerCase();
+        if (!msg.includes(q) && !logger.includes(q) && !req.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      logsBody.innerHTML = '<div class="logs-empty">No logs matching current filter.</div>';
+      return;
+    }
+
+    logsBody.innerHTML = filtered.map(entry => {
+      const levelClass = (entry.level || "info").toLowerCase();
+      const reqIdHtml = entry.request_id ? `<span class="log-req">[${escapeHtml(entry.request_id)}]</span>` : "";
+      const loggerHtml = entry.logger ? `<span class="log-logger">[${escapeHtml(entry.logger)}]</span>` : "";
+
+      return `
+        <div class="log-entry">
+          <span class="log-time">[${escapeHtml(entry.time_str || '')}]</span>
+          <span class="log-level ${levelClass}">${escapeHtml(entry.level || 'INFO')}</span>
+          ${reqIdHtml}
+          ${loggerHtml}
+          <span class="log-msg">${escapeHtml(entry.message || '')}</span>
+        </div>
+      `;
+    }).join('');
+
+    if (isAutoScroll) {
+      logsBody.scrollTop = logsBody.scrollHeight;
+    }
+  }
+
+  // Load Initial Logs
+  async function loadInitialLogs() {
+    try {
+      const res = await fetch("/api/dashboard/logs?limit=150");
+      if (!res.ok) return;
+      const data = await res.json();
+      allLogs = data.logs || [];
+      renderLogs();
+    } catch (err) {
+      console.error("Failed to load initial logs:", err);
+    }
+  }
+
+  // Start Live SSE Stream
+  function connectLogStream() {
+    if (sseSource) {
+      sseSource.close();
+    }
+
+    sseSource = new EventSource("/api/dashboard/logs/stream");
+
+    sseSource.onopen = function() {
+      sseStatusIndicator.className = "stream-indicator";
+      sseStatusIndicator.innerHTML = '<span class="badge-dot"></span> LIVE';
+    };
+
+    sseSource.onmessage = function(e) {
+      if (!e.data) return;
+      try {
+        const item = JSON.parse(e.data);
+        if (item.type === "connected") return;
+
+        allLogs.push(item);
+        if (allLogs.length > 500) {
+          allLogs.shift();
+        }
+
+        if (!isAutoScroll) {
+          unreadCount++;
+          btnNewLogs.style.display = "inline-flex";
+          btnNewLogs.textContent = `↓ New logs (${unreadCount})`;
+        }
+
+        renderLogs();
+      } catch (err) {
+        // Ping comment or parse error
+      }
+    };
+
+    sseSource.onerror = function() {
+      sseStatusIndicator.className = "stream-indicator paused";
+      sseStatusIndicator.innerHTML = '<span class="badge-dot"></span> RECONNECTING';
+    };
+  }
+
+  // Scroll detection
+  logsBody.addEventListener("scroll", function() {
+    const atBottom = logsBody.scrollHeight - logsBody.scrollTop - logsBody.clientHeight < 30;
+    if (atBottom) {
+      isAutoScroll = true;
+      unreadCount = 0;
+      btnNewLogs.style.display = "none";
+    } else {
+      isAutoScroll = false;
+    }
+  });
+
+  btnNewLogs.addEventListener("click", function() {
+    isAutoScroll = true;
+    unreadCount = 0;
+    btnNewLogs.style.display = "none";
+    logsBody.scrollTop = logsBody.scrollHeight;
+  });
+
+  // Filter Buttons
+  document.getElementById("logFilters").addEventListener("click", function(e) {
+    if (e.target.tagName === "BUTTON") {
+      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      e.target.classList.add("active");
+      currentLevelFilter = e.target.getAttribute("data-level");
+      renderLogs();
+    }
+  });
+
+  // Search Input
+  let searchTimeout = null;
+  document.getElementById("logSearch").addEventListener("input", function(e) {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      currentSearchQuery = e.target.value.trim();
+      renderLogs();
+    }, 150);
+  });
+
+  // Clear Logs
+  document.getElementById("btnClearLogs").addEventListener("click", async function() {
+    allLogs = [];
+    renderLogs();
+    try {
+      await fetch("/api/dashboard/logs/clear", { method: "POST" });
+    } catch (e) {
+      console.warn("Could not notify backend clear:", e);
+    }
+  });
+
+  // Refresh Button
+  btnRefresh.addEventListener("click", async function() {
+    btnRefresh.classList.add("spinning");
+    await Promise.all([fetchStatus(), fetchStats()]);
+    setTimeout(() => btnRefresh.classList.remove("spinning"), 500);
+  });
+
+  // Initial Boot
+  fetchStatus();
+  fetchStats();
+  loadInitialLogs();
+  connectLogStream();
+
+  // Background Polling for Status & Stats (every 8s)
+  setInterval(() => {
+    fetchStatus();
+    fetchStats();
+  }, 8000);
+
+})();
+</script>
+
+</body>
+</html>
+

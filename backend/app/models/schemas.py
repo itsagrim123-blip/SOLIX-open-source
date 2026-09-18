@@ -96,6 +96,10 @@ class HealthResponse(BaseModel):
     ollama: Optional[bool] = None
     model: Optional[str] = None
     model_available: Optional[bool] = None
+    normal_model: Optional[str] = None
+    web_model: Optional[str] = None
+    web_search: Optional[str] = None
+    streaming: Optional[str] = "enabled"
 
 
 class SwitchModelRequest(BaseModel):
