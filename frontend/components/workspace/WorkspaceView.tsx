@@ -211,42 +211,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
           </span>
         </div>
 
-        {/* RIGHT: Build, Test, Run, and Mode Switcher Pill */}
+        {/* RIGHT: Mode Switcher Pill */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => buildProject()}
-            disabled={isRunning}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-[#191b20] hover:bg-[#22252c] text-[#dedfe2] border border-[#2e3138] hover:border-[#3d414a] transition-colors cursor-pointer"
-            title="Build / Compile Sources"
-          >
-            <Hammer className="w-3 h-3 text-blue-400" />
-            <span>Build</span>
-          </button>
-
-          <button
-            onClick={() => testProject()}
-            disabled={isRunning}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-[#191b20] hover:bg-[#22252c] text-[#dedfe2] border border-[#2e3138] hover:border-[#3d414a] transition-colors cursor-pointer"
-            title="Run Unit Tests"
-          >
-            <PlayCircle className="w-3 h-3 text-cyan-400" />
-            <span>Test</span>
-          </button>
-
-          <button
-            onClick={() => runProject()}
-            disabled={isRunning}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-              isRunning
-                ? "bg-[#24262b] text-[#8f9299] cursor-not-allowed"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm hover:shadow-emerald-950/40 cursor-pointer"
-            }`}
-            title="Run Project (Ctrl+Enter)"
-          >
-            <Play className={`w-3 h-3 ${isRunning ? "animate-pulse" : "fill-current"}`} />
-            <span>{isRunning ? "Running..." : "Run"}</span>
-          </button>
-
           {/* Mode Switcher Pill (matches ChatHeader & ChatSidebar) */}
           <div className="inline-flex items-center p-0.5 rounded-lg bg-[#15171a] border border-[#2a2c33] text-xs">
             <button
