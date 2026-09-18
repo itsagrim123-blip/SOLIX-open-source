@@ -13,6 +13,7 @@ from app.providers.factory import get_active_provider
 from app.services.workspace.assistant import CODING_SYSTEM_PROMPT, coding_assistant
 from app.services.workspace.context import code_context_engine
 from app.services.workspace.execution import execution_service
+from app.services.workspace.languages import language_registry
 from app.services.workspace.storage import workspace_storage
 from app.services.web_search_service import WebSearchService
 
@@ -77,6 +78,13 @@ async def create_workspace(payload: CreateWorkspaceRequest):
 async def list_workspaces():
     """List all available workspaces."""
     return workspace_storage.list_workspaces()
+
+
+@router.get("/runtimes")
+async def get_language_runtimes():
+    """Detect and return real compiler and runtime availability on the host system."""
+    runtimes = language_registry.detect_runtimes(force_refresh=True)
+    return list(runtimes.values())
 
 
 @router.get("/{workspace_id}")
@@ -182,11 +190,27 @@ async def rename_path(workspace_id: str, payload: RenameRequest):
 
 # ── Execution Endpoints ───────────────────────────────────────────────────────
 
-@router.post("/{workspace_id}/run")
-async def run_code(workspace_id: str, payload: RunCommandRequest):
-    """Execute project entrypoint or user command in the sandbox."""
+@router.post("/{workspace_id}/build")
+async def build_project(workspace_id: str):
+    """Compile project sources in the sandbox without executing."""
     try:
-        result = await execution_service.run(workspace_id, command=payload.command, is_test=False)
+        result = await execution_service.build(workspace_id)
+        return result
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Build error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Build error: {str(e)}")
+
+
+@router.post("/{workspace_id}/run")
+async def run_code(workspace_id: str, payload: Optional[RunCommandRequest] = None):
+    """Execute project entrypoint or user command in the sandbox."""
+    cmd = payload.command if payload else None
+    try:
+        result = await execution_service.run(workspace_id, command=cmd, is_test=False)
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Workspace not found")
@@ -198,10 +222,11 @@ async def run_code(workspace_id: str, payload: RunCommandRequest):
 
 
 @router.post("/{workspace_id}/test")
-async def test_code(workspace_id: str, payload: RunCommandRequest):
+async def test_code(workspace_id: str, payload: Optional[RunCommandRequest] = None):
     """Run tests for the project in the sandbox."""
+    cmd = payload.command if payload else None
     try:
-        result = await execution_service.run(workspace_id, command=payload.command, is_test=True)
+        result = await execution_service.run(workspace_id, command=cmd, is_test=True)
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Workspace not found")
@@ -215,8 +240,15 @@ async def test_code(workspace_id: str, payload: RunCommandRequest):
 @router.post("/{workspace_id}/stop")
 async def stop_execution(workspace_id: str):
     """Stop any actively running process for this workspace."""
-    stopped = await execution_service.stop(workspace_id)
+    stopped = await execution_service.stop(workspace_id=workspace_id)
     return {"success": stopped, "workspace_id": workspace_id}
+
+
+@router.post("/{workspace_id}/executions/{execution_id}/stop")
+async def stop_specific_execution(workspace_id: str, execution_id: str):
+    """Stop a specific running execution process."""
+    stopped = await execution_service.stop(workspace_id=workspace_id, execution_id=execution_id)
+    return {"success": stopped, "workspace_id": workspace_id, "execution_id": execution_id}
 
 
 # ── Patch Application Endpoint ────────────────────────────────────────────────

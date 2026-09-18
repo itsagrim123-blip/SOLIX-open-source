@@ -14,7 +14,7 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
-import { ExecutionResult, GitStatus } from "@/types/workspace";
+import { ExecutionResult, GitStatus, Problem } from "@/types/workspace";
 
 interface TerminalPanelProps {
   output: string;
@@ -26,6 +26,8 @@ interface TerminalPanelProps {
   gitStatus: GitStatus | null;
   activeTab: "terminal" | "problems" | "git";
   onTabChange: (tab: "terminal" | "problems" | "git") => void;
+  problems?: Problem[];
+  onSelectProblem?: (problem: Problem) => void;
 }
 
 export const TerminalPanel: React.FC<TerminalPanelProps> = ({
@@ -38,6 +40,8 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   gitStatus,
   activeTab,
   onTabChange,
+  problems = [],
+  onSelectProblem,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -63,6 +67,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   };
 
   const hasError = lastResult && lastResult.exit_code !== 0;
+  const problemCount = problems.length > 0 ? problems.length : (hasError ? 1 : 0);
 
   return (
     <div
@@ -102,11 +107,11 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
                 : "text-[#8f9299] hover:text-[#eeeeec]"
             }`}
           >
-            <AlertTriangle className={`w-3.5 h-3.5 ${hasError ? "text-rose-400" : "text-[#73767d]"}`} />
+            <AlertTriangle className={`w-3.5 h-3.5 ${problemCount > 0 ? "text-rose-400" : "text-[#73767d]"}`} />
             <span>Problems</span>
-            {hasError && (
-              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-950 text-rose-300 border border-rose-800">
-                1
+            {problemCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-950 text-rose-300 border border-rose-800 font-mono font-bold">
+                {problemCount}
               </span>
             )}
           </button>
@@ -235,7 +240,77 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           )}
 
           {activeTab === "problems" && (
-            hasError ? (
+            problems.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-[#8f9299] px-1 pb-1 border-b border-[#1f2127]">
+                  <span>
+                    {problems.length} {problems.length === 1 ? "problem" : "problems"} detected in workspace
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allText = problems
+                        .map((p) => `${p.file}:${p.line}:${p.column}: ${p.severity}: ${p.message}`)
+                        .join("\n");
+                      onDebugError(allText);
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                    title="Ask Solix AI to analyze all detected problems and propose fixes"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span className="font-semibold">Debug all with Solix</span>
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 max-h-[260px] overflow-y-auto">
+                  {problems.map((prob, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => onSelectProblem?.(prob)}
+                      className="flex items-start justify-between gap-3 p-2.5 rounded-lg bg-[#14161b] hover:bg-[#1a1d24] border border-[#262830] hover:border-cyan-500/40 cursor-pointer transition-all group"
+                      title="Click to jump to line in editor"
+                    >
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        {prob.severity === "error" ? (
+                          <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-semibold text-[#eeeeec] group-hover:text-cyan-300 transition-colors">
+                              {prob.file || "workspace"}
+                              {prob.line ? `:${prob.line}` : ""}
+                              {prob.column ? `:${prob.column}` : ""}
+                            </span>
+                            {prob.source && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#202229] text-[#8f9299] uppercase font-mono">
+                                {prob.source}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-rose-200/90 font-mono mt-1 break-words whitespace-pre-wrap m-0">
+                            {prob.message}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDebugError(`${prob.file}:${prob.line}:${prob.column}: ${prob.message}`);
+                        }}
+                        className="shrink-0 p-1.5 rounded-md hover:bg-cyan-950/60 text-cyan-400 hover:text-cyan-300 border border-transparent hover:border-cyan-700/50 transition-colors"
+                        title="Debug this specific error with Solix AI"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : hasError ? (
               <div className="space-y-2">
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-rose-950/20 border border-rose-800/40 text-rose-300 text-xs">
                   <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
@@ -256,8 +331,8 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
                 </button>
               </div>
             ) : (
-              <div className="h-full flex items-center justify-center text-xs text-emerald-400/80 italic">
-                ✓ No errors reported in last execution.
+              <div className="h-full flex items-center justify-center text-xs text-emerald-400/80 italic py-6">
+                ✓ No problems detected in workspace.
               </div>
             )
           )}

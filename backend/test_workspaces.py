@@ -257,8 +257,45 @@ async def run_workspace_tests():
         assert (await client.get(f"/api/workspaces/{ws_id}")).status_code == 404
         print(f"Workspace {ws_id} successfully deleted and verified 404.")
 
+        # ── TEST 17: Runtime Registry Endpoint ───────────────────────────────
+        print("\n--- TEST 17: Runtime Registry Endpoint ---")
+        res_runtimes = await client.get("/api/workspaces/runtimes")
+        assert res_runtimes.status_code == 200
+        runtimes_list = res_runtimes.json()
+        rt_map = {r["id"]: r for r in runtimes_list}
+        assert "python" in rt_map and rt_map["python"]["available"] is True
+        assert "cpp" in rt_map and rt_map["cpp"]["available"] is True
+        assert "javascript" in rt_map and rt_map["javascript"]["available"] is True
+        print(f"Verified runtimes endpoint: {len(runtimes_list)} runtimes registered, Python/Node/C++ available.")
+
+        # ── TEST 18: C++ Build and Execution Pipeline ────────────────────────
+        print("\n--- TEST 18: C++ Build and Execution Pipeline ---")
+        res_cpp_ws = await client.post("/api/workspaces", json={"name": "Test C++ Project", "template": "starter-cpp"})
+        assert res_cpp_ws.status_code == 201
+        cpp_ws_id = res_cpp_ws.json()["id"]
+
+        # 18a: Explicit build endpoint
+        res_build = await client.post(f"/api/workspaces/{cpp_ws_id}/build")
+        assert res_build.status_code == 200
+        build_data = res_build.json()
+        assert build_data["success"] is True
+        assert build_data["exit_code"] == 0
+        print(f"C++ build succeeded via g++ in {build_data['build_time']}s.")
+
+        # 18b: Run compiled executable
+        res_run_cpp = await client.post(f"/api/workspaces/{cpp_ws_id}/run", json={})
+        assert res_run_cpp.status_code == 200
+        cpp_run_data = res_run_cpp.json()
+        assert cpp_run_data["success"] is True
+        assert "Welcome to Solix C++ Workspace!" in cpp_run_data["stdout"]
+        print(f"C++ run succeeded! Output verified.")
+
+        # 18c: Clean up C++ workspace
+        await client.delete(f"/api/workspaces/{cpp_ws_id}")
+        print(f"C++ test workspace deleted.")
+
     print("\n==================================================================")
-    print("ALL 16 CODING WORKSPACE TESTS PASSED FLAWLESSLY!")
+    print("ALL 18 CODING WORKSPACE TESTS PASSED FLAWLESSLY!")
     print("==================================================================")
 
 

@@ -6,10 +6,12 @@ import {
   ModelsResponse,
 } from "@/types/chat";
 import {
+  BuildResult,
   CodePatch,
   ExecutionResult,
   FileNode,
   GitStatus,
+  LanguageRuntime,
   Workspace,
 } from "@/types/workspace";
 
@@ -293,6 +295,18 @@ export const workspaceApi = {
     );
   },
 
+  /** Detect available language runtimes and compilers */
+  async getRuntimes(): Promise<LanguageRuntime[]> {
+    return request<LanguageRuntime[]>("/api/workspaces/runtimes");
+  },
+
+  /** Build/compile project sources without executing */
+  async build(id: string): Promise<BuildResult> {
+    return request<BuildResult>(`/api/workspaces/${encodeURIComponent(id)}/build`, {
+      method: "POST",
+    });
+  },
+
   /** Run project code */
   async run(id: string, command?: string): Promise<ExecutionResult> {
     return request<ExecutionResult>(`/api/workspaces/${encodeURIComponent(id)}/run`, {
@@ -310,11 +324,13 @@ export const workspaceApi = {
   },
 
   /** Stop running process */
-  async stop(id: string): Promise<{ success: boolean; workspace_id: string }> {
-    return request<{ success: boolean; workspace_id: string }>(
-      `/api/workspaces/${encodeURIComponent(id)}/stop`,
-      { method: "POST" }
-    );
+  async stop(id: string, executionId?: string): Promise<{ success: boolean; workspace_id: string; execution_id?: string }> {
+    const url = executionId
+      ? `/api/workspaces/${encodeURIComponent(id)}/executions/${encodeURIComponent(executionId)}/stop`
+      : `/api/workspaces/${encodeURIComponent(id)}/stop`;
+    return request<{ success: boolean; workspace_id: string; execution_id?: string }>(url, {
+      method: "POST",
+    });
   },
 
   /** Apply structured patch proposed by Solix */

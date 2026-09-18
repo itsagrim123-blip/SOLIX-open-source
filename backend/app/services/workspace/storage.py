@@ -193,13 +193,110 @@ class WorkspaceStorage:
                 encoding="utf-8",
             )
             (ws_dir / "README.md").write_text(
-                '# Solix Sample Project\n\n'
+                '# Solix Sample Project (Python)\n\n'
                 'This is a sample project running inside the **Solix Coding Workspace**.\n\n'
                 '### Features\n'
-                '- **Run code**: Click the `Run` button in the top bar or press `Ctrl+Enter`.\n'
-                '- **Test code**: Click the `Test` button to execute unit tests.\n'
-                '- **Solix AI Panel**: Ask Solix to explain, debug, fix, or refactor code.\n'
-                '- **Live Diff Review**: Solix generates structured patches that you can review side-by-side before applying.\n',
+                '- **Run code**: Click `Run` or press `Ctrl+Enter`.\n'
+                '- **Test code**: Click `Test` to execute unit tests.\n'
+                '- **Solix AI**: Ask Solix to edit, test, or debug code.\n',
+                encoding="utf-8",
+            )
+        elif template == "starter-cpp":
+            (ws_dir / "include").mkdir(parents=True, exist_ok=True)
+            (ws_dir / "src").mkdir(parents=True, exist_ok=True)
+
+            (ws_dir / "include" / "utils.h").write_text(
+                '#pragma once\n'
+                '#include <string>\n\n'
+                'std::string get_greeting(const std::string& name);\n'
+                'long long compute_fibonacci(int n);\n',
+                encoding="utf-8",
+            )
+            (ws_dir / "src" / "utils.cpp").write_text(
+                '#include "../include/utils.h"\n\n'
+                'std::string get_greeting(const std::string& name) {\n'
+                '    return "Hello " + name + " from Solix C++ Compiler!";\n'
+                '}\n\n'
+                'long long compute_fibonacci(int n) {\n'
+                '    if (n <= 0) return 0;\n'
+                '    if (n == 1) return 1;\n'
+                '    long long a = 0, b = 1;\n'
+                '    for (int i = 2; i <= n; ++i) {\n'
+                '        long long next = a + b;\n'
+                '        a = b;\n'
+                '        b = next;\n'
+                '    }\n'
+                '    return b;\n'
+                '}\n',
+                encoding="utf-8",
+            )
+            (ws_dir / "src" / "main.cpp").write_text(
+                '#include <iostream>\n'
+                '#include "../include/utils.h"\n\n'
+                'int main() {\n'
+                '    std::cout << "========================================" << std::endl;\n'
+                '    std::cout << "  Welcome to Solix C++ Workspace!       " << std::endl;\n'
+                '    std::cout << "========================================" << std::endl;\n'
+                '    std::cout << get_greeting("Developer") << std::endl;\n'
+                '    std::cout << "Fibonacci(10) = " << compute_fibonacci(10) << std::endl;\n'
+                '    std::cout << "Build & Run with genuine GCC/G++." << std::endl;\n'
+                '    return 0;\n'
+                '}\n',
+                encoding="utf-8",
+            )
+            (ws_dir / "README.md").write_text(
+                '# Solix C++ Project\n\n'
+                'This C++ project compiles and runs using the native **GCC/G++ 16.2** toolchain.\n\n'
+                '### Features\n'
+                '- **Build**: Click `Build` to invoke `g++` and check for compiler diagnostics.\n'
+                '- **Run**: Click `Run` or press `Ctrl+Enter` to compile and execute `./build/main.exe`.\n'
+                '- **Problems Panel**: View line-by-line compiler errors and jump directly to code.\n',
+                encoding="utf-8",
+            )
+        elif template == "starter-node":
+            (ws_dir / "package.json").write_text(
+                '{\n'
+                '  "name": "solix-node-project",\n'
+                '  "version": "1.0.0",\n'
+                '  "main": "index.js",\n'
+                '  "scripts": {\n'
+                '    "start": "node index.js",\n'
+                '    "test": "node test.js"\n'
+                '  }\n'
+                '}\n',
+                encoding="utf-8",
+            )
+            (ws_dir / "index.js").write_text(
+                '// Solix Node.js Project\n'
+                'function greet(name) {\n'
+                '  return `Hello ${name} from Node.js in Solix!`;\n'
+                '}\n\n'
+                'console.log("=".repeat(40));\n'
+                'console.log(" Welcome to Solix Node.js Workspace! ");\n'
+                'console.log("=".repeat(40));\n'
+                'console.log(greet("Developer"));\n'
+                'console.log("Node version:", process.version);\n',
+                encoding="utf-8",
+            )
+            (ws_dir / "test.js").write_text(
+                '// Simple test runner for Node.js\n'
+                'const assert = require("assert");\n'
+                'function add(a, b) { return a + b; }\n\n'
+                'console.log("Running unit tests...");\n'
+                'assert.strictEqual(add(2, 3), 5, "2 + 3 should be 5");\n'
+                'assert.strictEqual(add(-1, 1), 0, "-1 + 1 should be 0");\n'
+                'console.log("All 2 tests passed successfully!");\n',
+                encoding="utf-8",
+            )
+            (ws_dir / "README.md").write_text(
+                '# Solix Node.js Project\n\n'
+                'Node.js project executed with native V8 runtime.\n',
+                encoding="utf-8",
+            )
+        elif template == "empty":
+            (ws_dir / "README.md").write_text(
+                '# Empty Project\n\n'
+                'Create a file (e.g. `main.py`, `main.cpp`, `index.js`) to get started!\n',
                 encoding="utf-8",
             )
 

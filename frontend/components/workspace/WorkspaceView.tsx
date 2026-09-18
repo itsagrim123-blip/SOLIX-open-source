@@ -2,8 +2,11 @@
 
 import React, { useState } from "react";
 import {
+  Check,
   Code2,
+  Cpu,
   FolderTree,
+  Hammer,
   MessageSquare,
   Play,
   PlayCircle,
@@ -13,6 +16,7 @@ import {
   Sparkles,
   Terminal as TerminalIcon,
   X,
+  XCircle,
 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { FileExplorer } from "./FileExplorer";
@@ -61,10 +65,18 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     lastResult,
     terminalTab,
     setTerminalTab,
+    buildProject,
     runProject,
     testProject,
     stopProject,
     clearTerminal,
+    problems,
+    setProblems,
+    targetProblem,
+    setTargetProblem,
+    jumpToProblem,
+    availableRuntimes,
+    loadRuntimes,
 
     // Git
     gitStatus,
@@ -86,12 +98,14 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
   const [mobileTab, setMobileTab] = useState<"files" | "editor" | "ai" | "terminal">("editor");
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [newWorkspaceTemplate, setNewWorkspaceTemplate] = useState("starter-python");
+  const [showRuntimesModal, setShowRuntimesModal] = useState(false);
 
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWorkspaceName.trim()) return;
     try {
-      await createNewWorkspace(newWorkspaceName.trim());
+      await createNewWorkspace(newWorkspaceName.trim(), newWorkspaceTemplate);
       setNewWorkspaceName("");
       setIsCreatingWorkspace(false);
     } catch (err: any) {
@@ -180,14 +194,35 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             Local Sandbox
           </span>
 
+          {/* Runtimes & Compilers Pill */}
+          <button
+            type="button"
+            onClick={() => setShowRuntimesModal(true)}
+            className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-[#18191e] hover:bg-[#202228] text-[#a0a3ab] hover:text-[#eeeeec] border border-[#2c2f36] transition-colors cursor-pointer"
+            title="Inspect system compilers and installed runtimes"
+          >
+            <Cpu className="w-3 h-3 text-cyan-400" />
+            <span>Compilers ({availableRuntimes.filter((r) => r.available).length})</span>
+          </button>
+
           <span className="hidden lg:inline-flex items-center gap-1 text-[10.5px] font-mono font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
             <Sparkles className="w-2.5 h-2.5" />
             qwen2.5-coder:7b
           </span>
         </div>
 
-        {/* RIGHT: Test, Run, and Mode Switcher Pill */}
+        {/* RIGHT: Build, Test, Run, and Mode Switcher Pill */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => buildProject()}
+            disabled={isRunning}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-[#191b20] hover:bg-[#22252c] text-[#dedfe2] border border-[#2e3138] hover:border-[#3d414a] transition-colors cursor-pointer"
+            title="Build / Compile Sources"
+          >
+            <Hammer className="w-3 h-3 text-blue-400" />
+            <span>Build</span>
+          </button>
+
           <button
             onClick={() => testProject()}
             disabled={isRunning}
@@ -312,9 +347,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               onCloseFile={closeFile}
               onUpdateContent={updateContent}
               onSaveFile={saveFile}
+              onBuild={() => buildProject()}
               onRun={() => runProject()}
               onTest={() => testProject()}
               isRunning={isRunning}
+              problems={problems}
+              targetProblem={targetProblem}
               onSelectionChange={(code, range) => {
                 setSelectedCode(code);
                 setSelectedLineRange(range);
@@ -334,6 +372,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               gitStatus={gitStatus}
               activeTab={terminalTab}
               onTabChange={setTerminalTab}
+              problems={problems}
+              onSelectProblem={jumpToProblem}
             />
           </div>
         </div>
@@ -386,6 +426,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               onCloseFile={closeFile}
               onUpdateContent={updateContent}
               onSaveFile={saveFile}
+              onBuild={() => {
+                buildProject();
+                setMobileTab("terminal");
+              }}
               onRun={() => {
                 runProject();
                 setMobileTab("terminal");
@@ -395,6 +439,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 setMobileTab("terminal");
               }}
               isRunning={isRunning}
+              problems={problems}
+              targetProblem={targetProblem}
               onSelectionChange={(code, range) => {
                 setSelectedCode(code);
                 setSelectedLineRange(range);
@@ -415,6 +461,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               gitStatus={gitStatus}
               activeTab={terminalTab}
               onTabChange={setTerminalTab}
+              problems={problems}
+              onSelectProblem={(prob) => {
+                jumpToProblem(prob);
+                setMobileTab("editor");
+              }}
             />
           </div>
         )}
@@ -456,7 +507,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               <h3 className="text-sm font-semibold text-white">Create New Coding Project</h3>
               <button
                 onClick={() => setIsCreatingWorkspace(false)}
-                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06]"
+                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -477,8 +528,24 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-medium text-[#8f9299] mb-1">
+                  Language & Starter Template
+                </label>
+                <select
+                  value={newWorkspaceTemplate}
+                  onChange={(e) => setNewWorkspaceTemplate(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-[#191a1e] border border-[#2e3137] rounded-lg text-white focus:outline-none focus:border-cyan-500 cursor-pointer"
+                >
+                  <option value="starter-python">Python 3 (main.py, test_main.py)</option>
+                  <option value="starter-cpp">C++ (GCC) (main.cpp, math_utils.cpp, include/)</option>
+                  <option value="starter-node">Node.js (index.js, package.json)</option>
+                  <option value="empty">Empty Project (blank canvas)</option>
+                </select>
+              </div>
+
               <div className="text-[11px] text-[#666970]">
-                A sandboxed environment will be created with starter templates and test suites.
+                A sandboxed environment will be created with starter templates, build tasks, and test suites.
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
@@ -498,6 +565,83 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Runtimes & Compilers Inspector Modal */}
+      {showRuntimesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-[#141518] border border-[#2e3137] rounded-xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#252830] pb-3">
+              <div className="flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-sm font-semibold text-white">System Compilers & Runtimes</h3>
+              </div>
+              <button
+                onClick={() => setShowRuntimesModal(false)}
+                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#8f9299] leading-relaxed">
+              Solix detects installed compilers and execution runtimes directly on your host environment.
+            </p>
+
+            <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+              {availableRuntimes.map((rt) => (
+                <div
+                  key={rt.id}
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-[#191b20] border border-[#262930]"
+                >
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-white">{rt.display_name}</span>
+                      {rt.version && (
+                        <span className="text-[10.5px] font-mono text-cyan-400">
+                          {rt.version}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-[#666970] truncate mt-0.5">
+                      {rt.available ? (
+                        <span className="font-mono text-[10px] text-[#8f9299]">
+                          {rt.compiler || rt.runner || "Available in system environment"}
+                        </span>
+                      ) : (
+                        <span>{rt.install_hint || "Not detected in system PATH"}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    {rt.available ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <Check className="w-3 h-3" />
+                        <span>Available</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700/50">
+                        <XCircle className="w-3 h-3 text-zinc-500" />
+                        <span>Not installed</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-[#252830]">
+              <button
+                type="button"
+                onClick={() => setShowRuntimesModal(false)}
+                className="px-3.5 py-1.5 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

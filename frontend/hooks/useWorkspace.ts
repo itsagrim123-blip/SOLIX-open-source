@@ -8,6 +8,8 @@ import {
   ExecutionResult,
   FileNode,
   GitStatus,
+  LanguageRuntime,
+  Problem,
   Workspace,
 } from "@/types/workspace";
 
@@ -31,6 +33,10 @@ export function useWorkspace() {
   const [terminalOutput, setTerminalOutput] = useState<string>("");
   const [lastResult, setLastResult] = useState<ExecutionResult | null>(null);
   const [terminalTab, setTerminalTab] = useState<"terminal" | "problems" | "git">("terminal");
+  const [problems, setProblems] = useState<Problem[]>([]);
+  const [targetProblem, setTargetProblem] = useState<Problem | null>(null);
+  const [availableRuntimes, setAvailableRuntimes] = useState<LanguageRuntime[]>([]);
+  const [activeExecutionId, setActiveExecutionId] = useState<string | null>(null);
 
   // Git State
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
@@ -43,6 +49,20 @@ export function useWorkspace() {
   const [webSearchEnabled, setWebSearchEnabled] = useState<boolean>(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Load Available Runtimes / Compilers
+  const loadRuntimes = useCallback(async () => {
+    try {
+      const runtimes = await workspaceApi.getRuntimes();
+      setAvailableRuntimes(runtimes);
+    } catch (err) {
+      console.error("Failed to load runtimes:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRuntimes();
+  }, [loadRuntimes]);
 
   // Load Workspaces List
   const loadWorkspaces = useCallback(async () => {
@@ -82,7 +102,7 @@ export function useWorkspace() {
       setFileTree(tree);
       setGitStatus(git);
 
-      // If no file is open, open main.py or the first file found
+      // If no file is open, open main.py, main.cpp, index.js or the first file found
       if (openFiles.length === 0 && tree.length > 0) {
         const firstFile = tree.find((n) => !n.is_directory);
         if (firstFile) {
@@ -109,14 +129,17 @@ export function useWorkspace() {
     setDirtyFiles({});
     setTerminalOutput("");
     setLastResult(null);
+    setProblems([]);
+    setTargetProblem(null);
+    setActiveExecutionId(null);
     setMessages([]);
     setActivePatch(null);
   };
 
   // Create Workspace
-  const createNewWorkspace = async (name?: string) => {
+  const createNewWorkspace = async (name?: string, template: string = "starter-python") => {
     try {
-      const ws = await workspaceApi.createWorkspace(name);
+      const ws = await workspaceApi.createWorkspace(name, template);
       setWorkspaces((prev) => [ws, ...prev]);
       selectWorkspace(ws);
       return ws;
@@ -254,6 +277,42 @@ export function useWorkspace() {
     }
   };
 
+  // Build / Compile Project Sources
+  const buildProject = async () => {
+    if (!activeWorkspace || isRunning) return;
+    try {
+      setIsRunning(true);
+      setTerminalTab("terminal");
+      setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + "🔨 Building project...\n");
+
+      if (activeFile && dirtyFiles[activeFile] !== undefined) {
+        await saveFile(activeFile);
+      }
+
+      const result = await workspaceApi.build(activeWorkspace.id);
+      setActiveExecutionId(result.execution_id || null);
+      setProblems(result.problems || []);
+
+      const combined = result.stdout + (result.stderr ? "\n" + result.stderr : "");
+      const statusText = result.success
+        ? `\n[Build succeeded in ${result.build_time}s${result.binary_path ? ` -> ${result.binary_path}` : ""}]`
+        : `\n[Build failed with code ${result.exit_code} in ${result.build_time}s]`;
+
+      setTerminalOutput((prev) => prev + combined + statusText);
+
+      // Automatically focus problems tab if there are errors or diagnostics
+      if (!result.success || (result.problems && result.problems.length > 0)) {
+        setTerminalTab("problems");
+      }
+      return result;
+    } catch (err: any) {
+      setTerminalOutput((prev) => prev + `\n[Build Error]: ${err.message || "Failed to build project"}`);
+    } finally {
+      setIsRunning(false);
+      setActiveExecutionId(null);
+    }
+  };
+
   // Execute Code (Run)
   const runProject = async (customCommand?: string) => {
     if (!activeWorkspace || isRunning) return;
@@ -268,17 +327,23 @@ export function useWorkspace() {
       }
 
       const result = await workspaceApi.run(activeWorkspace.id, customCommand);
+      setActiveExecutionId(result.execution_id || null);
       setLastResult(result);
+      if (result.problems) {
+        setProblems(result.problems);
+      }
       const combined = result.stdout + (result.stderr ? "\n" + result.stderr : "");
       setTerminalOutput((prev) => prev + combined + `\n[Process exited with code ${result.exit_code} in ${result.execution_time}s]`);
-      // Update problems tab if error
-      if (result.exit_code !== 0) {
+      // Update problems tab if error or diagnostics found
+      if (result.exit_code !== 0 || (result.problems && result.problems.length > 0)) {
         setTerminalTab("problems");
       }
+      return result;
     } catch (err: any) {
       setTerminalOutput((prev) => prev + `\n[Error]: ${err.message || "Failed to execute code"}`);
     } finally {
       setIsRunning(false);
+      setActiveExecutionId(null);
     }
   };
 
@@ -295,13 +360,22 @@ export function useWorkspace() {
       }
 
       const result = await workspaceApi.test(activeWorkspace.id, customCommand);
+      setActiveExecutionId(result.execution_id || null);
       setLastResult(result);
+      if (result.problems) {
+        setProblems(result.problems);
+      }
       const combined = result.stdout + (result.stderr ? "\n" + result.stderr : "");
       setTerminalOutput((prev) => prev + combined + `\n[Tests completed with code ${result.exit_code} in ${result.execution_time}s]`);
+      if (result.exit_code !== 0 || (result.problems && result.problems.length > 0)) {
+        setTerminalTab("problems");
+      }
+      return result;
     } catch (err: any) {
       setTerminalOutput((prev) => prev + `\n[Test Error]: ${err.message || "Failed to run tests"}`);
     } finally {
       setIsRunning(false);
+      setActiveExecutionId(null);
     }
   };
 
@@ -309,12 +383,21 @@ export function useWorkspace() {
   const stopProject = async () => {
     if (!activeWorkspace) return;
     try {
-      await workspaceApi.stop(activeWorkspace.id);
+      await workspaceApi.stop(activeWorkspace.id, activeExecutionId || undefined);
       setIsRunning(false);
+      setActiveExecutionId(null);
       setTerminalOutput((prev) => prev + "\n[Execution stopped by user]");
     } catch (err: any) {
       console.error("Failed to stop process:", err);
     }
+  };
+
+  // Jump to specific problem in editor
+  const jumpToProblem = (problem: Problem) => {
+    if (problem.file) {
+      openFile(problem.file);
+    }
+    setTargetProblem(problem);
   };
 
   // Clear Terminal Output
@@ -526,10 +609,18 @@ export function useWorkspace() {
     lastResult,
     terminalTab,
     setTerminalTab,
+    buildProject,
     runProject,
     testProject,
     stopProject,
     clearTerminal,
+    problems,
+    setProblems,
+    targetProblem,
+    setTargetProblem,
+    jumpToProblem,
+    availableRuntimes,
+    loadRuntimes,
 
     // Git
     gitStatus,

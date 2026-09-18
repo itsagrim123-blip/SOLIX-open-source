@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Play, PlayCircle, Save, X } from "lucide-react";
+import { Hammer, Play, PlayCircle, Save, X } from "lucide-react";
+import { Problem } from "@/types/workspace";
 
 // Dynamically load Monaco Editor with SSR disabled
 const MonacoEditor = dynamic(
@@ -27,10 +28,13 @@ interface CodeEditorPanelProps {
   onCloseFile: (path: string) => void;
   onUpdateContent: (path: string, content: string) => void;
   onSaveFile: (path?: string) => Promise<void>;
+  onBuild?: () => void;
   onRun: () => void;
   onTest: () => void;
   isRunning: boolean;
   onSelectionChange: (code: string, range: { start: number; end: number } | null) => void;
+  problems?: Problem[];
+  targetProblem?: Problem | null;
 }
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -65,12 +69,16 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   onCloseFile,
   onUpdateContent,
   onSaveFile,
+  onBuild,
   onRun,
   onTest,
   isRunning,
   onSelectionChange,
+  problems,
+  targetProblem,
 }) => {
   const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
 
   const activeContent = activeFile
     ? dirtyFiles[activeFile] !== undefined
@@ -85,6 +93,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
 
   const handleEditorMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
     // Custom dark theme matching Solix aesthetic
     monaco.editor.defineTheme("solix-dark", {
@@ -134,6 +143,67 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
     });
   };
 
+  // Set real compiler / interpreter error and warning markers on Monaco editor model
+  useEffect(() => {
+    if (!monacoRef.current || !editorRef.current || !activeFile) return;
+    const model = editorRef.current.getModel();
+    if (!model) return;
+
+    const fileProblems = (problems || []).filter((p) => {
+      if (!p.file) return false;
+      const cleanP = p.file.replace(/\\/g, "/").toLowerCase();
+      const cleanActive = activeFile.replace(/\\/g, "/").toLowerCase();
+      return (
+        cleanP === cleanActive ||
+        cleanP.endsWith("/" + cleanActive) ||
+        cleanActive.endsWith("/" + cleanP)
+      );
+    });
+
+    const markers = fileProblems.map((p) => {
+      const severity =
+        p.severity === "error"
+          ? monacoRef.current.MarkerSeverity.Error
+          : p.severity === "warning"
+          ? monacoRef.current.MarkerSeverity.Warning
+          : monacoRef.current.MarkerSeverity.Info;
+
+      const line = Math.max(1, p.line || 1);
+      const col = Math.max(1, p.column || 1);
+
+      return {
+        severity,
+        message: p.message,
+        startLineNumber: line,
+        startColumn: col,
+        endLineNumber: line,
+        endColumn: col + 60,
+        source: p.source || "compiler",
+      };
+    });
+
+    monacoRef.current.editor.setModelMarkers(model, "workspace-diagnostics", markers);
+  }, [problems, activeFile]);
+
+  // Navigate to problem position when clicked from Problems tab
+  useEffect(() => {
+    if (!editorRef.current || !targetProblem || !activeFile) return;
+    const cleanP = (targetProblem.file || "").replace(/\\/g, "/").toLowerCase();
+    const cleanActive = activeFile.replace(/\\/g, "/").toLowerCase();
+
+    if (
+      cleanP === cleanActive ||
+      cleanP.endsWith("/" + cleanActive) ||
+      cleanActive.endsWith("/" + cleanP)
+    ) {
+      const line = Math.max(1, targetProblem.line || 1);
+      const col = Math.max(1, targetProblem.column || 1);
+      editorRef.current.revealPositionInCenter({ lineNumber: line, column: col });
+      editorRef.current.setPosition({ lineNumber: line, column: col });
+      editorRef.current.focus();
+    }
+  }, [targetProblem, activeFile]);
+
   return (
     <div className="h-full flex flex-col bg-[#0e0f12] overflow-hidden">
       {/* Top Bar: Open Tabs + Run / Save Toolbar */}
@@ -176,7 +246,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
           })}
         </div>
 
-        {/* Right Action Controls: Save, Run, Test */}
+        {/* Right Action Controls: Save, Build, Test, Run */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             type="button"
@@ -192,6 +262,19 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
             <Save className="w-3 h-3" />
             <span className="hidden sm:inline">Save</span>
           </button>
+
+          {onBuild && (
+            <button
+              type="button"
+              onClick={onBuild}
+              disabled={isRunning}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#1a1c20] hover:bg-[#22252b] text-[#dedfe2] border border-[#2e3138] transition-colors cursor-pointer"
+              title="Build / Compile Sources"
+            >
+              <Hammer className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline">Build</span>
+            </button>
+          )}
 
           <button
             type="button"
