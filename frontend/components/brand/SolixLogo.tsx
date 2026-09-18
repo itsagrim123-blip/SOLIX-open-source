@@ -29,3 +29,4 @@ export function SolixLogo({ size = "sm", px, className = "" }: SolixLogoProps) {
     />
   );
 }
+
