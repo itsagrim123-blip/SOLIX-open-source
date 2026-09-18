@@ -28,5 +28,7 @@ Thumbs.db
 .idea/
 *.log
 
-# Uploads storage
+# Storage
 backend/storage/uploads/
+backend/storage/workspaces/
+
