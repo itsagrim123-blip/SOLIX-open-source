@@ -64,6 +64,24 @@ async def run_tests():
         assert res.status_code == 200
         print("Conversation deleted successfully.")
 
+        # 8. Test Web Search route graceful handling (when TAVILY_API_KEY is not set)
+        print("\nTesting Web Search route handling:")
+        async with client.stream(
+            "POST",
+            "/api/chat",
+            json={"message": "What is the latest RTX GPU?", "web_search": True},
+        ) as stream:
+            assert stream.status_code == 200
+            web_events = []
+            async for line in stream.aiter_lines():
+                if line.startswith("data: "):
+                    web_events.append(json.loads(line[6:]))
+            # First event should be start with web_search: True
+            assert web_events[0]["type"] == "start"
+            assert web_events[0].get("web_search") is True
+            # Second event will be error if no API key is configured, which is graceful
+            print(f"Web search correctly started, events yielded: {[e['type'] for e in web_events]}")
+
     print("\n--- ALL BACKEND TESTS PASSED SUCCESSFULLY! ---")
 
 if __name__ == "__main__":

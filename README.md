@@ -35,6 +35,13 @@
   - Token-by-token streaming over HTTP Server-Sent Events (`text/event-stream`).
   - Native `AbortController` integration for an immediate **"Stop Generating"** action.
 
+- 🌐 **Web Search with Real-Time Sources**:
+  - Grounded web search powered by Tavily with automatic context deduplication and character limits.
+  - Dedicated **Qwen 3 8B** model enforcement (`OLLAMA_WEB_MODEL=qwen3:8b`) for authoritative, citation-backed answers.
+  - Interactive clickable source attribution cards displaying domain, title, and direct reference links.
+  - Strict prompt injection defenses marking external content as untrusted reference data.
+  - Toggle on/off seamlessly per-message via the composer Globe button.
+
 - 🧠 **Extensible AI Provider Abstraction**:
   - Decoupled `AIProvider` base interface — never locked into a single vendor.
   - Native **Ollama** integration connecting to local models (`llama3.2`, `mistral`, `deepseek-r1`, `qwen2.5-coder`).
