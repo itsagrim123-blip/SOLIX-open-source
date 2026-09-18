@@ -11,6 +11,10 @@ import {
   LanguageRuntime,
   Problem,
   Workspace,
+  AgentState,
+  AgentPlanStep,
+  AgentToolActivity,
+  AgentApprovalRequest,
 } from "@/types/workspace";
 
 export function useWorkspace() {
@@ -47,6 +51,14 @@ export function useWorkspace() {
   const [activePatch, setActivePatch] = useState<CodePatch | null>(null);
   const [isReviewingDiff, setIsReviewingDiff] = useState<boolean>(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState<boolean>(false);
+
+  // Autonomous Coding Agent State
+  const [agentMode, setAgentMode] = useState<"ask" | "agent">("agent");
+  const [autoApply, setAutoApply] = useState<boolean>(false);
+  const [agentState, setAgentState] = useState<AgentState>("idle");
+  const [currentPlan, setCurrentPlan] = useState<AgentPlanStep[]>([]);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [pendingApproval, setPendingApproval] = useState<AgentApprovalRequest | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -406,6 +418,286 @@ export function useWorkspace() {
     setLastResult(null);
   };
 
+  // Respond to Pending Agent Approval
+  const respondApproval = async (approvalId: string, approved: boolean) => {
+    if (!activeWorkspace || !activeTaskId) return;
+    try {
+      await workspaceApi.approveAgentChange(activeWorkspace.id, activeTaskId, approvalId, approved);
+      setPendingApproval(null);
+    } catch (err: any) {
+      console.error("Failed to respond to approval:", err);
+      setError(err.message || "Failed to respond to approval");
+    }
+  };
+
+  // Stop Running Autonomous Agent
+  const stopAgent = async () => {
+    if (!activeWorkspace) return;
+    if (activeTaskId) {
+      try {
+        await workspaceApi.stopAgentTask(activeWorkspace.id, activeTaskId);
+      } catch (err: any) {
+        console.error("Failed to stop agent task:", err);
+      }
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsAIGenerating(false);
+    setAgentState("cancelled");
+    setActiveTaskId(null);
+    setPendingApproval(null);
+  };
+
+  // Autonomous Agent Execution Loop
+  const sendAutonomousAgentMessage = async (prompt: string) => {
+    if (!activeWorkspace || isAIGenerating || !prompt.trim()) return;
+
+    const userMsgId = `user-${Date.now()}`;
+    const assistantMsgId = `asst-${Date.now()}`;
+
+    const newMessages: CodingChatMessage[] = [
+      ...messages,
+      {
+        id: userMsgId,
+        role: "user",
+        content: prompt,
+        timestamp: new Date(),
+      },
+      {
+        id: assistantMsgId,
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
+        isStreaming: true,
+        plan: [],
+        tools: [],
+        agentState: "planning",
+      },
+    ];
+
+    setMessages(newMessages);
+    setIsAIGenerating(true);
+    setAgentState("planning");
+    setCurrentPlan([]);
+    setPendingApproval(null);
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const response = await fetch(workspaceApi.getAgentRunUrl(activeWorkspace.id), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: prompt,
+          request: prompt,
+          current_file: activeFile || null,
+          active_file: activeFile || null,
+          auto_apply: autoApply,
+        }),
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error(`Agent run failed: ${response.statusText}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      let accumulatedText = "";
+      let currentTools: AgentToolActivity[] = [];
+      let latestPlan: AgentPlanStep[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith("data:")) continue;
+
+          const jsonStr = trimmed.slice(5).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const event = JSON.parse(jsonStr);
+
+            if (event.type === "agent_started") {
+              setActiveTaskId(event.task_id);
+            } else if (event.type === "state_change") {
+              setAgentState(event.state);
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId ? { ...m, agentState: event.state } : m
+                )
+              );
+            } else if (event.type === "plan_created") {
+              latestPlan = event.plan || [];
+              setCurrentPlan(latestPlan);
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId ? { ...m, plan: latestPlan } : m
+                )
+              );
+            } else if (event.type === "token" && event.text) {
+              accumulatedText += event.text;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId ? { ...m, content: accumulatedText } : m
+                )
+              );
+            } else if (event.type === "tool_started") {
+              const newTool: AgentToolActivity = {
+                id: event.call_id || `tool-${Date.now()}`,
+                name: event.tool,
+                args: event.args || {},
+                status: "running",
+              };
+              currentTools = [...currentTools, newTool];
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId ? { ...m, tools: currentTools } : m
+                )
+              );
+            } else if (event.type === "tool_completed") {
+              currentTools = currentTools.map((t) =>
+                t.name === event.tool && (t.status === "running" || t.id === event.call_id)
+                  ? {
+                      ...t,
+                      status: event.result?.error ? "error" : "completed",
+                      result: event.result,
+                    }
+                  : t
+              );
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId ? { ...m, tools: currentTools } : m
+                )
+              );
+
+              // If tool produced execution output, update terminal panel
+              if (
+                ["workspace_run", "workspace_test", "workspace_build"].includes(event.tool) &&
+                event.result
+              ) {
+                const res = event.result;
+                setLastResult(res);
+                if (res.stdout || res.stderr) {
+                  setTerminalOutput(
+                    (prev) =>
+                      prev +
+                      `\n[Agent ${event.tool}]\n` +
+                      (res.stdout ? res.stdout + "\n" : "") +
+                      (res.stderr ? res.stderr + "\n" : "")
+                  );
+                }
+                if (res.problems && res.problems.length > 0) {
+                  setProblems(res.problems);
+                }
+              }
+            } else if (event.type === "approval_required") {
+              setPendingApproval(event.request);
+              setAgentState("awaiting_approval");
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId
+                    ? { ...m, approval: event.request, agentState: "awaiting_approval" }
+                    : m
+                )
+              );
+            } else if (event.type === "changes_applied") {
+              setPendingApproval(null);
+              // Refresh file content if available
+              if (event.file && activeWorkspace) {
+                workspaceApi
+                  .readFile(activeWorkspace.id, event.file)
+                  .then((content) => {
+                    setFileContents((prev) => ({ ...prev, [event.file]: content }));
+                    setDirtyFiles((prev) => {
+                      const next = { ...prev };
+                      delete next[event.file];
+                      return next;
+                    });
+                  })
+                  .catch(() => {});
+              }
+              refreshWorkspace();
+            } else if (event.type === "changes_rejected") {
+              setPendingApproval(null);
+            } else if (event.type === "run_completed" || event.type === "test_completed") {
+              if (event.result) {
+                setLastResult(event.result);
+                setTerminalOutput(
+                  (prev) =>
+                    prev +
+                    `\n[Agent Execution Result: exit code ${event.result.exit_code}]\n` +
+                    (event.result.stdout ? event.result.stdout + "\n" : "") +
+                    (event.result.stderr ? event.result.stderr + "\n" : "")
+                );
+                if (event.result.problems && event.result.problems.length > 0) {
+                  setProblems(event.result.problems);
+                  setTerminalTab("problems");
+                }
+              }
+            } else if (event.type === "problem_detected") {
+              setTerminalTab("problems");
+            } else if (event.type === "agent_completed") {
+              setAgentState("completed");
+              refreshWorkspace();
+            } else if (event.type === "agent_failed") {
+              setAgentState("failed");
+            } else if (event.type === "agent_cancelled") {
+              setAgentState("cancelled");
+            }
+          } catch {
+            // Ignore parse errors on partial stream chunks
+          }
+        }
+      }
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMsgId
+            ? {
+                ...m,
+                isStreaming: false,
+                content: accumulatedText || m.content,
+                plan: latestPlan.length > 0 ? latestPlan : m.plan,
+                tools: currentTools,
+              }
+            : m
+        )
+      );
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        setAgentState("failed");
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMsgId
+              ? {
+                  ...m,
+                  isStreaming: false,
+                  agentState: "failed",
+                  content:
+                    m.content +
+                    `\n\n[Agent Error: ${err.message || "Failed to complete agent task"}]`,
+                }
+              : m
+          )
+        );
+      }
+    } finally {
+      setIsAIGenerating(false);
+      setActiveTaskId(null);
+      abortControllerRef.current = null;
+    }
+  };
+
   // Send Coding AI Message with Grounded Context
   const sendCodingMessage = async (
     prompt: string,
@@ -415,6 +707,11 @@ export function useWorkspace() {
     } = {}
   ) => {
     if (!activeWorkspace || isAIGenerating || !prompt.trim()) return;
+
+    // Route to Autonomous Agent mode if enabled and not a custom quick action
+    if (agentMode === "agent" && !options.customAction) {
+      return sendAutonomousAgentMessage(prompt);
+    }
 
     const userMsgId = `user-${Date.now()}`;
     const assistantMsgId = `asst-${Date.now()}`;
@@ -636,6 +933,19 @@ export function useWorkspace() {
     rejectPatch,
     webSearchEnabled,
     setWebSearchEnabled,
+
+    // Autonomous Agent
+    agentMode,
+    setAgentMode,
+    autoApply,
+    setAutoApply,
+    agentState,
+    setAgentState,
+    currentPlan,
+    pendingApproval,
+    setPendingApproval,
+    respondApproval,
+    stopAgent,
   };
 }
 

@@ -79,6 +79,45 @@ export interface GitStatus {
   error?: string;
 }
 
+export type AgentState =
+  | "idle"
+  | "planning"
+  | "reading"
+  | "editing"
+  | "awaiting_approval"
+  | "applying"
+  | "building"
+  | "running"
+  | "testing"
+  | "debugging"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface AgentPlanStep {
+  id: number;
+  text: string;
+  status: "pending" | "in_progress" | "completed" | "failed";
+}
+
+export interface AgentToolActivity {
+  id: string;
+  name: string;
+  args: Record<string, any>;
+  result?: any;
+  status: "running" | "completed" | "error";
+}
+
+export interface AgentApprovalRequest {
+  approval_id: string;
+  operation: "create" | "modify" | "delete";
+  file: string;
+  before: string;
+  after: string;
+  diff: string;
+  explanation: string;
+}
+
 export interface CodingChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -87,4 +126,8 @@ export interface CodingChatMessage {
   patch?: CodePatch;
   isStreaming?: boolean;
   sources?: any[];
+  plan?: AgentPlanStep[];
+  tools?: AgentToolActivity[];
+  approval?: AgentApprovalRequest;
+  agentState?: AgentState;
 }

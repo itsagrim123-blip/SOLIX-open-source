@@ -2,21 +2,29 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
-import { Check, X } from "lucide-react";
+import { Check, X, FilePlus, FileEdit, Trash2 } from "lucide-react";
 import { CodePatch } from "@/types/workspace";
 
 // Dynamically load Monaco DiffEditor with ssr: false
 const MonacoDiffEditor = dynamic(
   () => import("@monaco-editor/react").then((mod) => mod.DiffEditor),
-  { ssr: false, loading: () => <div className="h-full flex items-center justify-center text-xs text-[#8f9299]">Loading Diff Viewer...</div> }
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full flex items-center justify-center text-xs text-[#8f9299]">
+        Loading Diff Viewer...
+      </div>
+    ),
+  }
 );
 
 interface DiffReviewModalProps {
   patch: CodePatch | null;
   originalContent: string;
   isOpen: boolean;
-  onApply: (patch: CodePatch) => Promise<void>;
+  onApply: (patch: CodePatch) => Promise<void> | void;
   onReject: () => void;
+  operation?: "create" | "modify" | "delete";
 }
 
 export const DiffReviewModal: React.FC<DiffReviewModalProps> = ({
@@ -25,8 +33,45 @@ export const DiffReviewModal: React.FC<DiffReviewModalProps> = ({
   isOpen,
   onApply,
   onReject,
+  operation,
 }) => {
   if (!isOpen || !patch) return null;
+
+  const ext = patch.file.split(".").pop() || "";
+  const getLanguage = (extension: string) => {
+    switch (extension) {
+      case "py":
+        return "python";
+      case "js":
+      case "jsx":
+        return "javascript";
+      case "ts":
+      case "tsx":
+        return "typescript";
+      case "cpp":
+      case "cc":
+      case "h":
+        return "cpp";
+      case "c":
+        return "c";
+      case "rs":
+        return "rust";
+      case "go":
+        return "go";
+      case "java":
+        return "java";
+      case "json":
+        return "json";
+      case "md":
+        return "markdown";
+      case "html":
+        return "html";
+      case "css":
+        return "css";
+      default:
+        return "plaintext";
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-fade-in">
@@ -35,8 +80,28 @@ export const DiffReviewModal: React.FC<DiffReviewModalProps> = ({
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#292b30] bg-[#15171a]">
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">
-              Review Proposed Diff
+              Review Proposed Changes
             </span>
+
+            {operation === "create" && (
+              <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700">
+                <FilePlus className="w-3 h-3" />
+                CREATE
+              </span>
+            )}
+            {operation === "modify" && (
+              <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700">
+                <FileEdit className="w-3 h-3" />
+                MODIFY
+              </span>
+            )}
+            {operation === "delete" && (
+              <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-700">
+                <Trash2 className="w-3 h-3" />
+                DELETE
+              </span>
+            )}
+
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#1f2126] text-[#dedfe2] border border-[#2e3137]">
               {patch.file}
             </span>
@@ -73,9 +138,9 @@ export const DiffReviewModal: React.FC<DiffReviewModalProps> = ({
         {/* Monaco Diff Viewer */}
         <div className="flex-1 min-h-0">
           <MonacoDiffEditor
-            original={originalContent}
-            modified={patch.replacement_content}
-            language={patch.file.split(".").pop() === "py" ? "python" : "typescript"}
+            original={operation === "create" ? "" : originalContent}
+            modified={operation === "delete" ? "" : patch.replacement_content}
+            language={getLanguage(ext)}
             theme="vs-dark"
             options={{
               readOnly: true,
@@ -91,4 +156,3 @@ export const DiffReviewModal: React.FC<DiffReviewModalProps> = ({
     </div>
   );
 };
-

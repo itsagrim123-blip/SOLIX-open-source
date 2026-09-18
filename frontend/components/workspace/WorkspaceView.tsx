@@ -25,6 +25,7 @@ import { AIPanel } from "./AIPanel";
 import { TerminalPanel } from "./TerminalPanel";
 import { DiffReviewModal } from "./DiffReviewModal";
 import { SolixLogo } from "@/components/brand/SolixLogo";
+import { CodePatch } from "@/types/workspace";
 
 interface WorkspaceViewProps {
   onBackToChat?: () => void;
@@ -81,7 +82,6 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     // Git
     gitStatus,
 
-    // AI
     messages,
     isAIGenerating,
     sendCodingMessage,
@@ -92,6 +92,17 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     rejectPatch,
     webSearchEnabled,
     setWebSearchEnabled,
+
+    // Autonomous Agent
+    agentMode,
+    setAgentMode,
+    autoApply,
+    setAutoApply,
+    agentState,
+    currentPlan,
+    pendingApproval,
+    respondApproval,
+    stopAgent,
   } = workspace;
 
   // Mobile navigation tab
@@ -100,6 +111,22 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [newWorkspaceTemplate, setNewWorkspaceTemplate] = useState("starter-python");
   const [showRuntimesModal, setShowRuntimesModal] = useState(false);
+
+  // Reviewing diff modal state
+  const [reviewingModalPatch, setReviewingModalPatch] = useState<CodePatch | null>(null);
+  const [reviewingOperation, setReviewingOperation] = useState<"create" | "modify" | "delete" | undefined>();
+  const [reviewingApprovalId, setReviewingApprovalId] = useState<string | null>(null);
+
+  const handleReviewPatch = (
+    patch: CodePatch,
+    approvalId?: string,
+    operation?: "create" | "modify" | "delete"
+  ) => {
+    setReviewingModalPatch(patch);
+    setReviewingApprovalId(approvalId || null);
+    setReviewingOperation(operation || "modify");
+    setIsReviewingDiff(true);
+  };
 
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -354,11 +381,26 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             selectedCode={selectedCode}
             selectedLineRange={selectedLineRange}
             onReviewPatch={(patch) => {
-              setIsReviewingDiff(true);
+              const matchingApproval =
+                pendingApproval?.file === patch.file ? pendingApproval : null;
+              handleReviewPatch(
+                patch,
+                matchingApproval?.approval_id,
+                matchingApproval?.operation
+              );
             }}
             onApplyPatch={applyPatch}
             webSearchEnabled={webSearchEnabled}
             onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+            agentMode={agentMode}
+            onToggleAgentMode={setAgentMode}
+            autoApply={autoApply}
+            onToggleAutoApply={() => setAutoApply(!autoApply)}
+            agentState={agentState}
+            currentPlan={currentPlan}
+            pendingApproval={pendingApproval}
+            onRespondApproval={respondApproval}
+            onStopAgent={stopAgent}
           />
         </div>
       </div>
@@ -446,11 +488,26 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               selectedCode={selectedCode}
               selectedLineRange={selectedLineRange}
               onReviewPatch={(patch) => {
-                setIsReviewingDiff(true);
+                const matchingApproval =
+                  pendingApproval?.file === patch.file ? pendingApproval : null;
+                handleReviewPatch(
+                  patch,
+                  matchingApproval?.approval_id,
+                  matchingApproval?.operation
+                );
               }}
               onApplyPatch={applyPatch}
               webSearchEnabled={webSearchEnabled}
               onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+              agentMode={agentMode}
+              onToggleAgentMode={setAgentMode}
+              autoApply={autoApply}
+              onToggleAutoApply={() => setAutoApply(!autoApply)}
+              agentState={agentState}
+              currentPlan={currentPlan}
+              pendingApproval={pendingApproval}
+              onRespondApproval={respondApproval}
+              onStopAgent={stopAgent}
             />
           </div>
         )}
@@ -458,11 +515,34 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
       {/* Diff Review Modal */}
       <DiffReviewModal
-        patch={activePatch}
-        originalContent={activePatch ? fileContents[activePatch.file] || "" : ""}
+        patch={reviewingModalPatch || activePatch}
+        operation={reviewingOperation}
+        originalContent={
+          reviewingModalPatch || activePatch
+            ? fileContents[(reviewingModalPatch || activePatch)!.file] || ""
+            : ""
+        }
         isOpen={isReviewingDiff}
-        onApply={applyPatch}
-        onReject={rejectPatch}
+        onApply={async (patch) => {
+          if (reviewingApprovalId) {
+            await respondApproval(reviewingApprovalId, true);
+            setIsReviewingDiff(false);
+            setReviewingApprovalId(null);
+            setReviewingModalPatch(null);
+          } else {
+            await applyPatch(patch);
+          }
+        }}
+        onReject={async () => {
+          if (reviewingApprovalId) {
+            await respondApproval(reviewingApprovalId, false);
+            setIsReviewingDiff(false);
+            setReviewingApprovalId(null);
+            setReviewingModalPatch(null);
+          } else {
+            rejectPatch();
+          }
+        }}
       />
 
       {/* New Project Modal */}

@@ -357,6 +357,40 @@ export const workspaceApi = {
   getChatUrl(id: string): string {
     return getApiUrl(`/api/workspaces/${encodeURIComponent(id)}/chat`);
   },
+
+  /** Get fully-qualified SSE Autonomous Agent URL */
+  getAgentRunUrl(id: string): string {
+    return getApiUrl(`/api/workspaces/${encodeURIComponent(id)}/agent/run`);
+  },
+
+  /** Approve or reject an agent staged file change */
+  async approveAgentChange(
+    id: string,
+    taskId: string,
+    approvalId: string,
+    approved: boolean
+  ): Promise<{ success: boolean; approval_id: string; approved: boolean }> {
+    return request<{ success: boolean; approval_id: string; approved: boolean }>(
+      `/api/workspaces/${encodeURIComponent(id)}/agent/${encodeURIComponent(taskId)}/approve`,
+      {
+        method: "POST",
+        body: JSON.stringify({ approval_id: approvalId, approved }),
+      }
+    );
+  },
+
+  /** Stop and cancel an active autonomous agent task */
+  async stopAgentTask(
+    id: string,
+    taskId: string
+  ): Promise<{ success: boolean; task_id: string }> {
+    return request<{ success: boolean; task_id: string }>(
+      `/api/workspaces/${encodeURIComponent(id)}/agent/${encodeURIComponent(taskId)}/stop`,
+      {
+        method: "POST",
+      }
+    );
+  },
 };
 
 

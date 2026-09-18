@@ -15,6 +15,7 @@ from app.services.workspace.context import code_context_engine
 from app.services.workspace.execution import execution_service
 from app.services.workspace.languages import language_registry
 from app.services.workspace.storage import workspace_storage
+from app.services.workspace.agent import coding_agent_engine
 from app.services.web_search_service import WebSearchService
 
 logger = logging.getLogger("solix.api.workspaces")
@@ -59,6 +60,27 @@ class WorkspaceChatRequest(BaseModel):
     open_files: Optional[List[str]] = None
     terminal_context: Optional[str] = None
     web_search: bool = Field(default=False)
+
+
+class AgentRunRequest(BaseModel):
+    message: Optional[str] = None
+    request: Optional[str] = None
+    current_file: Optional[str] = None
+    active_file: Optional[str] = None
+    auto_apply: bool = Field(default=False, description="Whether to auto-apply safe file changes")
+
+    @property
+    def prompt(self) -> str:
+        return (self.message or self.request or "").strip()
+
+    @property
+    def target_file(self) -> Optional[str]:
+        return self.current_file or self.active_file
+
+
+class AgentApprovalRequest(BaseModel):
+    approval_id: str = Field(..., description="Approval ID from approval_required event")
+    approved: bool = Field(..., description="True to apply changes, False to reject")
 
 
 # ── Workspace CRUD Endpoints ──────────────────────────────────────────────────
@@ -348,7 +370,19 @@ async def workspace_chat(workspace_id: str, payload: WorkspaceChatRequest):
             {"role": "user", "content": f"{project_context}\n\n--- USER REQUEST ---\n{user_prompt}"}
         ]
 
-        provider = get_active_provider()
+        provider, is_connected = await get_active_provider()
+        if not is_connected:
+            async def offline_generator() -> AsyncGenerator[str, None]:
+                yield f"data: {json.dumps({'type': 'error', 'error': f'Code AI unavailable — Ollama is offline at {settings.OLLAMA_BASE_URL}. Please start Ollama.'})}\n\n"
+            return StreamingResponse(
+                offline_generator(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
 
         # Model routing: prefer qwen2.5-coder:7b for coding
         model_name = settings.OLLAMA_CODING_MODEL
@@ -443,4 +477,55 @@ async def workspace_chat(workspace_id: str, payload: WorkspaceChatRequest):
     except Exception as e:
         logger.error(f"Failed to initiate workspace chat: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Autonomous Coding Agent Endpoints ──────────────────────────────────────────
+
+@router.post("/{workspace_id}/agent/run")
+async def run_autonomous_agent(workspace_id: str, payload: AgentRunRequest):
+    """Initiate an autonomous coding agent loop with SSE streaming."""
+    try:
+        user_prompt = payload.prompt
+        if not user_prompt:
+            raise HTTPException(status_code=422, detail="Message or request prompt is required")
+
+        generator = coding_agent_engine.run_agent_loop(
+            workspace_id=workspace_id,
+            user_request=user_prompt,
+            active_file=payload.target_file,
+            auto_apply=payload.auto_apply,
+        )
+
+        return StreamingResponse(
+            generator,
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+    except Exception as e:
+        logger.error(f"[AgentEndpoint] Failed to initiate autonomous agent: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{workspace_id}/agent/{task_id}/approve")
+async def approve_agent_change(workspace_id: str, task_id: str, payload: AgentApprovalRequest):
+    """Approve or reject a staged file modification requested by the agent."""
+    resolved = coding_agent_engine.resolve_approval(
+        task_id=task_id,
+        approval_id=payload.approval_id,
+        approved=payload.approved,
+    )
+    if not resolved:
+        raise HTTPException(status_code=404, detail="Pending approval not found or task already resolved.")
+    return {"success": True, "approval_id": payload.approval_id, "approved": payload.approved}
+
+
+@router.post("/{workspace_id}/agent/{task_id}/stop")
+async def stop_agent_task(workspace_id: str, task_id: str):
+    """Cancel and stop an active autonomous agent task."""
+    stopped = coding_agent_engine.cancel_task(task_id)
+    return {"success": stopped, "task_id": task_id}
 
