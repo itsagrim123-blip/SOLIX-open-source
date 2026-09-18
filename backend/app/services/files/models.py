@@ -49,6 +49,9 @@ class FileMetadata(BaseModel):
     sheet_count: Optional[int] = None
     slide_count: Optional[int] = None
     chunk_count: int = 0
+    url: str = Field(default="", description="Safe API route to access the file content")
+    preview_url: Optional[str] = Field(default=None, description="Direct preview URL for browser viewing")
+    download_url: Optional[str] = Field(default=None, description="Download URL triggering browser file save")
     error: Optional[str] = None
 
 

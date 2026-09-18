@@ -17,6 +17,8 @@ export interface AttachedFile {
   progress: number;
   error?: string;
   chunkCount?: number;
+  url?: string;
+  previewUrl?: string;
 }
 
 export interface Message {
@@ -30,7 +32,7 @@ export interface Message {
   /** Source citations for web-search assistant messages */
   sources?: SearchSource[];
   /** Attached files associated with this message */
-  files?: { id: string; name: string; size: number; type: string }[];
+  files?: { id: string; name: string; size: number; type: string; url?: string; previewUrl?: string }[];
 }
 
 export interface ConversationSummary {

@@ -3,7 +3,7 @@ import logging
 import os
 import time
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from app.core.config import settings
 from app.services.files.detector import detect_file_type
 from app.services.files.models import DocumentChunk, ExtractionResult, FileMetadata
@@ -65,6 +65,8 @@ class FileService:
         self._raw_text_store: Dict[str, str] = {}
         # SHA256 -> original file_id cache for deduplication
         self._hash_cache: Dict[str, str] = {}
+        # file_id -> absolute disk file path mapping
+        self._file_paths: Dict[str, str] = {}
 
         # Telemetry metrics
         self._total_processed: int = 0
@@ -124,6 +126,19 @@ class FileService:
                 cached_meta = self._metadata_store.get(cached_id)
                 if cached_meta and cached_meta.status == "ready":
                     logger.info(f"[Files] Reusing deduplicated cache for '{clean_name}' (hash={sha256_hash[:10]})")
+                    # Map physical path to new file_id
+                    cached_path = self._file_paths.get(cached_id)
+                    if cached_path and os.path.isfile(cached_path):
+                        self._file_paths[file_id] = cached_path
+                    else:
+                        # Re-persist if cached path was cleaned
+                        file_dir = os.path.join(self.storage_dir, file_id)
+                        os.makedirs(file_dir, exist_ok=True)
+                        saved_path = os.path.join(file_dir, clean_name)
+                        with open(saved_path, "wb") as f:
+                            f.write(content_bytes)
+                        self._file_paths[file_id] = os.path.abspath(saved_path)
+
                     # Replicate chunks under new file_id
                     existing_chunks = self._chunks_store.get(cached_id, [])
                     new_chunks = [
@@ -156,6 +171,9 @@ class FileService:
                         sheet_count=cached_meta.sheet_count,
                         slide_count=cached_meta.slide_count,
                         chunk_count=len(new_chunks),
+                        url=f"/api/files/{file_id}/content",
+                        preview_url=f"/api/files/{file_id}/content",
+                        download_url=f"/api/files/{file_id}/download",
                     )
                     self._metadata_store[file_id] = meta
                     self._total_processed += 1
@@ -192,6 +210,7 @@ class FileService:
             saved_path = os.path.join(file_dir, clean_name)
             with open(saved_path, "wb") as f:
                 f.write(content_bytes)
+            self._file_paths[file_id] = os.path.abspath(saved_path)
 
             # 6. Parser Selection
             processor = self._select_processor(category, detected_mime, clean_name)
@@ -235,6 +254,9 @@ class FileService:
                 sheet_count=extraction.sheet_count,
                 slide_count=extraction.slide_count,
                 chunk_count=len(extraction.chunks),
+                url=f"/api/files/{file_id}/content",
+                preview_url=f"/api/files/{file_id}/content",
+                download_url=f"/api/files/{file_id}/download",
                 error=extraction.warning,
             )
             self._metadata_store[file_id] = meta
@@ -266,6 +288,38 @@ class FileService:
     def get_metadata(self, file_id: str) -> Optional[FileMetadata]:
         return self._metadata_store.get(file_id)
 
+    def get_file_path(self, file_id: str) -> Optional[Tuple[str, str, str]]:
+        """
+        Locate the stored physical file for a given file_id.
+        Returns a tuple of (absolute_path, filename, content_type) or None if not found.
+        Includes fallback discovery on disk to survive process restarts.
+        """
+        meta = self._metadata_store.get(file_id)
+        path = self._file_paths.get(file_id)
+
+        # Check in-memory registered path
+        if path and os.path.isfile(path):
+            filename = meta.filename if meta else os.path.basename(path)
+            content_type = meta.content_type if meta else "application/octet-stream"
+            return path, filename, content_type
+
+        # Disk scan fallback: storage/uploads/{file_id}/*
+        file_dir = os.path.join(self.storage_dir, file_id)
+        if os.path.isdir(file_dir):
+            entries = [
+                os.path.join(file_dir, f)
+                for f in os.listdir(file_dir)
+                if os.path.isfile(os.path.join(file_dir, f))
+            ]
+            if entries:
+                found_path = os.path.abspath(entries[0])
+                self._file_paths[file_id] = found_path
+                filename = meta.filename if meta else os.path.basename(found_path)
+                content_type = meta.content_type if meta else "application/octet-stream"
+                return found_path, filename, content_type
+
+        return None
+
     def get_chunks(self, file_ids: List[str]) -> List[DocumentChunk]:
         all_chunks: List[DocumentChunk] = []
         for fid in file_ids:
@@ -280,6 +334,8 @@ class FileService:
             del self._chunks_store[file_id]
         if file_id in self._raw_text_store:
             del self._raw_text_store[file_id]
+        if file_id in self._file_paths:
+            del self._file_paths[file_id]
 
         file_dir = os.path.join(self.storage_dir, file_id)
         if os.path.isdir(file_dir):

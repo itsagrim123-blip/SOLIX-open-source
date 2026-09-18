@@ -349,37 +349,37 @@ button {
 }
 
 .solix-welcome-inner {
-  width: min(720px, 100%);
+  width: min(860px, 100%);
   margin: auto;
 }
 
 .solix-greeting {
-  font-size: 31px;
+  font-size: 32px;
   font-weight: 650;
   letter-spacing: -0.04em;
-  margin: 0 0 7px;
+  margin: 0 0 8px;
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .solix-sub {
   color: var(--muted);
-  font-size: 14px;
-  margin: 0 0 27px;
+  font-size: 15px;
+  margin: 0 0 28px;
   line-height: 1.45;
 }
 
 .solix-suggestions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .solix-suggestion {
-  min-height: 68px;
-  padding: 13px 14px;
+  min-height: 74px;
+  padding: 15px 18px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 12px;
   background: #131518;
   text-align: left;
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -393,21 +393,21 @@ button {
 }
 
 .solix-suggestion-title {
-  font-size: 13px;
-  font-weight: 650;
-  margin-bottom: 5px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
   color: #e5e6e8;
 }
 
 .solix-suggestion-text {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--muted);
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 /* Composer */
 .solix-composer-wrap {
-  width: min(780px, calc(100% - 48px));
+  width: min(860px, calc(100% - 48px));
   margin: 0 auto 16px;
   flex-shrink: 0;
   position: relative;
@@ -417,8 +417,8 @@ button {
 .solix-composer {
   background: #15171a;
   border: 1px solid #303238;
-  border-radius: 12px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22);
   position: relative;
   transition: border-color 0.15s ease;
 }
@@ -430,21 +430,22 @@ button {
 .solix-textarea {
   display: block;
   width: 100%;
-  min-height: 56px;
-  max-height: 180px;
+  min-height: 72px;
+  max-height: 200px;
   resize: none;
   border: 0;
   outline: 0;
-  padding: 14px 16px 6px;
+  padding: 16px 18px 8px;
   background: transparent;
   color: var(--text);
-  font-size: 13px;
-  line-height: 1.5;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
+  font-size: 15px;
+  line-height: 1.55;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
 }
 
 .solix-textarea::placeholder {
+  font-size: 15px;
   color: #73767d;
 }
 
@@ -452,49 +453,52 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 8px 8px 10px;
+  padding: 6px 12px 10px 12px;
 }
 
 .solix-composer-left {
   display: flex;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
 }
 
 .solix-small-btn {
-  height: 29px;
+  height: 38px;
   border: 1px solid var(--border);
   background: #15171a;
-  border-radius: 7px;
-  padding: 0 9px;
-  color: #aeb0b6;
-  font-size: 11px;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #c4c6cb;
+  font-size: 13px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  transition: background 0.15s ease, color 0.15s ease;
+  gap: 6px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .solix-small-btn:hover {
   background: #1b1d21;
   color: #eeeeec;
+  border-color: #3a3d43;
 }
 
 .solix-small-btn.icon {
-  width: 30px;
+  width: 38px;
+  height: 38px;
   padding: 0;
-  font-size: 14px;
+  font-size: 15px;
+  border-radius: 8px;
   justify-content: center;
 }
 
 .solix-send-btn {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 9px;
   background: #eeeeec;
   color: #0d0e10;
-  font-size: 15px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -512,10 +516,10 @@ button {
 }
 
 .solix-stop-btn {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   border: 1px solid rgba(239, 68, 68, 0.4);
-  border-radius: 8px;
+  border-radius: 9px;
   background: rgba(239, 68, 68, 0.15);
   color: #fca5a5;
   display: flex;
@@ -531,23 +535,23 @@ button {
 
 .solix-disclaimer {
   text-align: center;
-  color: #686b72;
-  font-size: 10px;
-  margin-top: 8px;
+  color: #787c84;
+  font-size: 12px;
+  margin-top: 10px;
 }
 
 /* ── Web Search Toggle Button ──────────────────────────────────────────────── */
 .solix-web-search-btn {
-  height: 29px;
+  height: 38px;
   border: 1px solid var(--border);
   background: #15171a;
-  border-radius: 7px;
-  padding: 0 9px;
-  color: #aeb0b6;
-  font-size: 11px;
+  border-radius: 8px;
+  padding: 0 13px;
+  color: #c4c6cb;
+  font-size: 13px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   cursor: pointer;
   flex-shrink: 0;
@@ -560,14 +564,14 @@ button {
 }
 
 .solix-web-search-btn.active {
-  background: rgba(99, 160, 255, 0.08);
-  border-color: rgba(99, 160, 255, 0.35);
+  background: rgba(99, 160, 255, 0.1);
+  border-color: rgba(99, 160, 255, 0.4);
   color: #8bbcff;
 }
 
 .solix-web-search-btn.active:hover {
-  background: rgba(99, 160, 255, 0.14);
-  border-color: rgba(99, 160, 255, 0.5);
+  background: rgba(99, 160, 255, 0.16);
+  border-color: rgba(99, 160, 255, 0.55);
   color: #a8ccff;
 }
 
@@ -616,41 +620,41 @@ button {
 
 /* ── Source Cards Section ───────────────────────────────────────────────────── */
 .solix-sources {
-  margin-top: 14px;
-  padding-top: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
   border-top: 1px solid var(--border);
 }
 
 .solix-sources-label {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  font-weight: 600;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 650;
   color: #8f9299;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .solix-sources-icon {
-  font-size: 12px;
+  font-size: 13px;
   color: #8bbcff;
-  opacity: 0.7;
+  opacity: 0.85;
 }
 
 .solix-sources-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
 }
 
 .solix-source-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 10px 13px;
+  border-radius: 9px;
   border: 1px solid var(--border);
   background: #131518;
   text-decoration: none;
@@ -664,27 +668,27 @@ button {
 }
 
 .solix-source-num {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   font-family: ui-monospace, SFMono-Regular, monospace;
   color: #8bbcff;
-  opacity: 0.85;
+  opacity: 0.9;
   flex-shrink: 0;
-  min-width: 20px;
+  min-width: 22px;
 }
 
 .solix-source-body {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
 
 .solix-source-title {
-  font-size: 11px;
+  font-size: 13.5px;
   font-weight: 500;
-  color: #d8d9dc;
+  color: #dedfe2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -692,8 +696,8 @@ button {
 }
 
 .solix-source-domain {
-  font-size: 10px;
-  color: #686b72;
+  font-size: 12px;
+  color: #787c84;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -705,16 +709,14 @@ button {
   opacity: 0.7;
 }
 
-
-
 /* Message Area */
 .solix-message-stream {
-  width: min(780px, calc(100% - 48px));
+  width: min(860px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 24px 0 16px;
+  padding: 28px 0 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
   min-height: 0;
 }
 
@@ -725,32 +727,33 @@ button {
 }
 
 .solix-user-bubble {
-  max-width: 82%;
+  max-width: 80%;
   background: var(--panel-soft);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 14px;
+  padding: 12px 18px;
   color: var(--text);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
   word-break: break-word;
 }
 
 .solix-assistant-msg {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
 }
 
 .solix-assistant-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   border: 1px solid var(--border);
+  background: #15171a;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 1px;
   overflow: hidden;
 }
 
@@ -763,12 +766,12 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .solix-assistant-name {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 650;
   color: #eeeeec;
 }
 
@@ -794,13 +797,13 @@ button {
 /* Markdown Typography */
 .prose-solix {
   color: #e2e8f0;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.7;
 }
 
 .prose-solix p {
-  margin-top: 0.4rem;
-  margin-bottom: 0.4rem;
+  margin-top: 0.65rem;
+  margin-bottom: 0.65rem;
 }
 
 .prose-solix p:first-child {
@@ -815,47 +818,92 @@ button {
 .prose-solix h2,
 .prose-solix h3,
 .prose-solix h4 {
-  color: #f8fafc;
-  font-weight: 600;
-  margin-top: 1rem;
-  margin-bottom: 0.4rem;
+  color: #ffffff;
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
 
-.prose-solix h1 { font-size: 1.3rem; }
-.prose-solix h2 { font-size: 1.15rem; }
-.prose-solix h3 { font-size: 1.05rem; }
+.prose-solix h1 {
+  font-size: 1.5rem;
+  margin-top: 1.35rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.prose-solix h2 {
+  font-size: 1.25rem;
+  margin-top: 1.15rem;
+  margin-bottom: 0.45rem;
+}
+
+.prose-solix h3 {
+  font-size: 1.125rem;
+  margin-top: 0.95rem;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.prose-solix h4 {
+  font-size: 1rem;
+  margin-top: 0.8rem;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
 
 .prose-solix ul,
 .prose-solix ol {
-  padding-left: 1.25rem;
-  margin-top: 0.4rem;
-  margin-bottom: 0.4rem;
+  padding-left: 1.5rem;
+  margin-top: 0.55rem;
+  margin-bottom: 0.55rem;
 }
 
 .prose-solix ul { list-style-type: disc; }
 .prose-solix ol { list-style-type: decimal; }
 
 .prose-solix li {
-  margin-top: 0.2rem;
-  margin-bottom: 0.2rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.65;
 }
 
 .prose-solix code:not(pre code) {
   background: #1b1d22;
   color: #e2e8f0;
-  padding: 0.15rem 0.35rem;
-  border-radius: 4px;
-  font-size: 0.85em;
+  padding: 0.2rem 0.42rem;
+  border-radius: 5px;
+  font-size: 0.88em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
   border: 1px solid var(--border);
 }
 
 .prose-solix blockquote {
-  border-left: 3px solid #4a4e58;
-  padding-left: 0.85rem;
-  color: var(--muted);
-  margin: 0.6rem 0;
-  font-style: italic;
+  border-left: 3px solid #454952;
+  padding-left: 1rem;
+  color: #a1a4ac;
+  margin: 0.8rem 0;
+  font-style: normal;
+}
+
+.prose-solix table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 14px;
+}
+
+.prose-solix th,
+.prose-solix td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.prose-solix th {
+  background: #14161a;
+  font-weight: 600;
+  color: #dedfe2;
 }
 
 /* Mobile Responsiveness matching solix_minimal.html */
@@ -872,10 +920,16 @@ button {
   .solix-welcome {
     padding: 24px 18px 20px;
   }
+  .solix-welcome-inner {
+    width: 100%;
+  }
   .solix-greeting {
     font-size: 26px;
   }
   .solix-suggestions {
+    grid-template-columns: 1fr;
+  }
+  .solix-sources-list {
     grid-template-columns: 1fr;
   }
   .solix-composer-wrap {
@@ -884,7 +938,21 @@ button {
   }
   .solix-message-stream {
     width: calc(100% - 24px);
+    gap: 20px;
+    padding: 20px 0 16px;
   }
+  .solix-user-bubble {
+    max-width: 90%;
+    font-size: 14.5px;
+    padding: 11px 15px;
+  }
+  .prose-solix {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  .prose-solix h1 { font-size: 1.35rem; }
+  .prose-solix h2 { font-size: 1.18rem; }
+  .prose-solix h3 { font-size: 1.05rem; }
 }
 
 /* Reduced Motion Safety */

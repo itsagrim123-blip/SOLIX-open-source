@@ -212,14 +212,26 @@ export function useChat() {
       return;
     }
 
-    const newItems: AttachedFile[] = fileArray.map((f) => ({
-      id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      name: f.name,
-      size: f.size,
-      type: f.name.split(".").pop()?.toLowerCase() || "file",
-      status: "uploading",
-      progress: 0,
-    }));
+    const newItems: AttachedFile[] = fileArray.map((f) => {
+      const isImg = f.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(f.name);
+      let blobPreview: string | undefined = undefined;
+      if (isImg && typeof window !== "undefined") {
+        try {
+          blobPreview = URL.createObjectURL(f);
+        } catch {
+          // ignore
+        }
+      }
+      return {
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name: f.name,
+        size: f.size,
+        type: isImg ? "image" : (f.name.split(".").pop()?.toLowerCase() || "file"),
+        status: "uploading",
+        progress: 0,
+        previewUrl: blobPreview,
+      };
+    });
 
     setAttachedFiles((prev) => [...prev, ...newItems]);
 
@@ -229,10 +241,19 @@ export function useChat() {
         const result = await api.uploadFile(file, (percent) => {
           setAttachedFiles((prev) =>
             prev.map((item) =>
-              item.id === tempId ? { ...item, progress: percent } : item
+              item.id === tempId
+                ? {
+                    ...item,
+                    progress: percent,
+                    status: percent >= 100 ? "processing" : "uploading",
+                  }
+                : item
             )
           );
         });
+
+        const backendContent = result.url ? api.getFileContentUrl(result.file_id) : undefined;
+        const backendPreview = result.preview_url ? api.getFileContentUrl(result.file_id) : undefined;
 
         setAttachedFiles((prev) =>
           prev.map((item) =>
@@ -246,6 +267,8 @@ export function useChat() {
                   chunkCount: result.chunk_count,
                   error: result.error,
                   progress: 100,
+                  url: backendContent,
+                  previewUrl: item.previewUrl || backendPreview,
                 }
               : item
           )
@@ -268,7 +291,18 @@ export function useChat() {
   }, [attachedFiles.length]);
 
   const removeFile = useCallback(async (fileId: string) => {
-    setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId));
+    setAttachedFiles((prev) => {
+      const target = prev.find((f) => f.id === fileId);
+      if (target?.previewUrl && target.previewUrl.startsWith("blob:") && typeof window !== "undefined") {
+        try {
+          URL.revokeObjectURL(target.previewUrl);
+        } catch {
+          // ignore
+        }
+      }
+      return prev.filter((f) => f.id !== fileId);
+    });
+
     if (!fileId.startsWith("temp-")) {
       try {
         await api.deleteFile(fileId);
@@ -334,6 +368,8 @@ export function useChat() {
         name: f.name,
         size: f.size,
         type: f.type,
+        url: f.url || api.getFileContentUrl(f.id),
+        previewUrl: f.previewUrl || (f.type === "image" ? api.getFileContentUrl(f.id) : undefined),
       }));
       const fileIds = readyFiles.map((f) => f.id);
 

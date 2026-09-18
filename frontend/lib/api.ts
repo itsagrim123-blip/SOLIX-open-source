@@ -114,12 +114,15 @@ export const api = {
     size_bytes: number;
     status: string;
     chunk_count: number;
+    url?: string;
+    preview_url?: string;
+    download_url?: string;
     error?: string;
   }> {
     return new Promise((resolve, reject) => {
       const url = getApiUrl("/api/files/upload");
       const formData = new FormData();
-      formData.append("files", file);
+      formData.append("files", file, file.name);
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", url, true);
@@ -174,10 +177,20 @@ export const api = {
   /** Check processing status of an uploaded file */
   async getFileStatus(
     fileId: string
-  ): Promise<{ file_id: string; status: string; filename: string; chunk_count: number; error?: string }> {
-    return request<{ file_id: string; status: string; filename: string; chunk_count: number; error?: string }>(
+  ): Promise<{ file_id: string; status: string; filename: string; chunk_count: number; error?: string; url?: string; preview_url?: string }> {
+    return request<{ file_id: string; status: string; filename: string; chunk_count: number; error?: string; url?: string; preview_url?: string }>(
       `/api/files/${encodeURIComponent(fileId)}/status`
     );
+  },
+
+  /** Get stable, fully-qualified URL to view/stream an uploaded file */
+  getFileContentUrl(fileId: string): string {
+    return getApiUrl(`/api/files/${encodeURIComponent(fileId)}/content`);
+  },
+
+  /** Get stable, fully-qualified URL to download an uploaded file */
+  getFileDownloadUrl(fileId: string): string {
+    return getApiUrl(`/api/files/${encodeURIComponent(fileId)}/download`);
   },
 };
 

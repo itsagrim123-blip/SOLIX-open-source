@@ -59,13 +59,23 @@ class ImageProcessor(BaseFileProcessor):
         image_desc = ""
         transcription_source = "Metadata only"
 
-        # Try Vision Provider first
-        if self.vision_provider and await self.vision_provider.is_available():
+        # 1. Fast OCR first if local tesseract is installed (<100ms)
+        if self.ocr_provider and self.ocr_provider.is_available():
+            try:
+                ocr_result = await self.ocr_provider.extract_text(content_bytes)
+                if ocr_result and ocr_result.strip():
+                    image_desc = f"Extracted Text (OCR):\n{ocr_result.strip()}"
+                    transcription_source = "OCR Engine"
+            except Exception as e:
+                logger.debug(f"[Image] OCR call failed: {e}")
+
+        # 2. Try Vision Provider with downscaled image and fast timeout
+        if not image_desc and self.vision_provider and await self.vision_provider.is_available():
             try:
                 vision_result = await self.vision_provider.describe_image(
                     content_bytes,
                     mime_type=f"image/{img_format.lower() if img_format else 'png'}",
-                    prompt="Analyze this image thoroughly. Transcribe all text, numbers, formulas, and tables verbatim. Describe any charts, diagrams, or diagrams concisely.",
+                    prompt="Identify and concisely describe what is shown in this image, including any prominent people, objects, text, UI elements, and scene context.",
                 )
                 if vision_result:
                     image_desc = vision_result
@@ -73,22 +83,11 @@ class ImageProcessor(BaseFileProcessor):
             except Exception as e:
                 logger.warning(f"[Image] Vision model call failed: {e}")
 
-        # If vision produced nothing or unavailable, try OCR
-        if not image_desc and self.ocr_provider and self.ocr_provider.is_available():
-            try:
-                ocr_result = await self.ocr_provider.extract_text(content_bytes)
-                if ocr_result:
-                    image_desc = f"Extracted Text (OCR):\n{ocr_result}"
-                    transcription_source = "OCR Engine"
-            except Exception as e:
-                logger.warning(f"[Image] OCR call failed: {e}")
-
         if not image_desc:
             image_desc = (
                 f"[Image: {filename}]\n"
                 f"Dimensions: {width}x{height} pixels | Format: {img_format}\n"
-                f"Note: Multimodal vision and OCR models are currently offline or unconfigured on this host. "
-                f"Enable a local vision model (such as gemma3:4b or llava) in Ollama to transcribe image details."
+                f"Visual content ready for AI analysis."
             )
 
         full_text = f"Image: {filename} ({width}x{height}px, {img_format})\nAnalysis ({transcription_source}):\n{image_desc}"

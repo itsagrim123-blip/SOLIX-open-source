@@ -61,14 +61,26 @@ class OllamaVisionProvider(BaseVisionProvider):
         mime_type: str = "image/png",
         prompt: Optional[str] = None,
     ) -> str:
+        # Downscale large images (e.g. screenshots) to max 768px JPEG for fast visual encoding
+        try:
+            import io
+            from PIL import Image
+            with Image.open(io.BytesIO(image_bytes)) as pil_img:
+                if pil_img.width > 768 or pil_img.height > 768 or pil_img.format != "JPEG":
+                    pil_img.thumbnail((768, 768), Image.Resampling.LANCZOS)
+                    buf = io.BytesIO()
+                    pil_img.convert("RGB").save(buf, format="JPEG", quality=80)
+                    image_bytes = buf.getvalue()
+        except Exception as exc:
+            logger.debug(f"[Vision] Could not optimize image before inference: {exc}")
+
         b64_img = base64.b64encode(image_bytes).decode("utf-8")
 
         system_instruction = (
             prompt
             or (
-                "You are an expert document and image analyzer. Transcribe all text, numbers, formulas, "
-                "labels, and tables visible in this image verbatim. If there are diagrams, charts, or visual elements, "
-                "provide a clear and concise structured summary of what they illustrate."
+                "Identify and concisely describe what is shown in this image, "
+                "including any prominent people, objects, text, UI elements, and scene context."
             )
         )
 
@@ -85,7 +97,7 @@ class OllamaVisionProvider(BaseVisionProvider):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=15.0) as client:
                 res = await client.post(f"{self.base_url}/api/chat", json=payload)
                 if res.status_code == 200:
                     data = res.json()

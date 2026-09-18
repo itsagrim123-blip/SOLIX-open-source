@@ -33,7 +33,7 @@ export const SourceCards: React.FC<SourceCardsProps> = ({ sources }) => {
               <span className="solix-source-title">{src.title}</span>
               <span className="solix-source-domain">{src.domain}</span>
             </span>
-            <ExternalLink className="solix-source-ext w-2.5 h-2.5 flex-shrink-0" />
+            <ExternalLink className="solix-source-ext w-3.5 h-3.5 flex-shrink-0" />
           </a>
         ))}
       </div>

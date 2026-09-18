@@ -401,13 +401,50 @@ async def run_file_tests():
         # Verify 404 after deletion
         res_after = await client.get(f"/api/files/{txt_id}")
         assert res_after.status_code == 404
+        # Verify /content also returns 404
+        res_content_after = await client.get(f"/api/files/{txt_id}/content")
+        assert res_content_after.status_code == 404
         print(f"File {txt_id} successfully deleted and verified 404.")
 
+        # ── TEST 19: File Content Retrieval & Inline Preview ───────────────────
+        print("\n--- TEST 19: File Content Retrieval, Preview & Download ---")
+        # 19a: Image preview
+        res_img_content = await client.get(f"/api/files/{img_id}/content")
+        assert res_img_content.status_code == 200
+        assert "image/png" in res_img_content.headers.get("content-type", "")
+        assert len(res_img_content.content) == len(img_bytes)
+        assert res_img_content.content == img_bytes
+
+        # 19b: Preview alias
+        res_img_prev = await client.get(f"/api/files/{img_id}/preview")
+        assert res_img_prev.status_code == 200
+        assert res_img_prev.content == img_bytes
+
+        # 19c: Download endpoint
+        res_img_dl = await client.get(f"/api/files/{img_id}/download")
+        assert res_img_dl.status_code == 200
+        assert "attachment" in res_img_dl.headers.get("content-disposition", "")
+        print(f"Verified content, preview, and download for image ID {img_id} (size: {len(res_img_content.content)} bytes)")
+
+        # ── TEST 20: Deduplication File Content Accessibility ──────────────────
+        print("\n--- TEST 20: Deduplication File Content Accessibility ---")
+        dup_upload = ("duplicate_chart.png", io.BytesIO(img_bytes), "image/png")
+        res_dup = await client.post("/api/files/upload", files={"files": dup_upload})
+        assert res_dup.status_code == 200
+        dup_id = res_dup.json()[0]["file_id"]
+        assert dup_id != img_id
+        # Retrieve content for duplicate file_id
+        res_dup_content = await client.get(f"/api/files/{dup_id}/content")
+        assert res_dup_content.status_code == 200
+        assert res_dup_content.content == img_bytes
+        print(f"Verified deduplicated content access for original {img_id} and duplicate {dup_id}")
+
     print("\n==================================================================")
-    print("ALL 18 FILE INTELLIGENCE TESTS PASSED FLAWLESSLY!")
+    print("ALL 20 FILE INTELLIGENCE TESTS PASSED FLAWLESSLY!")
     print("==================================================================")
 
 
 if __name__ == "__main__":
     asyncio.run(run_file_tests())
+
 

@@ -134,7 +134,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = "auto";
-    const newHeight = Math.min(Math.max(textarea.scrollHeight, 56), 180);
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, 72), 200);
     textarea.style.height = `${newHeight}px`;
   };
 
@@ -277,7 +277,18 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
                       : "bg-[#141518] border-[#292b30] text-[#a5a7ad]"
                   }`}
                 >
-                  {getFileIcon(file.type, file.name)}
+                  {file.previewUrl && (file.type === "image" || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name)) ? (
+                    <div className="relative w-7 h-7 rounded overflow-hidden flex-shrink-0 bg-black/40 border border-white/10">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={file.previewUrl}
+                        alt={file.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    getFileIcon(file.type, file.name)
+                  )}
 
                   <div className="flex flex-col min-w-0 max-w-[130px] sm:max-w-[190px]">
                     <span className="font-medium text-[11px] truncate text-[#eeeeec]" title={file.name}>
@@ -292,7 +303,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
                         <span className="text-emerald-400">✓ Ready · {formatFileSize(file.size)}</span>
                       ) : (
                         <span className="text-rose-400 truncate" title={file.error || "Failed"}>
-                          ⚠ {file.error || "Failed"}
+                          ⚠ {file.error === "Not Found" ? "Backend not found (restart server)" : (file.error || "Failed")}
                         </span>
                       )}
                     </span>
@@ -352,14 +363,14 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
               >
                 {isSwitchingModel ? (
                   <>
-                    <Loader2 className="w-3 h-3 animate-spin text-cyan-400 flex-shrink-0" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400 flex-shrink-0" />
                     <span className="truncate max-w-[120px]">
                       {getModelLabel(switchingModelTarget || currentModel)}
                     </span>
                   </>
                 ) : modelSwitchSuccess ? (
                   <>
-                    <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                    <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                     <span className="truncate max-w-[120px] text-emerald-400">
                       {getModelLabel(modelSwitchSuccess)}
                     </span>
@@ -369,7 +380,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
                     <span className="truncate max-w-[140px]">
                       {getModelLabel(currentModel)}
                     </span>
-                    <ChevronDown className="w-3 h-3 opacity-60 ml-0.5 flex-shrink-0" />
+                    <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5 flex-shrink-0" />
                   </>
                 )}
               </button>
@@ -431,8 +442,8 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
               aria-label="Toggle Web Search"
               aria-pressed={webSearchEnabled}
             >
-              <Globe className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="solix-web-search-label">
+              <Globe className="w-4 h-4 flex-shrink-0" />
+              <span className="solix-web-search-label font-medium">
                 {webSearchEnabled ? "Web Search ✓" : "Web Search"}
               </span>
             </button>
@@ -445,7 +456,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
               title="Attach documents, code, images, spreadsheets"
               aria-label="Attach file"
             >
-              <Paperclip className="w-3.5 h-3.5" />
+              <Paperclip className="w-4 h-4" />
             </button>
 
             {/* Tools Button */}
@@ -455,7 +466,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
               title="Assistant capabilities"
               aria-label="Tools"
             >
-              <Sliders className="w-3.5 h-3.5" />
+              <Sliders className="w-4 h-4" />
             </button>
           </div>
 
@@ -469,7 +480,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
                 title="Stop generation"
                 aria-label="Stop generation"
               >
-                <Square className="w-3.5 h-3.5 fill-current" />
+                <Square className="w-4 h-4 fill-current" />
               </button>
             ) : (
               <button
@@ -480,7 +491,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
                 title="Send message (Enter)"
                 aria-label="Send message"
               >
-                <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                <ArrowUp className="w-4.5 h-4.5 stroke-[2.5]" />
               </button>
             )}
           </div>
