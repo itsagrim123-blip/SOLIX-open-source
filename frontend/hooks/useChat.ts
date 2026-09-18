@@ -8,6 +8,7 @@ import {
   ConversationSummary,
   Message,
   ModelInfo,
+  SearchSource,
 } from "@/types/chat";
 
 export type BackendStatus = "checking" | "online" | "offline";
@@ -26,6 +27,13 @@ export function useChat() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
   const [isProviderConnected, setIsProviderConnected] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Web Search state
+  const [webSearchEnabled, setWebSearchEnabled] = useState<boolean>(false);
+  // Live search progress for UI indicators
+  const [webSearchStatus, setWebSearchStatus] = useState<
+    "idle" | "searching" | "reading" | "generating"
+  >("idle");
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -96,6 +104,7 @@ export function useChat() {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       setIsGenerating(false);
+      setWebSearchStatus("idle");
     }
 
     setActiveConversationId(id);
@@ -121,6 +130,7 @@ export function useChat() {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       setIsGenerating(false);
+      setWebSearchStatus("idle");
     }
     setActiveConversationId(null);
     setMessages([]);
@@ -179,6 +189,12 @@ export function useChat() {
       abortControllerRef.current = null;
     }
     setIsGenerating(false);
+    setWebSearchStatus("idle");
+  }, []);
+
+  // Toggle web search on/off
+  const toggleWebSearch = useCallback(() => {
+    setWebSearchEnabled((prev) => !prev);
   }, []);
 
   // Switch AI model with real backend confirmation and VRAM allocation
@@ -219,6 +235,7 @@ export function useChat() {
     ) => {
       if (!content.trim() || isGenerating || isSwitchingModel) return;
 
+      const isWebSearch = webSearchEnabled;
       const userMessageId = `user-${Date.now()}`;
       const assistantMsgId = `assistant-${Date.now()}`;
       const now = new Date().toISOString();
@@ -239,12 +256,15 @@ export function useChat() {
         role: "assistant",
         content: "",
         timestamp: now,
+        webSearch: isWebSearch,
+        sources: undefined,
       };
 
       // Optimistically append messages to UI
       setMessages((prev) => [...prev, userMessage, placeholderAssistantMsg]);
       setIsGenerating(true);
       setError(null);
+      if (isWebSearch) setWebSearchStatus("searching");
 
       // If activeConversationId is already present, save user message to IndexedDB immediately
       if (targetConvId) {
@@ -256,6 +276,7 @@ export function useChat() {
       abortControllerRef.current = controller;
 
       let accumulatedContent = "";
+      let finalSources: SearchSource[] | undefined = undefined;
 
       await streamChat({
         message: content.trim(),
@@ -263,7 +284,9 @@ export function useChat() {
         model: currentModel,
         systemPrompt: options?.systemPrompt,
         temperature: options?.temperature,
+        webSearch: isWebSearch,
         signal: controller.signal,
+
         onStart: async (data) => {
           if (!targetConvId && data.conversation_id) {
             targetConvId = data.conversation_id;
@@ -278,20 +301,56 @@ export function useChat() {
                 : content.trim();
 
             // Save conversation entry to local IndexedDB
-            const newConv = await conversationStore.createConversation(
+            await conversationStore.createConversation(
               data.conversation_id,
               chatTitle
             );
 
             // Update user message with assigned conversation_id and save to IndexedDB
             userMessage.conversation_id = data.conversation_id;
+            placeholderAssistantMsg.conversation_id = data.conversation_id;
             await conversationStore.addMessage(userMessage);
 
             // Refresh conversation list in sidebar
-            setConversations((prev) => [newConv, ...prev.filter((c) => c.id !== data.conversation_id)]);
+            setConversations((prev) => [
+              {
+                id: data.conversation_id,
+                title: chatTitle,
+                created_at: now,
+                updated_at: now,
+                message_count: 1,
+              },
+              ...prev.filter((c) => c.id !== data.conversation_id),
+            ]);
           }
         },
+
+        onSearchStarted: () => {
+          setWebSearchStatus("searching");
+        },
+
+        onSearchResults: ({ count }) => {
+          // Switch indicator to "reading" when results come back
+          if (count > 0) setWebSearchStatus("reading");
+        },
+
+        onSources: (sources) => {
+          // Store authoritative sources from backend
+          finalSources = sources;
+          // Update the placeholder message with sources so they show immediately
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? { ...msg, sources }
+                : msg
+            )
+          );
+        },
+
         onToken: (token) => {
+          if (isWebSearch && webSearchStatus !== "generating") {
+            setWebSearchStatus("generating");
+          }
           accumulatedContent += token;
           setMessages((prev) =>
             prev.map((msg) =>
@@ -301,9 +360,16 @@ export function useChat() {
             )
           );
         },
+
         onDone: async (data) => {
           setIsGenerating(false);
+          setWebSearchStatus("idle");
           abortControllerRef.current = null;
+
+          // Sources may arrive via onSources or inside done payload
+          if (data.sources && data.sources.length > 0) {
+            finalSources = data.sources;
+          }
 
           const finalAssistantContent =
             accumulatedContent ||
@@ -315,9 +381,11 @@ export function useChat() {
             role: "assistant",
             content: finalAssistantContent,
             timestamp: new Date().toISOString(),
+            webSearch: isWebSearch,
+            sources: finalSources,
           };
 
-          // Save final assistant message to local IndexedDB
+          // Save final assistant message to local IndexedDB (includes sources)
           if (finalAssistantMsg.conversation_id) {
             await conversationStore.addMessage(finalAssistantMsg);
             const freshList = await conversationStore.listConversations();
@@ -333,8 +401,10 @@ export function useChat() {
             })
           );
         },
+
         onError: async (err) => {
           setIsGenerating(false);
+          setWebSearchStatus("idle");
           abortControllerRef.current = null;
           setError(err);
 
@@ -365,7 +435,7 @@ export function useChat() {
         },
       });
     },
-    [activeConversationId, currentModel, isGenerating, isSwitchingModel]
+    [activeConversationId, currentModel, isGenerating, isSwitchingModel, webSearchEnabled, webSearchStatus]
   );
 
   return {
@@ -393,5 +463,9 @@ export function useChat() {
     sendMessage,
     setCurrentModel,
     refreshData,
+    // Web Search
+    webSearchEnabled,
+    toggleWebSearch,
+    webSearchStatus,
   };
 }

@@ -9,6 +9,7 @@ from app.models.schemas import ChatRequest
 from app.providers.factory import get_active_provider
 from app.providers.ollama import ModelNotFoundError, OllamaConnectionError
 from app.services import conversation_service
+from app.services.web_search_service import WebSearchService
 
 logger = logging.getLogger("solix.api.chat")
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -19,7 +20,12 @@ async def send_chat_message(
     payload: ChatRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Process a chat interaction and stream back the response using Server-Sent Events (SSE)."""
+    """Process a chat interaction and stream back the response using Server-Sent Events (SSE).
+
+    Routing:
+      - web_search=False (default): existing Ollama path using the user-selected model.
+      - web_search=True: WebSearchService pipeline using OLLAMA_WEB_MODEL (qwen3:8b).
+    """
     user_prompt = payload.message.strip()
     if not user_prompt:
         raise HTTPException(
@@ -61,7 +67,74 @@ async def send_chat_message(
     if not history or history[-1].get("content") != user_prompt:
         history.append({"role": "user", "content": user_prompt})
 
-    # 4. Resolve AI provider
+    # ── Web Search path ────────────────────────────────────────────────────────
+    if payload.web_search:
+        logger.info(f"[Chat] Web Search mode — conv={conv_id}")
+
+        async def web_search_sse_stream() -> AsyncGenerator[str, None]:
+            # Emit start event first so the frontend knows the conv_id
+            start_data = {
+                "type": "start",
+                "conversation_id": conv_id,
+                "title": current_title,
+                "provider": "ollama",
+                "provider_connected": True,
+                "web_search": True,
+            }
+            yield f"data: {json.dumps(start_data)}\n\n"
+
+            full_response = ""
+            sources = []
+
+            try:
+                service = WebSearchService()
+            except EnvironmentError as exc:
+                # TAVILY_API_KEY missing
+                logger.error(f"[Chat][WebSearch] Config error: {exc}")
+                yield f"data: {json.dumps({'type': 'error', 'error': str(exc), 'conversation_id': conv_id})}\n\n"
+                return
+
+            async for sse_line in service.run(
+                query=user_prompt,
+                conversation_id=conv_id,
+                history=history,
+                temperature=payload.temperature,
+            ):
+                # Capture done payload to persist to DB
+                if sse_line.startswith("data: "):
+                    try:
+                        evt = json.loads(sse_line[6:])
+                        if evt.get("type") == "done":
+                            full_response = evt.get("full_content", "")
+                            sources = evt.get("sources", [])
+                    except Exception:
+                        pass
+
+                yield sse_line
+
+            # Persist assistant message + source metadata to backend DB
+            if full_response:
+                async with AsyncSessionLocal() as save_db:
+                    await conversation_service.add_message(
+                        save_db,
+                        conversation_id=conv_id,
+                        role="assistant",
+                        content=full_response,
+                    )
+
+            logger.info(f"[Chat][WebSearch] Done — {len(sources)} sources persisted")
+
+        return StreamingResponse(
+            web_search_sse_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    # ── Normal chat path (unchanged) ──────────────────────────────────────────
     provider, is_connected = await get_active_provider()
 
     async def sse_event_stream() -> AsyncGenerator[str, None]:

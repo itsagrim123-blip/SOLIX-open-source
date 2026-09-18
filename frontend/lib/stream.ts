@@ -1,5 +1,5 @@
 import { API_BASE_URL, getApiUrl } from "@/lib/config";
-import { StreamPayload } from "@/types/chat";
+import { SearchSource, StreamPayload } from "@/types/chat";
 
 export interface StreamChatParams {
   message: string;
@@ -7,15 +7,25 @@ export interface StreamChatParams {
   model?: string;
   systemPrompt?: string;
   temperature?: number;
+  webSearch?: boolean;
   signal?: AbortSignal;
   onStart?: (data: { conversation_id: string; title: string; provider?: string }) => void;
   onToken?: (token: string) => void;
-  onDone?: (data: { conversation_id: string; message_id?: string; full_content?: string }) => void;
+  onDone?: (data: {
+    conversation_id: string;
+    message_id?: string;
+    full_content?: string;
+    sources?: SearchSource[];
+  }) => void;
   onError?: (error: string) => void;
+  onSearchStarted?: (data: { query: string }) => void;
+  onSearchResults?: (data: { count: number }) => void;
+  onSources?: (sources: SearchSource[]) => void;
 }
 
 /**
  * Stream conversational responses from POST /api/chat via Server-Sent Events (SSE).
+ * Supports both normal chat and web search mode.
  */
 export async function streamChat({
   message,
@@ -23,11 +33,15 @@ export async function streamChat({
   model,
   systemPrompt,
   temperature,
+  webSearch = false,
   signal,
   onStart,
   onToken,
   onDone,
   onError,
+  onSearchStarted,
+  onSearchResults,
+  onSources,
 }: StreamChatParams): Promise<void> {
   const url = getApiUrl("/api/chat");
 
@@ -44,6 +58,7 @@ export async function streamChat({
         model: model || null,
         system_prompt: systemPrompt || null,
         temperature: temperature ?? 0.7,
+        web_search: webSearch,
       }),
       signal,
     });
@@ -102,10 +117,20 @@ export async function streamChat({
                 conversation_id: payload.conversation_id,
                 message_id: payload.message_id,
                 full_content: payload.full_content,
+                sources: payload.sources,
               });
               break;
             case "error":
               onError?.(payload.error);
+              break;
+            case "search_started":
+              onSearchStarted?.({ query: payload.query });
+              break;
+            case "search_results":
+              onSearchResults?.({ count: payload.count });
+              break;
+            case "sources":
+              onSources?.(payload.sources);
               break;
           }
         } catch (jsonErr) {
@@ -125,4 +150,3 @@ export async function streamChat({
     onError?.(message);
   }
 }
-

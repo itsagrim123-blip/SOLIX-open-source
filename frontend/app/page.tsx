@@ -32,6 +32,9 @@ export default function SolixApp() {
     clearAllLocalChats,
     stopGenerating,
     sendMessage,
+    webSearchEnabled,
+    toggleWebSearch,
+    webSearchStatus,
   } = useChat();
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -119,6 +122,9 @@ export default function SolixApp() {
             switchingModelTarget={switchingModelTarget}
             modelSwitchSuccess={modelSwitchSuccess}
             initialValue={composerPrefill}
+            webSearchEnabled={webSearchEnabled}
+            onToggleWebSearch={toggleWebSearch}
+            webSearchStatus={webSearchStatus}
           />
         </section>
       </main>

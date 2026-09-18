@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Globe } from "lucide-react";
 import { Message } from "@/types/chat";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { SolixLogo } from "@/components/brand/SolixLogo";
+import { SourceCards } from "./SourceCards";
 
 interface MessageItemProps {
   message: Message;
@@ -70,6 +71,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   }
 
   // Assistant Message
+  const hasSources = message.sources && message.sources.length > 0;
+
   return (
     <div className="solix-assistant-msg animate-fade-in group">
       {/* Subtle Avatar */}
@@ -82,6 +85,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         <div className="solix-assistant-header">
           <div className="flex items-center gap-2">
             <span className="solix-assistant-name">Solix</span>
+            {message.webSearch && (
+              <span className="solix-web-search-badge" title="Generated with web search">
+                <Globe className="w-2.5 h-2.5" />
+                Web
+              </span>
+            )}
             {formattedTime && (
               <span className="text-[10px] text-[#666970] font-mono">
                 {formattedTime}
@@ -129,6 +138,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             </div>
           )}
         </div>
+
+        {/* Source Cards — shown after content, only for web search messages */}
+        {hasSources && <SourceCards sources={message.sources!} />}
       </div>
     </div>
   );

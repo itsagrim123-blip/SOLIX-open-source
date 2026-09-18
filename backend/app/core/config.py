@@ -13,7 +13,13 @@ class Settings(BaseSettings):
     # Ollama AI Configuration
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen3:1.7b"
+    OLLAMA_WEB_MODEL: str = "qwen3:8b"
     OLLAMA_TIMEOUT_SECONDS: float = 120.0
+
+    # Tavily Web Search Configuration
+    TAVILY_API_KEY: Optional[str] = None
+    TAVILY_MAX_RESULTS: int = 8
+    TAVILY_SEARCH_TIMEOUT: float = 15.0
 
     # Database Configuration (Defaults to SQLite async, easily swapped for PostgreSQL)
     DATABASE_URL: str = "sqlite+aiosqlite:///./solix.db"

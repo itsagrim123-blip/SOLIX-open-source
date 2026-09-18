@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, ChevronDown, Loader2, Paperclip, Sliders, Square } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Globe, Loader2, Paperclip, Sliders, Square } from "lucide-react";
 import { ModelInfo } from "@/types/chat";
 import { getModelBadge, getModelDescription, getModelLabel } from "@/lib/models";
 
@@ -16,6 +16,9 @@ interface MessageComposerProps {
   switchingModelTarget?: string | null;
   modelSwitchSuccess?: string | null;
   initialValue?: string;
+  webSearchEnabled?: boolean;
+  onToggleWebSearch?: () => void;
+  webSearchStatus?: "idle" | "searching" | "reading" | "generating";
 }
 
 export const MessageComposer: React.FC<MessageComposerProps> = ({
@@ -29,6 +32,9 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   switchingModelTarget = null,
   modelSwitchSuccess = null,
   initialValue = "",
+  webSearchEnabled = false,
+  onToggleWebSearch,
+  webSearchStatus = "idle",
 }) => {
   const [content, setContent] = useState(initialValue);
   const [showModelPicker, setShowModelPicker] = useState(false);
@@ -89,15 +95,34 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
     }
   };
 
+  // Dynamic search status label
+  const searchStatusLabel = (() => {
+    if (!isGenerating || !webSearchEnabled) return null;
+    switch (webSearchStatus) {
+      case "searching": return "Searching the web…";
+      case "reading": return "Reading sources…";
+      case "generating": return "Generating answer…";
+      default: return null;
+    }
+  })();
+
   return (
     <div className="solix-composer-wrap">
+      {/* Web search status indicator — lives in the message area, never shifts layout */}
+      {searchStatusLabel && (
+        <div className="solix-search-status">
+          <span className="solix-search-spinner" aria-hidden="true" />
+          <span>{searchStatusLabel}</span>
+        </div>
+      )}
+
       <div className="solix-composer">
         <textarea
           ref={textareaRef}
           value={content}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder="Message Solix..."
+          placeholder={webSearchEnabled ? "Search the web with Solix…" : "Message Solix…"}
           rows={1}
           className="solix-textarea"
           aria-label="Chat input message"
@@ -187,6 +212,21 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
               )}
             </div>
 
+            {/* Web Search Toggle */}
+            <button
+              type="button"
+              onClick={onToggleWebSearch}
+              className={`solix-web-search-btn ${webSearchEnabled ? "active" : ""}`}
+              title={webSearchEnabled ? "Web Search ON — click to disable" : "Enable Web Search (uses Qwen 3 8B)"}
+              aria-label="Toggle Web Search"
+              aria-pressed={webSearchEnabled}
+            >
+              <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="solix-web-search-label">
+                {webSearchEnabled ? "Web Search ✓" : "Web Search"}
+              </span>
+            </button>
+
             {/* Attachment Button */}
             <button
               type="button"
@@ -238,7 +278,9 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
 
       {/* Subtle Disclaimer */}
       <div className="solix-disclaimer">
-        Solix can make mistakes. Verify important information.
+        {webSearchEnabled
+          ? "Web Search · Qwen 3 8B · Sources verified by backend"
+          : "Solix can make mistakes. Verify important information."}
       </div>
     </div>
   );

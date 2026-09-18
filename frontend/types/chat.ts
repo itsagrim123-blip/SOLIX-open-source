@@ -1,11 +1,23 @@
 export type Role = "user" | "assistant" | "system";
 
+export interface SearchSource {
+  id: number;
+  title: string;
+  url: string;
+  domain: string;
+  snippet?: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
   role: Role;
   content: string;
   timestamp: string;
+  /** Whether this message was generated with Web Search enabled */
+  webSearch?: boolean;
+  /** Source citations for web-search assistant messages */
+  sources?: SearchSource[];
 }
 
 export interface ConversationSummary {
@@ -51,12 +63,15 @@ export interface HealthResponse {
   model_available?: boolean;
 }
 
+// ── SSE Payload types ─────────────────────────────────────────────────────────
+
 export interface StreamStartPayload {
   type: "start";
   conversation_id: string;
   title: string;
   provider?: string;
   provider_connected?: boolean;
+  web_search?: boolean;
 }
 
 export interface StreamTokenPayload {
@@ -69,6 +84,7 @@ export interface StreamDonePayload {
   conversation_id: string;
   message_id?: string;
   full_content?: string;
+  sources?: SearchSource[];
 }
 
 export interface StreamErrorPayload {
@@ -77,9 +93,29 @@ export interface StreamErrorPayload {
   conversation_id?: string;
 }
 
+export interface StreamSearchStartedPayload {
+  type: "search_started";
+  query: string;
+  conversation_id: string;
+}
+
+export interface StreamSearchResultsPayload {
+  type: "search_results";
+  count: number;
+  conversation_id: string;
+}
+
+export interface StreamSourcesPayload {
+  type: "sources";
+  sources: SearchSource[];
+  conversation_id: string;
+}
+
 export type StreamPayload =
   | StreamStartPayload
   | StreamTokenPayload
   | StreamDonePayload
-  | StreamErrorPayload;
-
+  | StreamErrorPayload
+  | StreamSearchStartedPayload
+  | StreamSearchResultsPayload
+  | StreamSourcesPayload;

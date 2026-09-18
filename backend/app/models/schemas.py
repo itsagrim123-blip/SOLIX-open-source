@@ -46,6 +46,15 @@ class UpdateConversationRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
 
 
+class SearchSource(BaseModel):
+    """A single web search result source."""
+    id: int
+    title: str
+    url: str
+    domain: str
+    snippet: Optional[str] = None
+
+
 class ChatRequest(BaseModel):
     """Payload for conversational interaction."""
     message: str = Field(..., min_length=1, description="User prompt text")
@@ -56,6 +65,7 @@ class ChatRequest(BaseModel):
     model: Optional[str] = Field(default=None, description="Requested AI model identifier")
     system_prompt: Optional[str] = Field(default=None, description="Optional custom system prompt")
     temperature: Optional[float] = Field(default=0.7, ge=0.0, le=2.0)
+    web_search: bool = Field(default=False, description="If true, use Tavily web search + OLLAMA_WEB_MODEL")
 
 
 class ModelInfo(BaseModel):
