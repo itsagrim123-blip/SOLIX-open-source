@@ -30,29 +30,21 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   modelSwitchSuccess = null,
   initialValue = "",
 }) => {
-  const [input, setInput] = useState(initialValue);
+  const [content, setContent] = useState(initialValue);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelPickerRef = useRef<HTMLDivElement>(null);
 
-  // Sync initialValue if provided externally (e.g. from suggestion card)
+  // Sync initialValue changes
   useEffect(() => {
     if (initialValue) {
-      setInput(initialValue);
+      setContent(initialValue);
       if (textareaRef.current) {
         textareaRef.current.focus();
+        adjustHeight();
       }
     }
   }, [initialValue]);
-
-  // Auto-resize textarea height (min 1 line, max ~6-8 lines)
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = "auto";
-    const nextHeight = Math.min(textarea.scrollHeight, 160);
-    textarea.style.height = `${Math.max(nextHeight, 28)}px`;
-  }, [input]);
 
   // Close model picker on click outside
   useEffect(() => {
@@ -68,6 +60,19 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const adjustHeight = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, 56), 180);
+    textarea.style.height = `${newHeight}px`;
+  };
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    adjustHeight();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -76,184 +81,164 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   };
 
   const handleSubmit = () => {
-    const trimmed = input.trim();
-    if (!trimmed || isGenerating || isSwitchingModel) return;
-    onSendMessage(trimmed);
-    setInput("");
+    if (!content.trim() || isGenerating || isSwitchingModel) return;
+    onSendMessage(content.trim());
+    setContent("");
     if (textareaRef.current) {
-      textareaRef.current.style.height = "28px";
+      textareaRef.current.style.height = "auto";
     }
   };
 
-  const isSendDisabled = !input.trim() || isGenerating || isSwitchingModel;
-
   return (
-    <div className="composer-wrap">
-      <div className="composer-box">
-        {/* Text Input Area */}
+    <div className="solix-composer-wrap">
+      <div className="solix-composer">
         <textarea
           ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          value={content}
+          onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Solix anything... (Shift+Enter for newline)"
+          placeholder="Message Solix..."
           rows={1}
-          className="composer-textarea text-sm sm:text-[15px] leading-relaxed"
-          style={{ minHeight: "28px", fontSize: "15px" }}
+          className="solix-textarea"
           aria-label="Chat input message"
         />
 
-        {/* Action Controls Toolbar */}
-        <div className="composer-bottom">
-          {/* Model Selector Pill */}
-          <div className="relative" ref={modelPickerRef}>
+        <div className="solix-composer-bar">
+          <div className="solix-composer-left">
+            {/* Model Selector Pill */}
+            <div className="relative" ref={modelPickerRef}>
+              <button
+                type="button"
+                onClick={() => !isSwitchingModel && setShowModelPicker(!showModelPicker)}
+                className="solix-small-btn cursor-pointer active:scale-98"
+                aria-label="Select AI Model"
+                title="Change active model"
+                disabled={isSwitchingModel}
+              >
+                {isSwitchingModel ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin text-cyan-400 flex-shrink-0" />
+                    <span className="truncate max-w-[120px]">
+                      {getModelLabel(switchingModelTarget || currentModel)}
+                    </span>
+                  </>
+                ) : modelSwitchSuccess ? (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                    <span className="truncate max-w-[120px] text-emerald-400">
+                      {getModelLabel(modelSwitchSuccess)}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="truncate max-w-[140px]">
+                      {getModelLabel(currentModel)}
+                    </span>
+                    <ChevronDown className="w-3 h-3 opacity-60 ml-0.5 flex-shrink-0" />
+                  </>
+                )}
+              </button>
+
+              {/* Model Dropdown Menu */}
+              {showModelPicker && (
+                <div className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 rounded-xl bg-[#141518] border border-[#292b30] p-2 z-50 animate-fade-in shadow-2xl">
+                  <div className="px-2 py-1 text-[10px] font-bold text-[#666970] uppercase tracking-wider flex items-center justify-between">
+                    <span>Available Models</span>
+                    <span className="text-[10px] font-mono text-[#8f9299]">
+                      {models.length} ready
+                    </span>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto space-y-1 mt-1 pr-0.5">
+                    {models.map((m) => {
+                      const isSelected = currentModel === m.id;
+                      const label = getModelLabel(m.id);
+                      const desc = getModelDescription(m.id);
+                      const badge = getModelBadge(m.id);
+
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            onSelectModel(m.id);
+                            setShowModelPicker(false);
+                          }}
+                          className={`w-full text-left p-2 rounded-lg text-xs flex flex-col gap-0.5 transition-all cursor-pointer border ${
+                            isSelected
+                              ? "bg-[#191a1e] border-[#3a3d43] text-white"
+                              : "border-transparent text-[#a5a7ad] hover:bg-[#1a1c20] hover:text-[#eeeeec]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-semibold text-xs text-[#eeeeec]">
+                              {label}
+                            </span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#1f2126] text-[#8f9299] border border-[#292b30]">
+                              {badge}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-[#8f9299] font-normal leading-tight line-clamp-1">
+                            {desc}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Attachment Button */}
             <button
               type="button"
-              onClick={() => !isSwitchingModel && setShowModelPicker(!showModelPicker)}
-              className={`composer-pill !py-1 !px-2.5 !text-[11px] sm:!text-xs active:scale-95 transition-all ${
-                isSwitchingModel
-                  ? "border-cyan-400/40 text-cyan-300 cursor-wait bg-cyan-500/10"
-                  : modelSwitchSuccess
-                  ? "border-emerald-400/40 text-emerald-300 bg-emerald-500/10"
-                  : ""
-              }`}
-              aria-label="Select AI Model"
-              title="Change active model"
-              disabled={isSwitchingModel}
+              className="solix-small-btn icon active:scale-95"
+              title="Attach context (Optional)"
+              aria-label="Attachment"
             >
-              {isSwitchingModel ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin text-cyan-400 flex-shrink-0" />
-                  <span className="truncate max-w-[130px]">
-                    {getModelLabel(switchingModelTarget || currentModel)}
-                  </span>
-                </>
-              ) : modelSwitchSuccess ? (
-                <>
-                  <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-                  <span className="truncate max-w-[130px]">
-                    {getModelLabel(modelSwitchSuccess)}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="truncate max-w-[130px] sm:max-w-[170px]">
-                    {getModelLabel(currentModel)}
-                  </span>
-                  <ChevronDown className="w-3 h-3 opacity-60 ml-0.5 flex-shrink-0" />
-                </>
-              )}
+              <Paperclip className="w-3.5 h-3.5" />
             </button>
 
-            {/* Model Dropdown Menu */}
-            {showModelPicker && (
-              <div className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 rounded-2xl bg-[#080d1a] border border-white/15 p-2.5 z-50 animate-fade-in shadow-2xl shadow-black/80">
-                <div className="px-2 py-1 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                  <span>Switch AI Model</span>
-                  <span className="text-[10px] font-mono text-cyan-400/80">{models.length} ready</span>
-                </div>
-                <div className="max-h-60 overflow-y-auto space-y-1.5 mt-1.5 pr-0.5">
-                  {models.map((m) => {
-                    const isSelected = currentModel === m.id;
-                    const label = getModelLabel(m.id);
-                    const desc = getModelDescription(m.id);
-                    const badge = getModelBadge(m.id);
-
-                    return (
-                      <button
-                        key={m.id}
-                        onClick={() => {
-                          onSelectModel(m.id);
-                          setShowModelPicker(false);
-                        }}
-                        className={`w-full text-left p-2.5 rounded-xl text-xs flex flex-col gap-1 transition-all cursor-pointer border ${
-                          isSelected
-                            ? "bg-cyan-500/15 border-cyan-400/35 text-white shadow-sm"
-                            : "border-transparent text-slate-300 hover:bg-white/[0.06] hover:border-white/[0.08] hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-1.5 font-semibold text-xs text-white">
-                            <span>{label}</span>
-                            {m.is_default && (
-                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-400/15 text-cyan-300 border border-cyan-400/25">
-                                DEFAULT
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-slate-300 border border-white/[0.08]">
-                            {badge}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-normal leading-tight line-clamp-1">
-                          {desc}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* Tools Button */}
+            <button
+              type="button"
+              className="solix-small-btn icon active:scale-95"
+              title="Assistant capabilities"
+              aria-label="Tools"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {/* Attachment Button */}
-          <button
-            type="button"
-            className="iconbtn !w-8 !h-8 sm:!w-[34px] sm:!h-[34px] active:scale-95"
-            title="Attach file (Optional)"
-            aria-label="Attachment"
-            onClick={() => alert("File attachment will be available in a future update.")}
-          >
-            <Paperclip className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Tools / Commands Button */}
-          <button
-            type="button"
-            className="iconbtn !w-8 !h-8 sm:!w-[34px] sm:!h-[34px] active:scale-95"
-            title="Shortcuts and Commands"
-            aria-label="Commands"
-            onClick={() => alert("Shortcut: Press Shift+Enter for newline, Enter to send.")}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Send / Stop Controls */}
-          {isGenerating ? (
-            <button
-              type="button"
-              onClick={onStopGenerating}
-              className="composer-stop-btn !w-8 !h-8 sm:!w-8 sm:!h-8 active:scale-95"
-              title="Stop generating response"
-              aria-label="Stop generating response"
-            >
-              <Square className="w-3 h-3 fill-rose-400" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSendDisabled}
-              className={`composer-send-btn !w-8 !h-8 sm:!w-8 sm:!h-8 active:scale-95 transition-all ${
-                isSendDisabled
-                  ? "opacity-40 cursor-not-allowed"
-                  : "cursor-pointer hover:scale-105"
-              }`}
-              title="Send message"
-              aria-label="Send message"
-            >
-              <ArrowUp className="w-4 h-4 text-white stroke-[2.5]" />
-            </button>
-          )}
+          {/* Right Action: Send or Stop */}
+          <div>
+            {isGenerating ? (
+              <button
+                type="button"
+                onClick={onStopGenerating}
+                className="solix-stop-btn cursor-pointer active:scale-95"
+                title="Stop generation"
+                aria-label="Stop generation"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!content.trim() || isSwitchingModel}
+                className="solix-send-btn active:scale-95"
+                title="Send message (Enter)"
+                aria-label="Send message"
+              >
+                <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Disclaimer */}
-      <div className="composer-disclaimer text-[10px] sm:text-[11px] text-slate-500 mt-2 text-center">
-        Solix may produce inaccurate responses. Verify critical information.
+      {/* Subtle Disclaimer */}
+      <div className="solix-disclaimer">
+        Solix can make mistakes. Verify important information.
       </div>
     </div>
   );

@@ -49,7 +49,8 @@ async def run_tests():
                     elif event_type == "done":
                         print(f"SSE Done event received! Message ID: {event.get('message_id')}")
             print(f"Total tokens received: {len(tokens)}")
-            print(f"Preview of generated response:\n{''.join(tokens)[:150]}...")
+            preview_text = ''.join(tokens)[:150].encode('ascii', errors='replace').decode('ascii')
+            print(f"Preview of generated response:\n{preview_text}...")
 
         # 6. Verify Conversation Detail has messages
         res = await client.get(f"/api/conversations/{conv_id}")

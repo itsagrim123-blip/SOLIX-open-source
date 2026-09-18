@@ -32,11 +32,9 @@ export default function SolixApp() {
     clearAllLocalChats,
     stopGenerating,
     sendMessage,
-    setCurrentModel,
   } = useChat();
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [composerPrefill, setComposerPrefill] = useState("");
@@ -66,44 +64,41 @@ export default function SolixApp() {
   };
 
   return (
-    <div className="app-container select-none">
-      {/* 1. Full-Width Fixed Header at Top */}
-      <ChatHeader
-        currentModel={currentModel}
-        models={models}
-        onSelectModel={selectModel}
-        isBackendConnected={isBackendConnected}
-        backendStatus={backendStatus}
-        isSwitchingModel={isSwitchingModel}
-        switchingModelTarget={switchingModelTarget}
-        modelSwitchSuccess={modelSwitchSuccess}
-        onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+    <div className="solix-app select-none">
+      {/* 1. Left Full-Height Sidebar (255px) */}
+      <ChatSidebar
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        onSelectConversation={selectConversation}
         onNewChat={startNewChat}
+        onDeleteConversation={deleteConversation}
+        onRenameConversation={renameConversation}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenAbout={() => setIsAboutOpen(true)}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* 2. Main Viewport Row (Sidebar + Chat Area) */}
-      <div className="flex-1 flex flex-row h-full min-h-0 min-w-0 overflow-hidden relative z-10">
-        {/* Sidebar Navigation */}
-        <ChatSidebar
-          conversations={conversations}
-          activeConversationId={activeConversationId}
-          onSelectConversation={selectConversation}
+      {/* 2. Main Content Column on Right */}
+      <main className="solix-main">
+        {/* Topbar (58px) */}
+        <ChatHeader
+          currentModel={currentModel}
+          models={models}
+          onSelectModel={selectModel}
+          isBackendConnected={isBackendConnected}
+          backendStatus={backendStatus}
+          isSwitchingModel={isSwitchingModel}
+          switchingModelTarget={switchingModelTarget}
+          modelSwitchSuccess={modelSwitchSuccess}
+          onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onNewChat={startNewChat}
-          onDeleteConversation={deleteConversation}
-          onRenameConversation={renameConversation}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenAbout={() => setIsAboutOpen(true)}
-          isMobileOpen={isMobileSidebarOpen}
-          onCloseMobile={() => setIsMobileSidebarOpen(false)}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          isProviderConnected={isProviderConnected}
         />
 
         {/* Chat Workspace */}
-        <main className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden relative">
-          {/* Message Area */}
+        <section className="solix-workspace">
+          {/* Messages or Welcome Screen */}
           <MessageList
             messages={messages}
             isGenerating={isGenerating}
@@ -112,7 +107,7 @@ export default function SolixApp() {
             onSelectPrompt={handleSelectSuggestion}
           />
 
-          {/* Fixed Glass Composer at Bottom */}
+          {/* Floating Composer at Bottom */}
           <MessageComposer
             onSendMessage={handleSendMessage}
             onStopGenerating={stopGenerating}
@@ -125,8 +120,8 @@ export default function SolixApp() {
             modelSwitchSuccess={modelSwitchSuccess}
             initialValue={composerPrefill}
           />
-        </main>
-      </div>
+        </section>
+      </main>
 
       {/* Settings Modal */}
       <SettingsModal

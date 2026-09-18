@@ -55,7 +55,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setLocalPrompt(systemPrompt);
   }, [temperature, systemPrompt]);
 
-  // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -79,7 +78,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         localStorage.setItem("solix_temperature", String(localTemp));
         localStorage.setItem("solix_system_prompt", localPrompt);
       } catch {
-        // ignore localStorage errors
+        // ignore storage errors
       }
     }
     setIsConfirmingClear(false);
@@ -97,27 +96,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fade-in select-none"
       onClick={() => {
         setIsConfirmingClear(false);
         onClose();
       }}
     >
       <div
-        className="w-full max-w-lg glass-panel rounded-2xl p-6 border border-white/10 shadow-glass-lg relative overflow-hidden"
+        className="w-full max-w-lg bg-[#141518] rounded-xl p-6 border border-[#292b30] shadow-2xl relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+        <div className="flex items-center justify-between pb-4 border-b border-[#292b30]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 shadow-glow-cyan">
+            <div className="w-8 h-8 rounded-lg bg-[#191a1e] border border-[#292b30] flex items-center justify-center text-[#eeeeec]">
               <Sliders className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-sm font-semibold text-[#eeeeec]">
                 Solix Settings
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] text-[#8f9299]">
                 Configure AI model, system parameters, and privacy
               </p>
             </div>
@@ -128,78 +127,75 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               setIsConfirmingClear(false);
               onClose();
             }}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] border border-transparent hover:border-white/[0.08] transition-all cursor-pointer"
+            className="p-1 rounded-lg text-[#8f9299] hover:text-white hover:bg-[#1a1c20] transition-colors cursor-pointer"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="py-4 space-y-5 text-xs sm:text-sm max-h-[70vh] overflow-y-auto pr-1">
+        <div className="py-4 space-y-4 text-xs max-h-[70vh] overflow-y-auto pr-1">
           {/* Status Section */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <div className="space-y-1.5">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#666970]">
               System Health & Engine
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              {/* Backend API */}
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300 font-medium text-xs">
-                  <Globe className="w-4 h-4 text-cyan-400" />
+              <div className="p-2.5 rounded-lg bg-[#15171a] border border-[#292b30] flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[#c9cbd0] font-medium text-xs">
+                  <Globe className="w-3.5 h-3.5 text-[#dedfe2]" />
                   <span>FastAPI Backend</span>
                 </div>
                 {isBackendConnected ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 ) : (
-                  <XCircle className="w-4 h-4 text-rose-400" />
+                  <XCircle className="w-3.5 h-3.5 text-rose-400" />
                 )}
               </div>
 
-              {/* Local Storage Engine */}
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300 font-medium text-xs">
-                  <Database className="w-4 h-4 text-cyan-400" />
+              <div className="p-2.5 rounded-lg bg-[#15171a] border border-[#292b30] flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[#c9cbd0] font-medium text-xs">
+                  <Database className="w-3.5 h-3.5 text-[#dedfe2]" />
                   <span>IndexedDB (Local)</span>
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
               </div>
             </div>
 
-            {/* Ollama Engine Status Banner */}
             <div
-              className={`p-3.5 rounded-xl border flex items-start gap-3 ${
+              className={`p-3 rounded-lg border flex items-start gap-2.5 ${
                 isProviderConnected
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
-                  : "bg-amber-500/10 border-amber-500/30 text-amber-200"
+                  ? "bg-emerald-500/[0.06] border-emerald-500/25 text-emerald-300"
+                  : "bg-amber-500/[0.06] border-amber-500/25 text-amber-300"
               }`}
             >
-              <Terminal className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <div className="space-y-1">
+              <Terminal className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
                 <div className="font-semibold text-xs">
                   {isProviderConnected
                     ? "Local Ollama Connected & Active"
-                    : "Ollama Offline — Interactive Simulation Mode Active"}
+                    : "Ollama Offline — Interactive Simulation Mode"}
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-[#8f9299] leading-relaxed">
                   {isProviderConnected
                     ? "Conversational inferences are streaming token-by-token from your local hardware."
-                    : "To connect your local LLMs, start Ollama (`ollama serve`) with models like qwen3:1.7b."}
+                    : "To connect local LLMs, start Ollama (`ollama serve`) with models like qwen3:1.7b."}
                 </p>
               </div>
             </div>
           </div>
 
           {/* Model Selection */}
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#666970]">
               Active AI Model
             </label>
             <div className="relative">
               <select
                 value={currentModel}
                 onChange={(e) => onSelectModel(e.target.value)}
-                className="w-full bg-[#080d19] border border-white/10 rounded-xl px-3 py-2.5 text-slate-100 text-xs sm:text-sm outline-none focus:border-cyan-400/50 transition-colors shadow-inner"
+                className="w-full bg-[#15171a] border border-[#292b30] rounded-lg px-3 py-2 text-[#eeeeec] text-xs outline-none focus:border-[#3a3d43] transition-colors"
               >
                 {models.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -211,12 +207,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Temperature Slider */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#666970]">
                 Temperature (Creativity)
               </label>
-              <span className="font-mono text-xs text-cyan-400 font-semibold">
+              <span className="font-mono text-xs text-[#dedfe2] font-semibold">
                 {localTemp.toFixed(1)}
               </span>
             </div>
@@ -227,9 +223,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               step="0.1"
               value={localTemp}
               onChange={(e) => setLocalTemp(parseFloat(e.target.value))}
-              className="w-full accent-cyan-400 cursor-pointer"
+              className="w-full accent-[#eeeeec] cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+            <div className="flex justify-between text-[10px] text-[#666970] font-mono">
               <span>0.0 (Precise)</span>
               <span>0.7 (Balanced)</span>
               <span>1.5 (Creative)</span>
@@ -237,48 +233,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* System Prompt */}
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#666970]">
               System Prompt
             </label>
             <textarea
               value={localPrompt}
               onChange={(e) => setLocalPrompt(e.target.value)}
-              placeholder="You are Solix, an elite AI assistant specializing in clear, accurate, and structured insights..."
+              placeholder="You are Solix, an intelligent and helpful AI assistant..."
               rows={3}
-              className="w-full bg-[#080d19] border border-white/10 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-400/50 resize-none transition-colors shadow-inner font-mono"
+              className="w-full bg-[#15171a] border border-[#292b30] rounded-lg p-2.5 text-xs text-[#eeeeec] placeholder-[#666970] outline-none focus:border-[#3a3d43] resize-none transition-colors font-mono"
             />
           </div>
 
           {/* Privacy & Device Storage Section */}
-          <div className="space-y-2 pt-2 border-t border-white/[0.08]">
-            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="space-y-1.5 pt-2 border-t border-[#292b30]">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#666970]">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#dedfe2]" />
               <span>Local Privacy & Storage</span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+            <p className="text-[11px] text-[#8f9299] leading-relaxed">
               Your conversations are stored exclusively in this browser's IndexedDB. They are never transmitted across devices or shared with other sessions.
             </p>
 
             {isConfirmingClear ? (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 space-y-2">
+              <div className="p-3 rounded-lg bg-rose-500/[0.08] border border-rose-500/30 space-y-2">
                 <div className="flex items-center gap-2 text-rose-300 font-semibold text-xs">
-                  <AlertTriangle className="w-4 h-4" />
-                  <span>Are you sure you want to delete all local chats?</span>
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Delete all local chats?</span>
                 </div>
                 <p className="text-[11px] text-rose-200/80">
-                  This action permanently removes all conversations from this browser. This cannot be undone.
+                  This permanently removes all conversations stored in this browser.
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={handleExecuteClear}
-                    className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs transition-colors cursor-pointer"
                   >
                     Yes, Delete Everything
                   </button>
                   <button
                     onClick={() => setIsConfirmingClear(false)}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-slate-300 text-xs transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-md bg-[#191a1e] hover:bg-[#202328] text-slate-300 text-xs transition-colors cursor-pointer border border-[#292b30]"
                   >
                     Cancel
                   </button>
@@ -289,9 +285,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsConfirmingClear(true)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-400 hover:text-rose-300 bg-rose-500/[0.08] hover:bg-rose-500/[0.15] border border-rose-500/20 transition-all cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3 h-3" />
                   <span>Clear Local Chat History</span>
                 </button>
                 {clearSuccess && (
@@ -305,19 +301,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-4 border-t border-white/[0.08] flex items-center justify-end gap-2">
+        <div className="pt-3 border-t border-[#292b30] flex items-center justify-end gap-2">
           <button
             onClick={() => {
               setIsConfirmingClear(false);
               onClose();
             }}
-            className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#8f9299] hover:text-[#eeeeec] hover:bg-[#1a1c20] transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="glass-reflection px-4 py-2 rounded-xl text-xs font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-glow-cyan transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold text-[#0d0e10] bg-[#eeeeec] hover:bg-[#d8d9dc] transition-all cursor-pointer"
           >
             Apply Changes
           </button>

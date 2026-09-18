@@ -3,10 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #03060d;
-  --bg-surface: #070c19;
-  --accent-cyan: #05d9ff;
-  --accent-violet: #6c4cff;
+  --bg: #0d0e10;
+  --panel: #141518;
+  --panel-soft: #191a1e;
+  --border: #292b30;
+  --border-dark: #303238;
+  --border-light: #3a3d43;
+  --text: #eeeeec;
+  --muted: #8f9299;
+  --label: #666970;
+  --accent: #eeeeec;
+  --hover: #1a1c20;
 }
 
 /* Strict Viewport Shell - Zero Page Scroll */
@@ -26,9 +33,10 @@ body {
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  background-color: var(--bg-primary);
-  color: #eef4ff;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,608 +50,559 @@ textarea {
 
 button {
   color: inherit;
+  cursor: pointer;
 }
 
-/* App Background & Ambient Floating Orbs matching Reference */
-.app-container {
+/* App Root Container */
+.solix-app {
   height: 100dvh;
   min-height: 0;
   width: 100vw;
   max-width: 100%;
   display: flex;
-  flex-direction: column;
   overflow: hidden;
+  background: var(--bg);
   position: relative;
-  background:
-    radial-gradient(circle at 18% 14%, rgba(0, 190, 255, 0.08), transparent 25%),
-    radial-gradient(circle at 86% 78%, rgba(119, 70, 255, 0.09), transparent 28%),
-    #03060d;
 }
 
-.app-container::before,
-.app-container::after {
-  content: "";
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(65px);
-  pointer-events: none;
-  opacity: 0.45;
-  z-index: 0;
-}
-
-.app-container::before {
-  width: 320px;
-  height: 320px;
-  left: -80px;
-  top: 60px;
-  background: rgba(0, 174, 255, 0.12);
-  animation: floatOrb 14s ease-in-out infinite;
-}
-
-.app-container::after {
-  width: 340px;
-  height: 340px;
-  right: -80px;
-  bottom: -80px;
-  background: rgba(104, 65, 255, 0.13);
-  animation: floatOrb 18s ease-in-out infinite reverse;
-}
-
-@keyframes floatOrb {
-  50% {
-    transform: translate(30px, -20px) scale(1.06);
-  }
-}
-
-/* Master Glass Material matching Reference */
-.glass {
-  background: rgba(13, 20, 36, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 36px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-/* Solix Logo Gradients */
-.solix-logo-badge {
-  width: 35px;
-  height: 35px;
-  border-radius: 11px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, #05d9ff, #6c4cff);
-  box-shadow: 0 0 25px rgba(38, 185, 255, 0.3);
-  font-size: 18px;
-  color: white;
-  flex-shrink: 0;
-}
-
-.hero-logo-badge {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 20px;
-  border-radius: 17px;
-  display: grid;
-  place-items: center;
-  font-size: 31px;
-  background: linear-gradient(135deg, #08dfff, #704cff);
-  box-shadow: 0 0 45px rgba(0, 190, 255, 0.25);
-  animation: heroPulse 4s ease-in-out infinite;
-  color: white;
-}
-
-@keyframes heroPulse {
-  50% {
-    box-shadow: 0 0 60px rgba(103, 78, 255, 0.35);
-    transform: translateY(-2px);
-  }
-}
-
-/* Buttons matching Reference */
-.new-btn {
-  height: 42px;
-  border-radius: 12px;
-  border: 1px solid rgba(50, 207, 255, 0.35);
-  background: linear-gradient(135deg, rgba(0, 190, 255, 0.16), rgba(102, 72, 255, 0.15));
-  cursor: pointer;
-  transition: 0.25s;
+/* Sidebar */
+.solix-sidebar {
+  width: 255px;
+  background: #15171a;
+  border-right: 1px solid var(--border);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #eef5ff;
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.new-btn:hover {
-  transform: translateY(-2px);
-  border-color: rgba(89, 220, 255, 0.65);
-  box-shadow: 0 8px 28px rgba(0, 170, 255, 0.14);
-}
-
-.iconbtn {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  border: 1px solid rgba(150, 180, 230, 0.14);
-  background: rgba(20, 30, 50, 0.38);
-  cursor: pointer;
-  transition: 0.22s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #aebbd0;
-}
-
-.iconbtn:hover {
-  transform: translateY(-2px);
-  border-color: rgba(90, 210, 255, 0.45);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2);
-  color: #eef5ff;
-}
-
-/* Status Pill in Header matching Reference */
-.status-pill {
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(43, 235, 190, 0.25);
-  background: rgba(24, 210, 160, 0.07);
-  color: #62efc7;
-  font-size: 12px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  transition: all 0.25s ease;
-}
-
-.status-pill.offline {
-  border-color: rgba(239, 68, 68, 0.25);
-  background: rgba(239, 68, 68, 0.07);
-  color: #f87171;
-}
-
-.status-pill.checking {
-  border-color: rgba(148, 163, 184, 0.25);
-  background: rgba(148, 163, 184, 0.07);
-  color: #94a3b8;
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #26e8b0;
-  box-shadow: 0 0 10px #26e8b0;
+  flex-direction: column;
+  padding: 16px 12px;
   flex-shrink: 0;
+  height: 100%;
+  min-height: 0;
 }
 
-.status-dot.offline {
-  background: #ef4444;
-  box-shadow: 0 0 10px #ef4444;
-}
-
-.status-dot.checking {
-  background: #94a3b8;
-  box-shadow: 0 0 10px #94a3b8;
-}
-
-/* Sidebar Classes matching Reference - Desktop Only */
-@media (min-width: 768px) {
-  .solix-sidebar {
-    width: 270px;
-    height: 100%;
-    flex: none;
-    padding: 12px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    border-right: 1px solid rgba(255, 255, 255, 0.07);
-    background: rgba(7, 12, 25, 0.65);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    position: relative;
-    z-index: 2;
-  }
-}
-
-@media (max-width: 767px) {
-  .solix-sidebar {
-    display: none !important;
-  }
-}
-
-.sidebar-brand {
-  height: 45px;
+.solix-brand {
+  height: 42px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 7px;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-}
-
-.sidebar-search {
-  height: 38px;
-  border-radius: 10px;
-  border: 1px solid rgba(160, 190, 235, 0.12);
-  background: rgba(0, 0, 0, 0.18);
-  padding: 0 12px;
-  color: #aab8cf;
-  outline: none;
-  font-size: 13px;
-  transition: all 0.2s ease;
-  width: 100%;
-}
-
-.sidebar-search:focus {
-  border-color: rgba(70, 210, 255, 0.5);
-  box-shadow: 0 0 0 3px rgba(0, 190, 255, 0.07);
-}
-
-.sidebar-section {
-  font-size: 11px;
-  color: #7888a2;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 7px 7px 0;
-  font-weight: 600;
-}
-
-.sidebar-chats {
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex: 1;
-  min-height: 0;
-  padding-right: 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sidebar-chat-item {
-  padding: 9px 10px;
-  border-radius: 9px;
-  color: #aebbd0;
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-  transition: 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid transparent;
-}
-
-.sidebar-chat-item:hover {
-  background: rgba(130, 170, 230, 0.09);
-  color: #eef5ff;
-  transform: translateX(2px);
-}
-
-.sidebar-chat-item.active {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(69, 217, 255, 0.35);
-  color: #ffffff;
-  transform: translateX(2px);
-}
-
-.sidebar-bottom {
-  border-top: 1px solid rgba(150, 180, 230, 0.12);
-  padding-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  padding: 0 9px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
   flex-shrink: 0;
 }
 
-.sidebar-bottom-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  text-align: left;
-  border: 0;
-  background: transparent;
-  padding: 10px;
-  border-radius: 9px;
-  color: #aebbd0;
-  cursor: pointer;
-  font-size: 13px;
-  transition: 0.2s;
-}
-
-.sidebar-bottom-btn:hover {
-  background: rgba(130, 170, 230, 0.08);
-  color: white;
-}
-
-/* Hero section matching reference with mobile-first responsiveness */
-.solix-hero {
-  width: min(880px, calc(100% - 32px));
-  margin: auto;
-  padding: 20px 0 16px;
-  text-align: center;
-}
-
-@media (min-width: 640px) {
-  .solix-hero {
-    width: min(880px, calc(100% - 32px));
-    padding: 28px 0 20px;
-  }
-}
-
-.solix-hero h1 {
-  font-size: clamp(22px, 5.5vw, 40px);
-  margin: 0 0 6px;
-  letter-spacing: -1px;
-  font-weight: 700;
-  color: #eef4ff;
-  line-height: 1.2;
-}
-
-.solix-hero h1 span {
-  color: #45d9ff;
-}
-
-.solix-hero .hero-sub {
-  margin: 0 auto 18px;
-  color: #8798b2;
-  font-size: 12px;
-  line-height: 1.45;
-  max-width: 480px;
-}
-
-@media (min-width: 640px) {
-  .solix-hero .hero-sub {
-    font-size: 13px;
-    margin: 0 auto 28px;
-  }
-}
-
-.solix-hero-cards {
+.solix-logo {
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  background: #eeeeec;
+  color: #0d0e10;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  text-align: left;
-}
-
-@media (min-width: 768px) {
-  .solix-hero-cards {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-  }
-}
-
-.solix-card-icon {
-  font-size: 18px;
-  margin-bottom: 6px;
-  color: #45d9ff;
+  place-items: center;
+  font-size: 13px;
+  flex-shrink: 0;
   line-height: 1;
 }
 
-@media (min-width: 640px) {
-  .solix-card-icon {
-    font-size: 21px;
-    margin-bottom: 10px;
-  }
-}
-
-.reference-card b {
-  font-size: 12px;
+.solix-new-chat {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #15171a;
+  color: var(--text);
+  border-radius: 9px;
+  height: 39px;
+  margin: 13px 0 9px;
   font-weight: 600;
-  color: #eef4ff;
-  display: block;
-  line-height: 1.3;
-}
-
-@media (min-width: 640px) {
-  .reference-card b {
-    font-size: 13px;
-  }
-}
-
-.reference-card p {
-  font-size: 10px;
-  line-height: 1.4;
-  color: #8798b2;
-  margin: 4px 0 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-@media (min-width: 640px) {
-  .reference-card p {
-    font-size: 11px;
-    line-height: 1.5;
-    margin: 6px 0 0;
-  }
-}
-
-/* Suggestion Card with diagonal light sweep matching Reference */
-.reference-card {
-  position: relative;
-  min-height: 82px;
-  padding: 12px 10px;
-  border-radius: 14px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  text-align: left;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-@media (min-width: 640px) {
-  .reference-card {
-    min-height: 105px;
-    padding: 17px;
-    border-radius: 16px;
-  }
-}
-
-.reference-card::after {
-  content: "";
-  position: absolute;
-  inset: -100% 55% 55% -100%;
-  background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.10), transparent);
-  transform: rotate(10deg);
-  transition: 0.5s;
-  pointer-events: none;
-}
-
-.reference-card:active {
-  transform: scale(0.97);
-}
-
-@media (hover: hover) {
-  .reference-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(86, 208, 255, 0.4);
-    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.3), 0 0 25px rgba(0, 160, 255, 0.07);
-  }
-
-  .reference-card:hover::after {
-    inset: 100% -100% -100% 55%;
-  }
-}
-
-/* Composer styling matching Reference & Mobile Viewport */
-.composer-wrap {
-  flex: none;
-  flex-shrink: 0;
-  width: 100%;
-  padding: 6px 16px max(12px, env(safe-area-inset-bottom, 12px));
-  background: linear-gradient(to top, rgba(3, 6, 13, 0.98) 70%, rgba(3, 6, 13, 0.6) 90%, transparent);
-  z-index: 20;
-}
-
-@media (min-width: 640px) {
-  .composer-wrap {
-    padding: 8px 24px max(14px, env(safe-area-inset-bottom, 14px));
-  }
-}
-
-.composer-box {
-  width: min(880px, calc(100% - 32px));
-  margin: 0 auto;
-  border-radius: 18px;
-  padding: 8px 12px 8px 12px;
-  background: rgba(13, 20, 36, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 30px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  transition: all 0.2s ease;
-}
-
-.composer-box:focus-within {
-  border-color: rgba(6, 182, 212, 0.4);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(6, 182, 212, 0.1);
-}
-
-.composer-send-btn {
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 11px;
-  background: linear-gradient(135deg, #08cfff, #7048ff);
-  cursor: pointer;
-  box-shadow: 0 0 20px rgba(42, 164, 255, 0.18);
-  transition: 0.2s;
+  font-size: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  gap: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease;
   flex-shrink: 0;
 }
 
-.composer-send-btn:hover {
-  transform: scale(1.06);
-  box-shadow: 0 0 28px rgba(91, 98, 255, 0.3);
+.solix-new-chat:hover,
+.solix-side-btn:hover,
+.solix-conversation:hover {
+  background: var(--hover);
 }
 
-.composer-stop-btn {
-  width: 36px;
+.solix-search {
   height: 36px;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  border-radius: 11px;
-  background: rgba(239, 68, 68, 0.2);
-  cursor: pointer;
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
-  transition: 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fca5a5;
-  flex-shrink: 0;
-}
-
-.composer-stop-btn:hover {
-  transform: scale(1.06);
-  background: rgba(239, 68, 68, 0.3);
-}
-
-.composer-textarea {
-  width: 100%;
-  min-height: 45px;
-  max-height: 180px;
-  resize: none;
-  background: transparent;
-  border: 0;
-  outline: 0;
-  color: #edf5ff;
-  padding: 8px 5px;
-  font-size: 14px;
-}
-
-.composer-textarea::placeholder {
-  color: #7889a4;
-}
-
-.composer-bottom {
+  border: 1px solid var(--border);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
-  border-top: 1px solid rgba(150, 180, 230, 0.10);
-  padding-top: 8px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: #15171a;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease;
 }
 
-.composer-pill {
-  border: 1px solid rgba(90, 200, 255, 0.16);
-  background: rgba(0, 170, 240, 0.07);
-  border-radius: 999px;
-  padding: 7px 11px;
+.solix-search:focus-within {
+  border-color: #3a3d43;
+}
+
+.solix-search input {
+  border: 0;
+  outline: 0;
+  width: 100%;
+  background: transparent;
   font-size: 12px;
-  color: #b9c8dd;
+  color: var(--text);
+}
+
+.solix-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--label);
+  letter-spacing: 0.08em;
+  padding: 0 9px 7px;
+  flex-shrink: 0;
+}
+
+.solix-conversations-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 2px;
+}
+
+.solix-conversation {
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: #c9cbd0;
+  margin-bottom: 2px;
+  border: 1px solid transparent;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.solix-conversation.active {
+  background: var(--hover);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.solix-sidebar-bottom {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.solix-side-btn {
+  width: 100%;
+  height: 35px;
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  color: #a5a7ad;
+  text-align: left;
+  padding: 0 9px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* Main Area */
+.solix-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Topbar */
+.solix-topbar {
+  height: 58px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: rgba(16, 17, 20, 0.96);
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.solix-model {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.solix-model span.muted {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.solix-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  margin-left: 13px;
+  color: #858890;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.solix-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #777b83;
+}
+
+.solix-dot.online {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.solix-dot.offline {
+  background: #ef4444;
+}
+
+.solix-dot.checking {
+  background: #eab308;
+}
+
+.solix-top-actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.solix-top-btn {
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #15171a;
+  padding: 0 11px;
+  font-size: 12px;
+  color: #dedfe2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.solix-top-btn:hover {
+  background: #1b1d21;
+}
+
+.solix-top-btn.icon {
+  width: 34px;
+  padding: 0;
+  font-size: 15px;
+}
+
+/* Workspace */
+.solix-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Welcome Screen */
+.solix-welcome {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 24px 20px;
+}
+
+.solix-welcome-inner {
+  width: min(720px, 100%);
+  margin: auto;
+}
+
+.solix-greeting {
+  font-size: 31px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  margin: 0 0 7px;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.solix-sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 27px;
+  line-height: 1.45;
+}
+
+.solix-suggestions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.solix-suggestion {
+  min-height: 68px;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #131518;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
   cursor: pointer;
-  transition: 0.2s;
+  width: 100%;
 }
 
-.composer-pill:hover {
-  border-color: rgba(90, 200, 255, 0.35);
-  color: #eef5ff;
+.solix-suggestion:hover {
+  background: #15171a;
+  border-color: #3a3d43;
 }
 
-.composer-disclaimer {
+.solix-suggestion-title {
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 5px;
+  color: #e5e6e8;
+}
+
+.solix-suggestion-text {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+/* Composer */
+.solix-composer-wrap {
+  width: min(780px, calc(100% - 48px));
+  margin: 0 auto 16px;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.solix-composer {
+  background: #15171a;
+  border: 1px solid #303238;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.solix-composer:focus-within {
+  border-color: #454952;
+}
+
+.solix-textarea {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  max-height: 180px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  padding: 14px 16px 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.solix-textarea::placeholder {
+  color: #73767d;
+}
+
+.solix-composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px 8px 10px;
+}
+
+.solix-composer-left {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.solix-small-btn {
+  height: 29px;
+  border: 1px solid var(--border);
+  background: #15171a;
+  border-radius: 7px;
+  padding: 0 9px;
+  color: #aeb0b6;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.solix-small-btn:hover {
+  background: #1b1d21;
+  color: #eeeeec;
+}
+
+.solix-small-btn.icon {
+  width: 30px;
+  padding: 0;
+  font-size: 14px;
+  justify-content: center;
+}
+
+.solix-send-btn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: #eeeeec;
+  color: #0d0e10;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.solix-send-btn:hover:not(:disabled) {
+  background: #d8d9dc;
+}
+
+.solix-send-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.solix-stop-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.solix-stop-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.solix-disclaimer {
   text-align: center;
-  color: #5e6e87;
+  color: #686b72;
   font-size: 10px;
-  margin-top: 7px;
+  margin-top: 8px;
+}
+
+/* Message Area */
+.solix-message-stream {
+  width: min(780px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 24px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+
+.solix-user-msg {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.solix-user-bubble {
+  max-width: 82%;
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.solix-assistant-msg {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.solix-assistant-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #1e2025;
+  border: 1px solid var(--border);
+  color: #eeeeec;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.solix-assistant-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.solix-assistant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.solix-assistant-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #eeeeec;
 }
 
 /* Custom Delicate Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -651,89 +610,24 @@ button {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(150, 180, 230, 0.15);
+  background: #25282e;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(150, 180, 230, 0.28);
+  background: #353942;
 }
 
-/* Syntax Highlighting & Code Blocks */
-pre code.hljs {
-  display: block;
-  overflow-x: auto;
-  padding: 1rem;
-  background: rgba(4, 7, 14, 0.95) !important;
-  color: #e2e8f0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 0.875rem;
-  line-height: 1.65;
-}
-
-.hljs-comment,
-.hljs-quote {
-  color: #64748b;
-  font-style: italic;
-}
-
-.hljs-keyword,
-.hljs-selector-tag,
-.hljs-subst {
-  color: #38bdf8;
-  font-weight: 500;
-}
-
-.hljs-number,
-.hljs-literal,
-.hljs-variable,
-.hljs-template-variable,
-.hljs-tag .hljs-attr {
-  color: #f472b6;
-}
-
-.hljs-string,
-.hljs-doctag {
-  color: #a78bfa;
-}
-
-.hljs-title,
-.hljs-section,
-.hljs-selector-id {
-  color: #67e8f9;
-  font-weight: 600;
-}
-
-.hljs-type,
-.hljs-class .hljs-title {
-  color: #34d399;
-}
-
-.hljs-attr,
-.hljs-attribute {
-  color: #38bdf8;
-}
-
-.hljs-symbol,
-.hljs-bullet {
-  color: #fbbf24;
-}
-
-.hljs-built_in,
-.hljs-formula {
-  color: #c084fc;
-}
-
-/* Markdown Typography Styling */
+/* Markdown Typography */
 .prose-solix {
   color: #e2e8f0;
-  font-size: 0.95rem;
+  font-size: 13px;
   line-height: 1.6;
 }
 
 .prose-solix p {
-  margin-top: 0.45rem;
-  margin-bottom: 0.45rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
 }
 
 .prose-solix p:first-child {
@@ -750,77 +644,74 @@ pre code.hljs {
 .prose-solix h4 {
   color: #f8fafc;
   font-weight: 600;
-  letter-spacing: -0.015em;
-  margin-top: 1.25rem;
-  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
 }
 
-.prose-solix h1 { font-size: 1.5rem; }
-.prose-solix h2 { font-size: 1.25rem; }
-.prose-solix h3 { font-size: 1.1rem; }
+.prose-solix h1 { font-size: 1.3rem; }
+.prose-solix h2 { font-size: 1.15rem; }
+.prose-solix h3 { font-size: 1.05rem; }
 
 .prose-solix ul,
 .prose-solix ol {
   padding-left: 1.25rem;
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
 }
 
 .prose-solix ul { list-style-type: disc; }
 .prose-solix ol { list-style-type: decimal; }
 
 .prose-solix li {
-  margin-top: 0.25rem;
-  margin-bottom: 0.25rem;
-}
-
-.prose-solix table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid rgba(154, 190, 255, 0.16);
-}
-
-.prose-solix th,
-.prose-solix td {
-  padding: 0.65rem 0.9rem;
-  text-align: left;
-  border-bottom: 1px solid rgba(154, 190, 255, 0.08);
-}
-
-.prose-solix th {
-  background: rgba(15, 27, 48, 0.7);
-  color: #94a3b8;
-  font-weight: 600;
-}
-
-.prose-solix tr:last-child td {
-  border-bottom: none;
-}
-
-.prose-solix blockquote {
-  border-left: 3px solid #05d9ff;
-  padding-left: 1rem;
-  color: #94a3b8;
-  margin: 0.75rem 0;
-  font-style: italic;
-  background: rgba(5, 217, 255, 0.04);
-  border-radius: 0 8px 8px 0;
-  padding-top: 0.35rem;
-  padding-bottom: 0.35rem;
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
 }
 
 .prose-solix code:not(pre code) {
-  background: rgba(154, 190, 255, 0.12);
-  color: #38bdf8;
-  padding: 0.15rem 0.4rem;
+  background: #1b1d22;
+  color: #e2e8f0;
+  padding: 0.15rem 0.35rem;
   border-radius: 4px;
   font-size: 0.85em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  border: 1px solid var(--border);
+}
+
+.prose-solix blockquote {
+  border-left: 3px solid #4a4e58;
+  padding-left: 0.85rem;
+  color: var(--muted);
+  margin: 0.6rem 0;
+  font-style: italic;
+}
+
+/* Mobile Responsiveness matching solix_minimal.html */
+@media (max-width: 720px) {
+  .solix-sidebar-desktop {
+    display: none !important;
+  }
+  .solix-topbar {
+    padding: 0 14px;
+  }
+  .solix-status-desktop {
+    display: none !important;
+  }
+  .solix-welcome {
+    padding: 24px 18px 20px;
+  }
+  .solix-greeting {
+    font-size: 26px;
+  }
+  .solix-suggestions {
+    grid-template-columns: 1fr;
+  }
+  .solix-composer-wrap {
+    width: calc(100% - 24px);
+    margin-bottom: 12px;
+  }
+  .solix-message-stream {
+    width: calc(100% - 24px);
+  }
 }
 
 /* Reduced Motion Safety */
