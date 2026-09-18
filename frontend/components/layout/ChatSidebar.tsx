@@ -260,9 +260,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       <aside
         className={`solix-sidebar solix-sidebar-desktop ${
           transitionState === "entering"
-            ? "solix-sidebar-entering"
+            ? "animate-chat-sidebar-collapse"
             : transitionState === "exiting"
-            ? "solix-sidebar-returning"
+            ? "animate-chat-sidebar-reveal"
             : ""
         }`}
       >

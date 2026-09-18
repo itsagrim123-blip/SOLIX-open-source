@@ -53,15 +53,18 @@ export default function SolixApp() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
-  // Dedicated Workspace Mode Transition State Machine: "idle" | "entering" | "active" | "exiting"
-  const [workspaceTransition, setWorkspaceTransition] = useState<
-    "idle" | "entering" | "active" | "exiting"
+  // Persistent Transition Architecture:
+  // viewMode = "chat" | "workspace"
+  // transitionState = "idle" | "entering-workspace" | "workspace-active" | "exiting-workspace" | "chat-active"
+  const [viewMode, setViewMode] = useState<"chat" | "workspace">("chat");
+  const [transitionState, setTransitionState] = useState<
+    "idle" | "entering-workspace" | "workspace-active" | "exiting-workspace" | "chat-active"
   >("idle");
   const transitionTimersRef = useRef<NodeJS.Timeout[]>([]);
 
   // Derived active view for subcomponent indicators
   const activeView: "chat" | "coding" =
-    workspaceTransition === "active" || workspaceTransition === "entering"
+    viewMode === "workspace" || transitionState === "entering-workspace"
       ? "coding"
       : "chat";
 
@@ -90,65 +93,90 @@ export default function SolixApp() {
     };
   }, []);
 
-  // Mode Switch Handler with Cinematic Solix Dragon Transition & SFX (650-800ms)
+  // Mode Switch Handler with Cinematic Solix Dragon Transition & SFX (800ms)
   const handleSwitchView = useCallback(
     (target: "chat" | "coding") => {
-      // Prevent re-triggering while a transition is actively in flight
-      if (workspaceTransition === "entering" || workspaceTransition === "exiting") {
+      // Prevent overlapping triggers during active transition
+      if (
+        transitionState === "entering-workspace" ||
+        transitionState === "exiting-workspace"
+      ) {
         return;
       }
-      if (target === "coding" && workspaceTransition === "active") return;
-      if (target === "chat" && workspaceTransition === "idle") return;
-
-      // Check prefers-reduced-motion for accessibility (instant 0ms switch)
-      const prefersReducedMotion =
-        typeof window !== "undefined" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-      if (prefersReducedMotion) {
-        setWorkspaceTransition(target === "coding" ? "active" : "idle");
-        if (target === "coding") {
-          setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
-        }
+      if (
+        target === "coding" &&
+        (viewMode === "workspace" || transitionState === "workspace-active")
+      ) {
         return;
       }
-
-      // Clear any prior active timeouts
+      if (
+        target === "chat" &&
+        (viewMode === "chat" ||
+          transitionState === "chat-active" ||
+          transitionState === "idle")
+      ) {
+        return;
+      }
+      // Clear any prior active transition timers
       transitionTimersRef.current.forEach(clearTimeout);
       transitionTimersRef.current = [];
 
       if (target === "coding") {
-        // 1. Play failure-safe Workspace SFX at the exact start (0ms)
+        console.log("[Solix] WORKSPACE TRANSITION START");
+
+        // 1. Play SFX at exact t=0ms
         playWorkspaceTransitionSFX();
 
-        // 2. Start entering transition (0-220ms: Chat collapses, 150-450ms: logo reveals, 350-700ms: workspace reveals)
-        setWorkspaceTransition("entering");
+        // 2. Set transition state to entering (chat begins collapse, overlay mounts)
+        setTransitionState("entering-workspace");
 
-        // 3. Trigger Monaco resize during expansion (350ms)
-        const t1 = setTimeout(() => {
+        // 3. Logo becomes visible (150ms)
+        const tLogo = setTimeout(() => {
+          console.log("[Solix] WORKSPACE LOGO SHOW");
+        }, 150);
+
+        // 4. Reveal Workspace behind overlay (350ms)
+        const tReveal = setTimeout(() => {
+          console.log("[Solix] WORKSPACE REVEAL");
+          setViewMode("workspace");
           window.dispatchEvent(new Event("resize"));
         }, 350);
 
-        // 4. Conclude transition into active fullscreen workspace (720ms)
-        const t2 = setTimeout(() => {
-          setWorkspaceTransition("active");
+        // 5. Complete transition (800ms)
+        const tComplete = setTimeout(() => {
+          console.log("[Solix] WORKSPACE TRANSITION COMPLETE");
+          setTransitionState("workspace-active");
           window.dispatchEvent(new Event("resize"));
-        }, 720);
+        }, 800);
 
-        transitionTimersRef.current = [t1, t2];
+        transitionTimersRef.current = [tLogo, tReveal, tComplete];
       } else {
-        // Reverse transition: Workspace -> Chat (0-220ms: workspace collapses, 120-450ms: logo, 180-600ms: chat returns)
-        setWorkspaceTransition("exiting");
+        console.log("[Solix] WORKSPACE -> CHAT TRANSITION START");
 
-        // Conclude reverse transition into idle chat (700ms)
-        const t1 = setTimeout(() => {
-          setWorkspaceTransition("idle");
-        }, 700);
+        // 1. Set transition state to exiting (workspace begins collapse, overlay mounts)
+        setTransitionState("exiting-workspace");
 
-        transitionTimersRef.current = [t1];
+        // 2. Logo becomes visible (150ms)
+        const tLogo = setTimeout(() => {
+          console.log("[Solix] WORKSPACE LOGO SHOW");
+        }, 150);
+
+        // 3. Reveal Chat behind overlay (350ms)
+        const tReveal = setTimeout(() => {
+          console.log("[Solix] CHAT REVEAL");
+          setViewMode("chat");
+        }, 350);
+
+        // 4. Complete transition (800ms)
+        const tComplete = setTimeout(() => {
+          console.log("[Solix] CHAT TRANSITION COMPLETE");
+          setTransitionState("chat-active");
+        }, 800);
+
+        transitionTimersRef.current = [tLogo, tReveal, tComplete];
       }
     },
-    [workspaceTransition]
+    [viewMode, transitionState]
   );
 
   const handleSendMessage = (content: string) => {
@@ -166,13 +194,15 @@ export default function SolixApp() {
       {/* ========================================================================= */}
       <div
         className={`w-full h-full flex ${
-          workspaceTransition === "idle"
+          viewMode === "chat" && (transitionState === "idle" || transitionState === "chat-active")
             ? "opacity-100 scale-100 pointer-events-auto relative z-10"
-            : workspaceTransition === "active"
-            ? "opacity-0 pointer-events-none absolute inset-0 invisible z-0"
-            : "pointer-events-none relative z-10"
+            : transitionState === "entering-workspace"
+            ? "pointer-events-none relative z-10"
+            : transitionState === "exiting-workspace" && viewMode === "chat"
+            ? "pointer-events-none relative z-10"
+            : "opacity-0 pointer-events-none absolute inset-0 invisible z-0"
         }`}
-        aria-hidden={workspaceTransition === "active"}
+        aria-hidden={viewMode !== "chat"}
       >
         {/* Left Full-Height Sidebar (255px) */}
         <ChatSidebar
@@ -188,16 +218,22 @@ export default function SolixApp() {
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           activeView={activeView}
           onSelectView={handleSwitchView}
-          transitionState={workspaceTransition}
+          transitionState={
+            transitionState === "entering-workspace"
+              ? "entering"
+              : transitionState === "exiting-workspace" && viewMode === "chat"
+              ? "exiting"
+              : "idle"
+          }
         />
 
         {/* Main Content Column on Right */}
         <main
           className={`solix-main ${
-            workspaceTransition === "entering"
-              ? "solix-main-entering"
-              : workspaceTransition === "exiting"
-              ? "solix-main-returning"
+            transitionState === "entering-workspace"
+              ? "animate-chat-main-collapse"
+              : transitionState === "exiting-workspace" && viewMode === "chat"
+              ? "animate-chat-main-reveal"
               : ""
           }`}
         >
@@ -259,15 +295,15 @@ export default function SolixApp() {
       {/* ========================================================================= */}
       <div
         className={`fixed inset-0 w-screen h-[100dvh] bg-[#0d0e10] ${
-          workspaceTransition === "active"
+          viewMode === "workspace" && transitionState === "workspace-active"
             ? "opacity-100 scale-100 pointer-events-auto visible z-30"
-            : workspaceTransition === "entering"
-            ? "visible z-30 pointer-events-none solix-workspace-entering"
-            : workspaceTransition === "exiting"
-            ? "visible z-30 pointer-events-none solix-workspace-exiting"
+            : transitionState === "entering-workspace" && viewMode === "workspace"
+            ? "visible z-30 pointer-events-none animate-workspace-reveal"
+            : transitionState === "exiting-workspace"
+            ? "visible z-30 pointer-events-none animate-workspace-collapse"
             : "opacity-0 scale-98 pointer-events-none invisible absolute inset-0 z-0"
         }`}
-        aria-hidden={workspaceTransition !== "active" && workspaceTransition !== "entering"}
+        aria-hidden={viewMode !== "workspace"}
       >
         <WorkspaceView
           onBackToChat={() => handleSwitchView("chat")}
@@ -276,9 +312,9 @@ export default function SolixApp() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. Pure Centered Solix Dragon Logo Transition (No loading screen/spinners) */}
+      {/* 3. Pure Centered Solix Dragon Logo Transition (Portal to document.body)   */}
       {/* ========================================================================= */}
-      <WorkspaceTransitionOverlay state={workspaceTransition} />
+      <WorkspaceTransitionOverlay transitionState={transitionState} />
 
       {/* Settings Modal */}
       <SettingsModal
