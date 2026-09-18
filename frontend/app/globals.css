@@ -94,13 +94,10 @@ button {
   width: 27px;
   height: 27px;
   border-radius: 8px;
-  background: #eeeeec;
-  color: #0d0e10;
   display: grid;
   place-items: center;
-  font-size: 13px;
   flex-shrink: 0;
-  line-height: 1;
+  overflow: hidden;
 }
 
 .solix-new-chat {
@@ -571,14 +568,12 @@ button {
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  background: #1e2025;
   border: 1px solid var(--border);
-  color: #eeeeec;
   display: grid;
   place-items: center;
-  font-size: 12px;
   flex-shrink: 0;
   margin-top: 2px;
+  overflow: hidden;
 }
 
 .solix-assistant-body {

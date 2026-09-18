@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Message } from "@/types/chat";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { SolixLogo } from "@/components/brand/SolixLogo";
 
 interface MessageItemProps {
   message: Message;
@@ -72,7 +73,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   return (
     <div className="solix-assistant-msg animate-fade-in group">
       {/* Subtle Avatar */}
-      <div className="solix-assistant-avatar">✦</div>
+      <div className="solix-assistant-avatar">
+        <SolixLogo size="sm" px={26} />
+      </div>
 
       {/* Body */}
       <div className="solix-assistant-body">

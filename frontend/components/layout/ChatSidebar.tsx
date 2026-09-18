@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { Check, Edit2, Plus, Trash2, X } from "lucide-react";
 import { ConversationSummary } from "@/types/chat";
+import { SolixLogo } from "@/components/brand/SolixLogo";
 
 interface ChatSidebarProps {
   conversations: ConversationSummary[];
@@ -58,7 +59,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Brand Header */}
       <div className="flex items-center justify-between">
         <div className="solix-brand">
-          <div className="solix-logo">✦</div>
+          <div className="solix-logo">
+            <SolixLogo size="sm" />
+          </div>
           <span>SOLIX</span>
         </div>
         {isMobile && (
