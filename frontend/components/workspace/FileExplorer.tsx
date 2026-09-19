@@ -21,6 +21,7 @@ import { FileNode } from "@/types/workspace";
 interface FileExplorerProps {
   tree: FileNode[];
   activeFile: string | null;
+  projectName?: string;
   onSelectFile: (path: string) => void;
   onCreateFileOrDir: (path: string, isDirectory: boolean) => Promise<void>;
   onDeletePath: (path: string) => Promise<void>;
@@ -32,6 +33,7 @@ interface FileExplorerProps {
 export const FileExplorer: React.FC<FileExplorerProps> = ({
   tree,
   activeFile,
+  projectName = "PROJECT",
   onSelectFile,
   onCreateFileOrDir,
   onDeletePath,
@@ -92,7 +94,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       const items: Array<{ path: string; content: string }> = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        // If webkitRelativePath exists (e.g. "my-project/src/main.py"), strip the top directory
         let relPath = file.webkitRelativePath || file.name;
         const parts = relPath.split("/").filter(Boolean);
         if (parts.length > 1) {
@@ -100,7 +101,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         }
         if (!relPath) relPath = file.name;
 
-        // Skip hidden files, system files, and .git
         if (relPath.startsWith(".git/") || relPath.includes("/.git/") || relPath === ".DS_Store") {
           continue;
         }
@@ -109,7 +109,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           const content = await file.text();
           items.push({ path: relPath, content });
         } catch {
-          // Binary or unreadable, ignore
+          // Binary or unreadable
         }
       }
 
@@ -149,7 +149,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
     e.stopPropagation();
   };
 
-  // Helper to traverse FileSystemEntry objects recursively
   const traverseEntry = async (
     entry: any,
     currentPath: string = ""
@@ -212,7 +211,6 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           const entry = (item as any).webkitGetAsEntry ? (item as any).webkitGetAsEntry() : null;
           if (entry) {
             if (entry.isDirectory) {
-              // If dropping a directory, read its children directly into workspace root
               const dirReader = entry.createReader();
               const entries: any[] = await new Promise((res, rej) => {
                 const all: any[] = [];
@@ -268,15 +266,15 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   const getFileIcon = (name: string) => {
     const ext = name.split(".").pop()?.toLowerCase();
     if (ext === "py" || ext === "js" || ext === "ts" || ext === "tsx" || ext === "jsx") {
-      return <FileCode className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />;
+      return <FileCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />;
     }
     if (ext === "md" || ext === "txt") {
-      return <FileText className="w-3.5 h-3.5 text-amber-300 flex-shrink-0" />;
+      return <FileText className="w-3.5 h-3.5 text-amber-300 shrink-0" />;
     }
     if (ext === "json" || ext === "yaml" || ext === "yml" || ext === "toml") {
-      return <FileText className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />;
+      return <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
     }
-    return <File className="w-3.5 h-3.5 text-[#8f9299] flex-shrink-0" />;
+    return <File className="w-3.5 h-3.5 text-[#858b94] shrink-0" />;
   };
 
   const renderNode = (node: FileNode, depth: number = 0) => {
@@ -291,7 +289,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           key={node.path}
           onSubmit={(e) => handleRenameSubmit(e, node.path)}
           className="px-2 py-0.5"
-          style={{ paddingLeft: `${depth * 14 + 10}px` }}
+          style={{ paddingLeft: `${depth * 14 + 12}px` }}
         >
           <input
             type="text"
@@ -299,7 +297,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             onChange={(e) => setRenameInput(e.target.value)}
             autoFocus
             onBlur={() => setEditingPath(null)}
-            className="w-full bg-[#1b1d22] text-xs text-white px-2 py-0.5 rounded border border-[#3a3d43] outline-none"
+            className="w-full bg-[#1b1d22] text-xs text-[#d4d7dc] px-2 py-0.5 rounded-xs border border-[#3a3d43] outline-none"
           />
         </form>
       );
@@ -309,22 +307,22 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       <div key={node.path}>
         <div
           onClick={() => (isDir ? toggleDir(node.path) : onSelectFile(node.path))}
-          className={`group flex items-center justify-between px-2 py-1 rounded-md text-xs cursor-pointer select-none transition-colors ${
+          className={`group flex items-center justify-between h-7 px-2 text-xs cursor-pointer select-none transition-colors ${
             isActive
-              ? "bg-[#191b20] text-white font-medium border border-[#303238]"
-              : "text-[#a5a7ad] hover:bg-[#15171a] hover:text-[#eeeeec] border border-transparent"
+              ? "bg-[#1d2026] text-white font-medium border-l-2 border-cyan-500"
+              : "text-[#858b94] hover:bg-[#151619] hover:text-[#d4d7dc] border-l-2 border-transparent"
           }`}
-          style={{ paddingLeft: `${depth * 14 + 8}px` }}
+          style={{ paddingLeft: `${depth * 14 + 10}px` }}
         >
           <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate">
             {isDir ? (
               <>
                 {isCollapsed ? (
-                  <ChevronRight className="w-3 h-3 opacity-60 flex-shrink-0" />
+                  <ChevronRight className="w-3 h-3 text-[#666c75] shrink-0" />
                 ) : (
-                  <ChevronDown className="w-3 h-3 opacity-60 flex-shrink-0" />
+                  <ChevronDown className="w-3 h-3 text-[#666c75] shrink-0" />
                 )}
-                <Folder className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                <Folder className="w-3.5 h-3.5 text-[#e5a855] shrink-0" />
               </>
             ) : (
               getFileIcon(node.name)
@@ -333,7 +331,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           </div>
 
           {/* Action buttons on hover */}
-          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 flex-shrink-0">
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 pr-1">
             <button
               type="button"
               onClick={(e) => {
@@ -341,7 +339,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 setEditingPath(node.path);
                 setRenameInput(node.path);
               }}
-              className="p-1 hover:text-white rounded text-[#8f9299] transition-colors"
+              className="p-1 hover:text-white rounded-xs text-[#666c75] hover:bg-[#22252b] transition-colors"
               title="Rename"
             >
               <Pencil className="w-2.5 h-2.5" />
@@ -354,7 +352,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                   onDeletePath(node.path);
                 }
               }}
-              className="p-1 hover:text-rose-400 rounded text-[#8f9299] transition-colors"
+              className="p-1 hover:text-rose-400 rounded-xs text-[#666c75] hover:bg-[#22252b] transition-colors"
               title="Delete"
             >
               <Trash2 className="w-2.5 h-2.5" />
@@ -375,7 +373,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className="relative h-full flex flex-col bg-[#111215] border-r border-[#24262b] select-none"
+      className="relative h-full flex flex-col bg-[#111214] border-r border-[#292c31] select-none"
     >
       {/* Hidden File / Folder Inputs */}
       <input
@@ -400,12 +398,12 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         }}
       />
 
-      {/* Top Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#24262b] bg-[#141518]">
-        <span className="text-[11px] font-bold text-[#8f9299] uppercase tracking-wider">
+      {/* Top Header: Classic IDE Explorer Header (32px) */}
+      <div className="flex items-center justify-between px-3 h-8 border-b border-[#292c31] bg-[#111214]">
+        <span className="text-[10.5px] font-mono font-semibold text-[#858b94] uppercase tracking-wider">
           Explorer
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => {
@@ -413,7 +411,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               setIsCreatingFolder(false);
               setNewPathInput("");
             }}
-            className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-[#1e2025] transition-colors cursor-pointer"
+            className="p-1 rounded-xs text-[#858b94] hover:text-white hover:bg-[#1a1c21] transition-colors cursor-pointer"
             title="New File"
           >
             <FilePlus className="w-3.5 h-3.5" />
@@ -425,31 +423,29 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               setIsCreatingFile(false);
               setNewPathInput("");
             }}
-            className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-[#1e2025] transition-colors cursor-pointer"
+            className="p-1 rounded-xs text-[#858b94] hover:text-white hover:bg-[#1a1c21] transition-colors cursor-pointer"
             title="New Folder"
           >
             <FolderPlus className="w-3.5 h-3.5" />
           </button>
 
-          {/* Import Folder / Files Button */}
           {onImportFiles && (
             <button
               type="button"
               onClick={() => folderInputRef.current?.click()}
-              className="p-1 rounded text-[#8f9299] hover:text-cyan-400 hover:bg-[#1e2025] transition-colors cursor-pointer"
-              title="Import Folder into Workspace (Local)"
+              className="p-1 rounded-xs text-[#858b94] hover:text-cyan-400 hover:bg-[#1a1c21] transition-colors cursor-pointer"
+              title="Import Folder into Workspace"
             >
               <FolderUp className="w-3.5 h-3.5" />
             </button>
           )}
 
-          {/* Export ZIP Button */}
           {onExportZip && (
             <button
               type="button"
               onClick={() => onExportZip()}
-              className="p-1 rounded text-[#8f9299] hover:text-emerald-400 hover:bg-[#1e2025] transition-colors cursor-pointer"
-              title="Export Project as ZIP (100% Client-Side)"
+              className="p-1 rounded-xs text-[#858b94] hover:text-emerald-400 hover:bg-[#1a1c21] transition-colors cursor-pointer"
+              title="Export Project as ZIP"
             >
               <Download className="w-3.5 h-3.5" />
             </button>
@@ -459,9 +455,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
       {/* New File / Folder Input Prompt */}
       {(isCreatingFile || isCreatingFolder) && (
-        <form onSubmit={handleCreateSubmit} className="p-2 border-b border-[#24262b] bg-[#16171c]">
+        <form onSubmit={handleCreateSubmit} className="p-2 border-b border-[#292c31] bg-[#151619]">
           <div className="text-[10px] text-cyan-400 font-medium mb-1">
-            {isCreatingFolder ? "New Folder Path:" : "New File Path (e.g. src/utils.py):"}
+            {isCreatingFolder ? "New Folder Name:" : "New File Path (e.g. src/utils.py):"}
           </div>
           <div className="flex items-center gap-1">
             <input
@@ -470,11 +466,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               onChange={(e) => setNewPathInput(e.target.value)}
               placeholder={isCreatingFolder ? "folder_name" : "filename.py"}
               autoFocus
-              className="flex-1 bg-[#111215] text-xs text-white px-2 py-1 rounded border border-[#303238] outline-none"
+              className="flex-1 bg-[#0d0e10] text-xs text-[#d4d7dc] px-2 py-1 rounded-xs border border-[#292c31] outline-none"
             />
             <button
               type="submit"
-              className="px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold"
+              className="px-2 py-1 rounded-xs bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold"
             >
               Add
             </button>
@@ -484,7 +480,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 setIsCreatingFile(false);
                 setIsCreatingFolder(false);
               }}
-              className="px-1.5 py-1 rounded text-[#8f9299] hover:text-white text-xs"
+              className="px-1.5 py-1 rounded-xs text-[#858b94] hover:text-white text-xs"
             >
               ✕
             </button>
@@ -494,27 +490,33 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
       {/* Drag & Drop Visual Overlay */}
       {isDraggingOver && (
-        <div className="absolute inset-0 z-30 bg-cyan-950/80 border-2 border-dashed border-cyan-400 flex flex-col items-center justify-center p-4 text-center backdrop-blur-xs">
-          <Upload className="w-8 h-8 text-cyan-400 mb-2 animate-bounce" />
+        <div className="absolute inset-0 z-30 bg-[#0d0e10]/90 border-2 border-dashed border-cyan-500/80 flex flex-col items-center justify-center p-4 text-center">
+          <Upload className="w-6 h-6 text-cyan-400 mb-2" />
           <div className="text-xs font-semibold text-white">Drop to import into workspace</div>
-          <div className="text-[11px] text-cyan-200/70 mt-1">
-            Files will be stored 100% locally on your device
+          <div className="text-[10.5px] text-[#858b94] mt-0.5">
+            Files stored locally on device
           </div>
         </div>
       )}
 
       {/* Importing Loader Indicator */}
       {isImporting && (
-        <div className="px-3 py-1.5 bg-cyan-500/10 border-b border-cyan-500/20 flex items-center gap-2 text-xs text-cyan-300">
-          <div className="w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-          <span>Importing files locally...</span>
+        <div className="px-3 py-1 bg-cyan-950/40 border-b border-cyan-900/50 flex items-center gap-2 text-xs text-cyan-300">
+          <div className="w-3 h-3 border border-cyan-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-[11px]">Importing files locally...</span>
         </div>
       )}
 
       {/* Tree Content */}
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+      <div className="flex-1 overflow-y-auto py-1 space-y-0.5">
+        {/* Project root folder header */}
+        <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-mono text-[#858b94] uppercase tracking-wide">
+          <ChevronDown className="w-3 h-3 text-[#666c75]" />
+          <span className="truncate">{projectName}</span>
+        </div>
+
         {tree.length === 0 ? (
-          <div className="p-4 text-center text-xs text-[#666970] italic">
+          <div className="p-4 text-center text-xs text-[#525760] italic">
             Workspace is empty. Create a file or drop a folder to start.
           </div>
         ) : (

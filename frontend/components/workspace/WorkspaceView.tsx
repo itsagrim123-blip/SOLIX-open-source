@@ -8,10 +8,12 @@ import {
   Download,
   FolderTree,
   HardDrive,
+  Hammer,
   MessageSquare,
+  Play,
+  PlayCircle,
   Plus,
   RefreshCw,
-  Sparkles,
   Terminal as TerminalIcon,
   Trash2,
   X,
@@ -24,7 +26,7 @@ import { AIPanel } from "./AIPanel";
 import { TerminalPanel } from "./TerminalPanel";
 import { DiffReviewModal } from "./DiffReviewModal";
 import { SolixLogo } from "@/components/brand/SolixLogo";
-import { CodePatch } from "@/types/workspace";
+import type { CodePatch } from "@/types/workspace";
 import { workspaceMigration } from "@/lib/storage/workspaceMigration";
 
 function formatBytes(bytes: number): string {
@@ -33,6 +35,49 @@ function formatBytes(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+function getLanguageLabel(file: string | null): string {
+  if (!file) return "Plain Text";
+  const ext = file.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "py":
+      return "Python";
+    case "js":
+      return "JavaScript";
+    case "jsx":
+      return "JavaScript React";
+    case "ts":
+      return "TypeScript";
+    case "tsx":
+      return "TypeScript React";
+    case "json":
+      return "JSON";
+    case "md":
+      return "Markdown";
+    case "html":
+      return "HTML";
+    case "css":
+      return "CSS";
+    case "cpp":
+    case "cc":
+    case "cxx":
+      return "C++";
+    case "c":
+    case "h":
+      return "C";
+    case "rs":
+      return "Rust";
+    case "go":
+      return "Go";
+    case "toml":
+      return "TOML";
+    case "yaml":
+    case "yml":
+      return "YAML";
+    default:
+      return ext ? ext.toUpperCase() : "Plain Text";
+  }
 }
 
 interface WorkspaceViewProps {
@@ -81,12 +126,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     stopProject,
     clearTerminal,
     problems,
-    setProblems,
     targetProblem,
-    setTargetProblem,
     jumpToProblem,
     availableRuntimes,
-    loadRuntimes,
 
     // Local Storage & Export/Import
     exportProject,
@@ -119,7 +161,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     stopAgent,
   } = workspace;
 
-  // Mobile navigation tab
+  // Editor cursor tracking for IDE status bar
+  const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+
+  // Navigation tab for mobile viewports
   const [mobileTab, setMobileTab] = useState<"files" | "editor" | "ai" | "terminal">("editor");
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
@@ -141,9 +186,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
   // Check for legacy migration on mount
   useEffect(() => {
-    workspaceMigration.checkPendingMigration().then((hasPending) => {
-      setPendingMigration(hasPending);
-    }).catch(() => {});
+    workspaceMigration
+      .checkPendingMigration()
+      .then((hasPending) => {
+        setPendingMigration(hasPending);
+      })
+      .catch(() => {});
   }, []);
 
   const handleMigrateLegacy = async () => {
@@ -152,7 +200,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
       const count = await workspaceMigration.migrateServerWorkspaces();
       await refreshWorkspace();
       setPendingMigration(false);
-      setMigrationSuccessMsg(`Successfully imported ${count} legacy project(s) to local browser storage.`);
+      setMigrationSuccessMsg(`Successfully imported ${count} legacy project(s) to local storage.`);
       setTimeout(() => setMigrationSuccessMsg(null), 6000);
     } catch (err: any) {
       alert("Failed to migrate workspaces: " + (err.message || "Unknown error"));
@@ -189,41 +237,39 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
       `Please investigate and fix the following runtime error:\n\n\`\`\`\n${errorDetails}\n\`\`\``,
       { customAction: "debug" }
     );
-    // On mobile, automatically switch to the AI tab to see the diagnostic & fix
     setMobileTab("ai");
   };
 
   if (isLoading && !activeWorkspace) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#0d0e10] text-[#8f9299] gap-3">
-        <div className="w-8 h-8 border-2 border-[#292b30] border-t-cyan-400 rounded-full animate-spin" />
-        <div className="text-sm font-medium">Initializing Coding Workspace...</div>
-        <div className="text-xs text-[#666970]">Mounting local sandbox & indexer</div>
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#0d0e10] text-[#858b94] gap-2 select-none">
+        <div className="w-5 h-5 border-2 border-[#292c31] border-t-cyan-400 rounded-full animate-spin" />
+        <div className="text-xs font-mono font-medium text-[#d4d7dc]">Loading Workspace...</div>
       </div>
     );
   }
 
+  const activeLanguage = getLanguageLabel(activeFile);
+
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0 bg-[#0d0e10] text-[#dedfe2] overflow-hidden select-none">
-      {/* Workspace Top Header (Unified Full-Screen Header) */}
-      <div className="h-[52px] px-3.5 border-b border-[#26282e] bg-[#121316] flex items-center justify-between shrink-0 gap-2 z-20 select-none">
-        {/* LEFT: Brand Logo + 'Solix · Workspace' + Divider + Project Selector & Badges */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          {/* Solix Dragon Logo & Title */}
-          <div className="flex items-center gap-2 shrink-0">
-            <SolixLogo size="sm" px={26} />
-            <div className="flex items-center gap-1.5 text-sm font-semibold">
-              <span className="text-white tracking-wide">Solix</span>
-              <span className="text-[#555860]">·</span>
-              <span className="text-cyan-400 font-medium">Workspace</span>
-            </div>
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-[#0d0e10] text-[#d4d7dc] overflow-hidden select-none">
+      {/* Top Bar: Classic Professional Desktop IDE Header (38px) */}
+      <div className="h-[38px] px-3 border-b border-[#292c31] bg-[#111214] flex items-center justify-between shrink-0 gap-3 z-20 select-none">
+        {/* LEFT: Solix Logo + Project Selector Dropdown + Actions */}
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Solix Brand Icon & Title */}
+          <div className="flex items-center gap-1.5 shrink-0 pr-1">
+            <SolixLogo size="sm" px={20} />
+            <span className="text-xs font-semibold text-white tracking-wide font-sans">
+              Solix
+            </span>
           </div>
 
-          <span className="h-4 w-px bg-[#2a2c33] mx-1 shrink-0 hidden sm:inline-block" />
+          <span className="text-[#444850] font-mono text-xs">/</span>
 
           {/* Project Selector Dropdown */}
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#18191e] border border-[#2e3138] hover:border-[#3d414a] transition-colors">
-            <Code2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+          <div className="flex items-center gap-1.5 px-2 h-6 rounded-xs bg-[#16171a] border border-[#292c31] hover:border-[#383b42] transition-colors">
+            <Code2 className="w-3 h-3 text-cyan-400 shrink-0" />
             <select
               aria-label="Select active workspace"
               value={activeWorkspace?.id || ""}
@@ -231,10 +277,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 const ws = workspaces.find((w) => w.id === e.target.value);
                 if (ws) selectWorkspace(ws);
               }}
-              className="bg-transparent text-xs font-semibold text-[#dedfe2] outline-none cursor-pointer max-w-[130px] sm:max-w-[170px] truncate"
+              className="bg-transparent text-xs text-[#d4d7dc] outline-none cursor-pointer max-w-[130px] sm:max-w-[170px] truncate font-medium"
             >
               {workspaces.map((ws) => (
-                <option key={ws.id} value={ws.id} className="bg-[#141518] text-[#dedfe2]">
+                <option key={ws.id} value={ws.id} className="bg-[#141518] text-[#d4d7dc]">
                   {ws.name}
                 </option>
               ))}
@@ -243,7 +289,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
           <button
             onClick={() => setIsCreatingWorkspace(true)}
-            className="p-1.5 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors"
+            className="p-1 rounded-xs text-[#858b94] hover:text-white hover:bg-[#1a1c21] transition-colors cursor-pointer"
             title="Create New Project"
             aria-label="Create New Project"
           >
@@ -252,109 +298,96 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
           <button
             onClick={() => refreshWorkspace()}
-            className="p-1.5 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors"
+            className="p-1 rounded-xs text-[#858b94] hover:text-white hover:bg-[#1a1c21] transition-colors cursor-pointer"
             title="Refresh Files"
             aria-label="Refresh Files"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-3 h-3" />
           </button>
-
-          {/* Local Storage Indicator Pill */}
-          <button
-            type="button"
-            onClick={() => setShowStorageModal(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#18191e] hover:bg-[#202228] text-[#a0a3ab] hover:text-[#eeeeec] border border-[#2c2f36] transition-colors cursor-pointer"
-            title="Inspect local browser storage & export backup"
-          >
-            <HardDrive className="w-3 h-3 text-cyan-400" />
-            <span>
-              {storageStats.isSaving ? "Saving..." : "Local"}
-              {storageStats.bytes > 0 ? ` · ${formatBytes(storageStats.bytes)}` : ""}
-            </span>
-          </button>
-
-          {/* Sandboxed Badge (Truthful & Interactive) */}
-          <button
-            type="button"
-            onClick={() => setShowSandboxModal(true)}
-            className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 transition-colors cursor-pointer"
-            title="Inspect sandbox isolation & execution runtime"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Browser Sandbox</span>
-          </button>
-
-          {/* Runtimes & Compilers Pill */}
-          <button
-            type="button"
-            onClick={() => setShowRuntimesModal(true)}
-            className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-[#18191e] hover:bg-[#202228] text-[#a0a3ab] hover:text-[#eeeeec] border border-[#2c2f36] transition-colors cursor-pointer"
-            title="Inspect system compilers and installed runtimes"
-          >
-            <Cpu className="w-3 h-3 text-cyan-400" />
-            <span>Compilers ({availableRuntimes.filter((r) => r.available).length})</span>
-          </button>
-
-          <span className="hidden lg:inline-flex items-center gap-1 text-[10.5px] font-mono font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            <Sparkles className="w-2.5 h-2.5" />
-            qwen2.5-coder:7b
-          </span>
         </div>
 
-        {/* RIGHT: Mode Switcher Pill */}
+        {/* CENTER / RIGHT: Compact Execution Actions */}
+        <div className="hidden md:flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => buildProject()}
+            disabled={isRunning}
+            className="flex items-center gap-1 px-2.5 h-6 rounded-xs text-[11px] font-medium text-[#858b94] hover:text-[#d4d7dc] hover:bg-[#1c1f24] transition-colors cursor-pointer"
+            title="Build Project"
+          >
+            <Hammer className="w-3 h-3" />
+            <span>Build</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => testProject()}
+            disabled={isRunning}
+            className="flex items-center gap-1 px-2.5 h-6 rounded-xs text-[11px] font-medium text-[#858b94] hover:text-[#d4d7dc] hover:bg-[#1c1f24] transition-colors cursor-pointer"
+            title="Run Unit Tests"
+          >
+            <PlayCircle className="w-3 h-3" />
+            <span>Test</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => runProject()}
+            disabled={isRunning}
+            className={`flex items-center gap-1 px-2.5 h-6 rounded-xs text-[11px] font-semibold transition-colors cursor-pointer ${
+              isRunning
+                ? "bg-amber-950/60 text-amber-300 border border-amber-800/60"
+                : "bg-cyan-600 hover:bg-cyan-500 text-white"
+            }`}
+            title="Run active file in browser sandbox"
+          >
+            <Play className="w-3 h-3 fill-current" />
+            <span>{isRunning ? "Running..." : "Run"}</span>
+          </button>
+        </div>
+
+        {/* RIGHT: Chat / Workspace Mode Switcher */}
         <div className="flex items-center gap-2">
-          {/* Mode Switcher Pill (matches ChatHeader & ChatSidebar) */}
-          <div className="inline-flex items-center p-0.5 rounded-lg bg-[#15171a] border border-[#2a2c33] text-xs">
+          <div className="inline-flex items-center p-0.5 rounded-xs bg-[#151619] border border-[#292c31] text-xs">
             <button
               onClick={onBackToChat}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[#8f9299] hover:text-white transition-all font-medium cursor-pointer"
+              className="flex items-center gap-1 px-2.5 h-6 rounded-xs text-[#858b94] hover:text-white transition-colors font-medium cursor-pointer"
               title="Return to Normal Chat"
             >
-              <MessageSquare className="w-3.5 h-3.5" />
+              <MessageSquare className="w-3 h-3" />
               <span>Chat</span>
             </button>
             <button
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-xs font-semibold cursor-default"
-              title="Currently in Workspace Mode"
+              className="flex items-center gap-1 px-2.5 h-6 rounded-xs bg-[#1f232b] text-cyan-300 border border-cyan-800/50 font-semibold cursor-default"
+              title="Workspace Mode Active"
             >
-              <Code2 className="w-3.5 h-3.5" />
+              <Code2 className="w-3 h-3" />
               <span>Workspace</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Legacy Migration Notification Banner */}
+      {/* Legacy Migration Notification Banner (Quiet) */}
       {pendingMigration && !migrationBannerDismissed && (
-        <div className="bg-gradient-to-r from-cyan-950/90 via-blue-950/80 to-[#14161c] border-b border-cyan-500/30 px-3.5 py-2 flex items-center justify-between text-xs text-cyan-200 z-10">
+        <div className="bg-[#141822] border-b border-cyan-800/40 px-3 py-1.5 flex items-center justify-between text-xs text-[#a5abb5] z-10">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-base">📦</span>
-            <span className="font-medium text-white">Legacy Server Projects Detected:</span>
-            <span className="text-cyan-200/80 hidden sm:inline">
-              Import server workspaces to your local browser storage for client-side persistence and execution.
-            </span>
+            <span className="text-cyan-400 font-mono">Notice:</span>
+            <span className="truncate">Legacy server projects detected. Import to your local browser storage?</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleMigrateLegacy}
               disabled={isMigrating}
-              className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors text-xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+              className="px-2 h-5 rounded-xs bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
             >
-              {isMigrating ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Migrating...</span>
-                </>
-              ) : (
-                <span>Migrate to Local</span>
-              )}
+              {isMigrating ? "Migrating..." : "Import Locally"}
             </button>
             <button
               onClick={() => setMigrationBannerDismissed(true)}
-              className="p-1 text-cyan-400/60 hover:text-white transition-colors cursor-pointer"
-              title="Dismiss"
+              className="p-0.5 text-[#666c75] hover:text-white transition-colors cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </button>
           </div>
         </div>
@@ -362,79 +395,78 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
       {/* Migration Success Toast */}
       {migrationSuccessMsg && (
-        <div className="bg-emerald-950/90 border-b border-emerald-500/30 px-3.5 py-1.5 flex items-center justify-between text-xs text-emerald-300 z-10">
-          <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-emerald-400" />
+        <div className="bg-[#121c17] border-b border-emerald-800/40 px-3 py-1 flex items-center justify-between text-xs text-emerald-300 z-10">
+          <div className="flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-emerald-400" />
             <span>{migrationSuccessMsg}</span>
           </div>
           <button
             onClick={() => setMigrationSuccessMsg(null)}
-            className="p-1 text-emerald-400/60 hover:text-white cursor-pointer"
+            className="p-0.5 text-emerald-400/60 hover:text-white cursor-pointer"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3 h-3" />
           </button>
         </div>
       )}
 
-      {/* Mobile Tab Switcher Bar (visible only on screens < 1024px) */}
-      <div className="lg:hidden flex items-center justify-around bg-[#121316] border-b border-[#25272c] py-1 px-2 shrink-0">
+      {/* Mobile Tab Switcher Bar (< 1024px) */}
+      <div className="lg:hidden flex items-center justify-around bg-[#111214] border-b border-[#292c31] py-1 px-2 shrink-0">
         <button
           onClick={() => setMobileTab("files")}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium transition-colors ${
             mobileTab === "files"
-              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-semibold"
-              : "text-[#8f9299] hover:text-[#dedfe2]"
+              ? "text-cyan-400 border-b-2 border-cyan-400 font-semibold"
+              : "text-[#858b94] hover:text-[#d4d7dc]"
           }`}
         >
-          <FolderTree className="w-3.5 h-3.5" />
+          <FolderTree className="w-3 h-3" />
           <span>Files</span>
         </button>
 
         <button
           onClick={() => setMobileTab("editor")}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium transition-colors ${
             mobileTab === "editor"
-              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-semibold"
-              : "text-[#8f9299] hover:text-[#dedfe2]"
+              ? "text-cyan-400 border-b-2 border-cyan-400 font-semibold"
+              : "text-[#858b94] hover:text-[#d4d7dc]"
           }`}
         >
-          <Code2 className="w-3.5 h-3.5" />
+          <Code2 className="w-3 h-3" />
           <span>Editor</span>
         </button>
 
         <button
           onClick={() => setMobileTab("terminal")}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium transition-colors ${
             mobileTab === "terminal"
-              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-semibold"
-              : "text-[#8f9299] hover:text-[#dedfe2]"
+              ? "text-cyan-400 border-b-2 border-cyan-400 font-semibold"
+              : "text-[#858b94] hover:text-[#d4d7dc]"
           }`}
         >
-          <TerminalIcon className="w-3.5 h-3.5" />
+          <TerminalIcon className="w-3 h-3" />
           <span>Terminal</span>
         </button>
 
         <button
           onClick={() => setMobileTab("ai")}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium transition-colors ${
             mobileTab === "ai"
-              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-semibold"
-              : "text-[#8f9299] hover:text-[#dedfe2]"
+              ? "text-cyan-400 border-b-2 border-cyan-400 font-semibold"
+              : "text-[#858b94] hover:text-[#d4d7dc]"
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Solix AI</span>
+          <span>AI</span>
         </button>
       </div>
 
-      {/* Main Workspace Body */}
-      {/* 1. Desktop Layout (lg:flex, 3 columns + bottom terminal) */}
+      {/* Main Workspace Body: Classic 3-Column Desktop Layout */}
       <div className="hidden lg:flex flex-1 min-h-0 min-w-0 overflow-hidden">
-        {/* Left Column: File Explorer (240px) */}
-        <div className="w-60 shrink-0 h-full border-r border-[#26282e] flex flex-col bg-[#111215]">
+        {/* Left Column: File Explorer (220px) */}
+        <div className="w-[220px] shrink-0 h-full flex flex-col bg-[#111214]">
           <FileExplorer
             tree={fileTree}
             activeFile={activeFile}
+            projectName={activeWorkspace?.name || "PROJECT"}
             onSelectFile={openFile}
             onCreateFileOrDir={createFileOrDir}
             onDeletePath={deleteFileOrDir}
@@ -444,8 +476,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
           />
         </div>
 
-        {/* Center Column: Code Editor + Collapsible Bottom Terminal */}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden border-r border-[#26282e]">
+        {/* Center Column: Code Editor + Docked Bottom Panel */}
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden border-r border-[#292c31]">
           {/* Top: Code Editor */}
           <div className="flex-1 min-h-0 overflow-hidden relative">
             <CodeEditorPanel
@@ -467,11 +499,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 setSelectedCode(code);
                 setSelectedLineRange(range);
               }}
+              onCursorChange={(line, col) => setCursorPos({ line, col })}
             />
           </div>
 
-          {/* Bottom: Terminal Panel */}
-          <div className="shrink-0 bg-[#0f1013] border-t border-[#26282e]">
+          {/* Bottom: Docked Terminal / Problems Panel */}
+          <div className="shrink-0">
             <TerminalPanel
               output={terminalOutput}
               lastResult={lastResult}
@@ -488,8 +521,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
           </div>
         </div>
 
-        {/* Right Column: AI Coding Panel (380px) */}
-        <div className="w-[380px] shrink-0 h-full flex flex-col bg-[#121316]">
+        {/* Right Column: AI Developer Tool Panel (340px) */}
+        <div className="w-[340px] shrink-0 h-full flex flex-col bg-[#111214]">
           <AIPanel
             messages={messages}
             isGenerating={isAIGenerating}
@@ -522,13 +555,14 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
         </div>
       </div>
 
-      {/* 2. Mobile Layout (< lg:flex, single active panel full width) */}
+      {/* Mobile Layout (< lg) */}
       <div className="flex-1 lg:hidden min-h-0 min-w-0 overflow-hidden flex flex-col">
         {mobileTab === "files" && (
-          <div className="flex-1 min-h-0 bg-[#111215]">
+          <div className="flex-1 min-h-0 bg-[#111214]">
             <FileExplorer
               tree={fileTree}
               activeFile={activeFile}
+              projectName={activeWorkspace?.name || "PROJECT"}
               onSelectFile={(path) => {
                 openFile(path);
                 setMobileTab("editor");
@@ -572,12 +606,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 setSelectedCode(code);
                 setSelectedLineRange(range);
               }}
+              onCursorChange={(line, col) => setCursorPos({ line, col })}
             />
           </div>
         )}
 
         {mobileTab === "terminal" && (
-          <div className="flex-1 min-h-0 flex flex-col bg-[#0f1013]">
+          <div className="flex-1 min-h-0 flex flex-col bg-[#0d0e10]">
             <TerminalPanel
               output={terminalOutput}
               lastResult={lastResult}
@@ -598,7 +633,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
         )}
 
         {mobileTab === "ai" && (
-          <div className="flex-1 min-h-0 flex flex-col bg-[#121316]">
+          <div className="flex-1 min-h-0 flex flex-col bg-[#111214]">
             <AIPanel
               messages={messages}
               isGenerating={isAIGenerating}
@@ -630,6 +665,62 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             />
           </div>
         )}
+      </div>
+
+      {/* Classic IDE Status Bar (22px) */}
+      <div className="h-[22px] px-3 bg-[#0d0e10] border-t border-[#292c31] flex items-center justify-between text-[11px] font-mono text-[#666c75] shrink-0 select-none">
+        {/* Left Side: File & Editor metadata */}
+        <div className="flex items-center gap-3">
+          <span className="text-[#858b94]">{activeLanguage}</span>
+          <span>UTF-8</span>
+          <span>LF</span>
+          <span>Spaces: 4</span>
+          <span className="text-[#858b94]">
+            Ln {cursorPos.line}, Col {cursorPos.col}
+          </span>
+        </div>
+
+        {/* Right Side: Runtime & Persistence status (clickable) */}
+        <div className="flex items-center gap-3">
+          {/* Browser Sandbox status */}
+          <button
+            type="button"
+            onClick={() => setShowSandboxModal(true)}
+            className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors cursor-pointer"
+            title="Inspect sandbox isolation & execution runtime"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Python (Pyodide WASM)</span>
+          </button>
+
+          <span>|</span>
+
+          {/* Local Storage status */}
+          <button
+            type="button"
+            onClick={() => setShowStorageModal(true)}
+            className="flex items-center gap-1 hover:text-cyan-400 transition-colors cursor-pointer"
+            title="Inspect local browser storage & export backup"
+          >
+            <HardDrive className="w-3 h-3 text-[#666c75]" />
+            <span>
+              {storageStats.isSaving ? "Saving..." : "✓ Saved locally"}
+              {storageStats.bytes > 0 ? ` (${formatBytes(storageStats.bytes)})` : ""}
+            </span>
+          </button>
+
+          <span>|</span>
+
+          {/* Compilers Inspector */}
+          <button
+            type="button"
+            onClick={() => setShowRuntimesModal(true)}
+            className="hover:text-cyan-400 transition-colors cursor-pointer"
+            title="Inspect system compilers"
+          >
+            Compilers ({availableRuntimes.filter((r) => r.available).length})
+          </button>
+        </div>
       </div>
 
       {/* Diff Review Modal */}
@@ -664,23 +755,25 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
         }}
       />
 
-      {/* New Project Modal */}
+      {/* New Project Modal (Classic IDE Dialog) */}
       {isCreatingWorkspace && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="w-full max-w-sm bg-[#141518] border border-[#2e3137] rounded-xl p-4 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">Create New Coding Project</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-sm bg-[#141518] border border-[#292c31] rounded-xs p-4 shadow-2xl space-y-3.5">
+            <div className="flex items-center justify-between border-b border-[#22252a] pb-2">
+              <span className="text-xs font-mono font-semibold uppercase text-white tracking-wider">
+                New Coding Project
+              </span>
               <button
                 onClick={() => setIsCreatingWorkspace(false)}
-                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                className="p-1 rounded-xs text-[#858b94] hover:text-white transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             <form onSubmit={handleCreateWorkspace} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-[#8f9299] mb-1">
+                <label className="block text-[11px] font-mono text-[#858b94] mb-1">
                   Project Name
                 </label>
                 <input
@@ -689,44 +782,44 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                   onChange={(e) => setNewWorkspaceName(e.target.value)}
                   placeholder="e.g. My Algorithm Project"
                   autoFocus
-                  className="w-full px-3 py-1.5 text-xs bg-[#191a1e] border border-[#2e3137] rounded-lg text-white placeholder-[#666970] focus:outline-none focus:border-cyan-500"
+                  className="w-full px-2.5 py-1.5 text-xs bg-[#0d0e10] border border-[#292c31] rounded-xs text-white placeholder-[#555a62] focus:outline-none focus:border-cyan-500 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#8f9299] mb-1">
-                  Language & Starter Template
+                <label className="block text-[11px] font-mono text-[#858b94] mb-1">
+                  Template
                 </label>
                 <select
                   value={newWorkspaceTemplate}
                   onChange={(e) => setNewWorkspaceTemplate(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-[#191a1e] border border-[#2e3137] rounded-lg text-white focus:outline-none focus:border-cyan-500 cursor-pointer"
+                  className="w-full px-2.5 py-1.5 text-xs bg-[#0d0e10] border border-[#292c31] rounded-xs text-white focus:outline-none focus:border-cyan-500 cursor-pointer font-mono"
                 >
-                  <option value="starter-python">Python 3 (main.py, test_main.py) — In-Browser WASM</option>
-                  <option value="starter-web">JavaScript / Node (index.js) — In-Browser Worker</option>
-                  <option value="starter-cpp">C++ (main.cpp, math_utils.cpp) — Native Compiler</option>
-                  <option value="empty">Empty Project (blank canvas)</option>
+                  <option value="starter-python">Python 3 (In-Browser WASM)</option>
+                  <option value="starter-web">JavaScript / Node (In-Browser Worker)</option>
+                  <option value="starter-cpp">C++ (Native Compiler)</option>
+                  <option value="empty">Empty Project</option>
                 </select>
               </div>
 
-              <div className="text-[11px] text-[#666970]">
-                All files will be saved directly into your device's local IndexedDB and executed in the local sandbox.
+              <div className="text-[10.5px] text-[#666c75] font-mono">
+                Project files are stored directly in your browser's local IndexedDB.
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-1.5 pt-1 border-t border-[#22252a]">
                 <button
                   type="button"
                   onClick={() => setIsCreatingWorkspace(false)}
-                  className="px-3 py-1.5 text-xs font-medium text-[#8f9299] hover:text-white rounded-lg transition-colors cursor-pointer"
+                  className="px-3 h-7 text-xs font-medium text-[#858b94] hover:text-white rounded-xs transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!newWorkspaceName.trim()}
-                  className="px-3 py-1.5 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg transition-colors cursor-pointer"
+                  className="px-3 h-7 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-xs transition-colors cursor-pointer"
                 >
-                  Create Project
+                  Create
                 </button>
               </div>
             </form>
@@ -736,84 +829,80 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
       {/* Sandbox Isolation & Runtime Details Modal */}
       {showSandboxModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
-          <div className="w-full max-w-lg bg-[#141518] border border-[#2e3137] rounded-xl p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#252830] pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-lg bg-[#141518] border border-[#292c31] rounded-xs p-4 shadow-2xl space-y-3.5">
+            <div className="flex items-center justify-between border-b border-[#22252a] pb-2">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <h3 className="text-sm font-semibold text-white">Browser Sandbox Architecture</h3>
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-xs font-mono font-semibold uppercase text-white tracking-wider">
+                  Browser Sandbox Details
+                </span>
               </div>
               <button
                 onClick={() => setShowSandboxModal(false)}
-                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                className="p-1 rounded-xs text-[#858b94] hover:text-white transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <p className="text-xs text-[#8f9299] leading-relaxed">
-              Solix Workspace operates with a <strong className="text-[#dedfe2]">Local-First Architecture</strong>. Your code is stored on your device and executed directly in your browser using WebAssembly and Web Workers.
+            <p className="text-xs text-[#858b94] leading-relaxed">
+              Solix Workspace executes code directly in your browser using isolated WebAssembly (Pyodide) and Web Workers.
             </p>
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
-                <div className="text-[10.5px] text-[#8f9299] uppercase font-bold tracking-wider mb-0.5">
-                  Execution Mode
-                </div>
-                <div className="font-semibold text-emerald-400">100% In-Browser</div>
-                <div className="text-[11px] text-[#666970] mt-0.5">Isolated Web Worker & Pyodide WASM</div>
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="p-2 rounded-xs bg-[#0d0e10] border border-[#22252a]">
+                <div className="text-[10px] text-[#666c75] uppercase mb-0.5">Execution Engine</div>
+                <div className="text-emerald-400 font-semibold">100% In-Browser</div>
+                <div className="text-[10px] text-[#555a62]">Pyodide WASM & Web Worker</div>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
-                <div className="text-[10.5px] text-[#8f9299] uppercase font-bold tracking-wider mb-0.5">
-                  Timeout Protection
-                </div>
-                <div className="font-semibold text-cyan-400">15 Seconds Watchdog</div>
-                <div className="text-[11px] text-[#666970] mt-0.5">Auto-terminates infinite loops</div>
+              <div className="p-2 rounded-xs bg-[#0d0e10] border border-[#22252a]">
+                <div className="text-[10px] text-[#666c75] uppercase mb-0.5">Watchdog Timer</div>
+                <div className="text-cyan-400 font-semibold">15 Seconds</div>
+                <div className="text-[10px] text-[#555a62]">Auto-terminates infinite loops</div>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
-                <div className="text-[10.5px] text-[#8f9299] uppercase font-bold tracking-wider mb-0.5">
-                  Output Buffer Cap
-                </div>
-                <div className="font-semibold text-white">500 KB Limit</div>
-                <div className="text-[11px] text-[#666970] mt-0.5">Prevents browser memory freezes</div>
+              <div className="p-2 rounded-xs bg-[#0d0e10] border border-[#22252a]">
+                <div className="text-[10px] text-[#666c75] uppercase mb-0.5">Output Limit</div>
+                <div className="text-white font-semibold">500 KB Cap</div>
+                <div className="text-[10px] text-[#555a62]">Prevents memory freezes</div>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
-                <div className="text-[10.5px] text-[#8f9299] uppercase font-bold tracking-wider mb-0.5">
-                  Source Privacy
-                </div>
-                <div className="font-semibold text-emerald-400">Zero Server Storage</div>
-                <div className="text-[11px] text-[#666970] mt-0.5">Source files never permanently stored</div>
+              <div className="p-2 rounded-xs bg-[#0d0e10] border border-[#22252a]">
+                <div className="text-[10px] text-[#666c75] uppercase mb-0.5">Server Storage</div>
+                <div className="text-emerald-400 font-semibold">Zero Uploads</div>
+                <div className="text-[10px] text-[#555a62]">Source files stay on device</div>
               </div>
             </div>
 
-            <div className="border-t border-[#252830] pt-3">
-              <div className="text-[11px] font-semibold text-white mb-2">Browser Compilers & Interpreters</div>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs px-2.5 py-2 rounded bg-[#18191e]">
+            <div className="border-t border-[#22252a] pt-2.5">
+              <div className="text-[10.5px] font-mono text-[#858b94] uppercase tracking-wide mb-1.5">
+                Runtime Availability
+              </div>
+              <div className="space-y-1 font-mono text-xs">
+                <div className="flex items-center justify-between p-1.5 rounded-xs bg-[#0d0e10]">
                   <span className="text-white">Python 3.12 (Pyodide WASM)</span>
-                  <span className="text-emerald-400 font-medium">✓ Local WebAssembly</span>
+                  <span className="text-emerald-400 text-[11px]">✓ Available</span>
                 </div>
-                <div className="flex items-center justify-between text-xs px-2.5 py-2 rounded bg-[#18191e]">
+                <div className="flex items-center justify-between p-1.5 rounded-xs bg-[#0d0e10]">
                   <span className="text-white">JavaScript / TypeScript (Worker)</span>
-                  <span className="text-emerald-400 font-medium">✓ Local Web Worker</span>
+                  <span className="text-emerald-400 text-[11px]">✓ Available</span>
                 </div>
-                <div className="flex items-center justify-between text-xs px-2.5 py-2 rounded bg-[#18191e]">
-                  <span className="text-[#8f9299]">C / C++ (GCC / Clang)</span>
-                  <span className="text-zinc-500 font-medium">Requires Native Runtime</span>
+                <div className="flex items-center justify-between p-1.5 rounded-xs bg-[#0d0e10]">
+                  <span className="text-[#858b94]">C / C++ (GCC / Clang)</span>
+                  <span className="text-[#555a62] text-[11px]">Requires Native Runtime</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-[#252830]">
+            <div className="flex justify-end pt-2 border-t border-[#22252a]">
               <button
                 type="button"
                 onClick={() => setShowSandboxModal(false)}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors cursor-pointer"
+                className="px-3 h-7 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-xs transition-colors cursor-pointer"
               >
-                Got It
+                Close
               </button>
             </div>
           </div>
@@ -822,67 +911,73 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
       {/* Local Storage & Export Modal */}
       {showStorageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-[#141518] border border-[#2e3137] rounded-xl p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#252830] pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md bg-[#141518] border border-[#292c31] rounded-xs p-4 shadow-2xl space-y-3.5">
+            <div className="flex items-center justify-between border-b border-[#22252a] pb-2">
               <div className="flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-sm font-semibold text-white">Local Storage & Persistence</h3>
+                <span className="text-xs font-mono font-semibold uppercase text-white tracking-wider">
+                  Storage & Persistence
+                </span>
               </div>
               <button
                 onClick={() => setShowStorageModal(false)}
-                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                className="p-1 rounded-xs text-[#858b94] hover:text-white transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
-                <span className="text-[#8f9299]">Active Project:</span>
+            <div className="space-y-2 text-xs font-mono">
+              <div className="flex items-center justify-between p-2 rounded-xs bg-[#0d0e10] border border-[#22252a]">
+                <span className="text-[#858b94]">Project:</span>
                 <span className="font-semibold text-white truncate max-w-[200px]">
                   {activeWorkspace?.name || "None"}
                 </span>
               </div>
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
-                <span className="text-[#8f9299]">Project Storage Used:</span>
-                <span className="font-mono text-cyan-400 font-semibold">
+              <div className="flex items-center justify-between p-2 rounded-xs bg-[#0d0e10] border border-[#22252a]">
+                <span className="text-[#858b94]">Size on Device:</span>
+                <span className="text-cyan-400 font-semibold">
                   {formatBytes(storageStats.bytes)} ({storageStats.fileCount} files)
                 </span>
               </div>
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
-                <span className="text-[#8f9299]">Storage Engine:</span>
-                <span className="text-emerald-400 font-mono">IndexedDB + OPFS</span>
+              <div className="flex items-center justify-between p-2 rounded-xs bg-[#0d0e10] border border-[#22252a]">
+                <span className="text-[#858b94]">Storage Engine:</span>
+                <span className="text-emerald-400">IndexedDB + OPFS</span>
               </div>
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
-                <span className="text-[#8f9299]">Auto-Save:</span>
+              <div className="flex items-center justify-between p-2 rounded-xs bg-[#0d0e10] border border-[#22252a]">
+                <span className="text-[#858b94]">Auto-Save:</span>
                 <span className="text-white">Active (500ms debounce)</span>
               </div>
             </div>
 
-            <div className="pt-2 flex flex-col gap-2">
+            <div className="pt-1 flex flex-col gap-1.5">
               <button
                 type="button"
                 onClick={async () => {
                   await exportProject();
                   setShowStorageModal(false);
                 }}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                className="w-full flex items-center justify-center gap-1.5 h-7 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xs text-xs font-semibold transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Export Project as ZIP (100% Client-Side)</span>
+                <span>Export Project as ZIP</span>
               </button>
 
               {activeWorkspace && workspaces.length > 1 && (
                 <button
                   type="button"
                   onClick={async () => {
-                    if (confirm(`Are you sure you want to permanently delete "${activeWorkspace.name}" from your local browser storage?`)) {
+                    if (
+                      confirm(
+                        `Are you sure you want to permanently delete "${activeWorkspace.name}" from your local browser storage?`
+                      )
+                    ) {
                       await deleteWorkspace(activeWorkspace.id);
                       setShowStorageModal(false);
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-center gap-1.5 h-7 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 rounded-xs text-xs font-medium transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Delete This Project</span>
@@ -890,11 +985,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               )}
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-[#252830]">
+            <div className="flex justify-end pt-2 border-t border-[#22252a]">
               <button
                 type="button"
                 onClick={() => setShowStorageModal(false)}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-[#1e2025] hover:bg-[#282a30] text-[#dedfe2] rounded-lg transition-colors cursor-pointer"
+                className="px-3 h-7 text-xs font-semibold bg-[#1c1f24] hover:bg-[#252830] text-[#d4d7dc] rounded-xs transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -905,73 +1000,67 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
       {/* Runtimes & Compilers Inspector Modal */}
       {showRuntimesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-[#141518] border border-[#2e3137] rounded-xl p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#252830] pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md bg-[#141518] border border-[#292c31] rounded-xs p-4 shadow-2xl space-y-3.5">
+            <div className="flex items-center justify-between border-b border-[#22252a] pb-2">
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-sm font-semibold text-white">System Compilers & Runtimes</h3>
+                <span className="text-xs font-mono font-semibold uppercase text-white tracking-wider">
+                  Compilers & Runtimes
+                </span>
               </div>
               <button
                 onClick={() => setShowRuntimesModal(false)}
-                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                className="p-1 rounded-xs text-[#858b94] hover:text-white transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <p className="text-xs text-[#8f9299] leading-relaxed">
-              Solix detects installed compilers and execution runtimes directly on your host environment.
+            <p className="text-xs text-[#858b94] leading-relaxed">
+              Available compilers and local execution engines detected for this workspace.
             </p>
 
-            <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-[300px] overflow-y-auto font-mono text-xs">
               {availableRuntimes.map((rt) => (
                 <div
                   key={rt.id}
-                  className="flex items-center justify-between p-2.5 rounded-lg bg-[#191b20] border border-[#262930]"
+                  className="flex items-center justify-between p-2 rounded-xs bg-[#0d0e10] border border-[#22252a]"
                 >
                   <div className="min-w-0 pr-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-white">{rt.display_name}</span>
                       {rt.version && (
-                        <span className="text-[10.5px] font-mono text-cyan-400">
+                        <span className="text-[10px] text-cyan-400">
                           {rt.version}
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-[#666970] truncate mt-0.5">
+                    <div className="text-[10.5px] text-[#666c75] truncate mt-0.5">
                       {rt.available ? (
-                        <span className="font-mono text-[10px] text-[#8f9299]">
-                          {rt.compiler || rt.runner || "Available in system environment"}
-                        </span>
+                        <span>{rt.compiler || rt.runner || "Available"}</span>
                       ) : (
-                        <span>{rt.install_hint || "Not detected in system PATH"}</span>
+                        <span>{rt.install_hint || "Not installed"}</span>
                       )}
                     </div>
                   </div>
 
                   <div>
                     {rt.available ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <Check className="w-3 h-3" />
-                        <span>Available</span>
-                      </span>
+                      <span className="text-[11px] text-emerald-400">Available</span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700/50">
-                        <XCircle className="w-3 h-3 text-zinc-500" />
-                        <span>Not installed</span>
-                      </span>
+                      <span className="text-[11px] text-[#555a62]">Unavailable</span>
                     )}
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-[#252830]">
+            <div className="flex justify-end pt-2 border-t border-[#22252a]">
               <button
                 type="button"
                 onClick={() => setShowRuntimesModal(false)}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors cursor-pointer"
+                className="px-3 h-7 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-xs transition-colors cursor-pointer"
               >
                 Close
               </button>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Hammer, Play, PlayCircle, Save, X } from "lucide-react";
+import { ChevronRight, Hammer, Play, PlayCircle, Save, X } from "lucide-react";
 import { Problem } from "@/types/workspace";
 
 // Dynamically load Monaco Editor with SSR disabled
@@ -11,8 +11,8 @@ const MonacoEditor = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-full w-full flex flex-col items-center justify-center text-xs text-[#8f9299] gap-2">
-        <div className="w-5 h-5 border-2 border-[#3a3d43] border-t-cyan-400 rounded-full animate-spin" />
+      <div className="h-full w-full flex flex-col items-center justify-center text-xs text-[#858b94] gap-2">
+        <div className="w-4 h-4 border-2 border-[#292c31] border-t-cyan-400 rounded-full animate-spin" />
         <span>Loading Editor...</span>
       </div>
     ),
@@ -33,6 +33,7 @@ interface CodeEditorPanelProps {
   onTest: () => void;
   isRunning: boolean;
   onSelectionChange: (code: string, range: { start: number; end: number } | null) => void;
+  onCursorChange?: (line: number, column: number) => void;
   problems?: Problem[];
   targetProblem?: Problem | null;
 }
@@ -74,6 +75,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   onTest,
   isRunning,
   onSelectionChange,
+  onCursorChange,
   problems,
   targetProblem,
 }) => {
@@ -95,29 +97,30 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    // Custom dark theme matching Solix aesthetic
-    monaco.editor.defineTheme("solix-dark", {
+    // Classic dark theme matching professional IDE palette
+    monaco.editor.defineTheme("solix-ide-dark", {
       base: "vs-dark",
       inherit: true,
       rules: [
-        { token: "comment", foreground: "73767d", fontStyle: "italic" },
-        { token: "keyword", foreground: "67b0ff", fontStyle: "bold" },
-        { token: "string", foreground: "9ae8a2" },
-        { token: "number", foreground: "fbc02d" },
-        { token: "type", foreground: "4fd1c5" },
+        { token: "comment", foreground: "6a737d", fontStyle: "italic" },
+        { token: "keyword", foreground: "79b8ff", fontStyle: "bold" },
+        { token: "string", foreground: "9ecbff" },
+        { token: "number", foreground: "ffab70" },
+        { token: "type", foreground: "b392f0" },
+        { token: "function", foreground: "b392f0" },
       ],
       colors: {
-        "editor.background": "#0e0f12",
-        "editor.foreground": "#eeeeec",
-        "editor.lineHighlightBackground": "#16171c",
-        "editorCursor.foreground": "#67b0ff",
-        "editorLineNumber.foreground": "#4a4d56",
-        "editorLineNumber.activeForeground": "#eeeeec",
-        "editor.selectionBackground": "#282a31",
-        "editor.inactiveSelectionBackground": "#1e2026",
+        "editor.background": "#0d0e10",
+        "editor.foreground": "#d4d7dc",
+        "editor.lineHighlightBackground": "#141619",
+        "editorCursor.foreground": "#58a6ff",
+        "editorLineNumber.foreground": "#42464e",
+        "editorLineNumber.activeForeground": "#d4d7dc",
+        "editor.selectionBackground": "#222730",
+        "editor.inactiveSelectionBackground": "#191c22",
       },
     });
-    monaco.editor.setTheme("solix-dark");
+    monaco.editor.setTheme("solix-ide-dark");
 
     // Track text selection for AI panel
     editor.onDidChangeCursorSelection((e: any) => {
@@ -133,6 +136,19 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
         });
       }
     });
+
+    // Track cursor line & column position for status bar
+    editor.onDidChangeCursorPosition((e: any) => {
+      if (onCursorChange) {
+        onCursorChange(e.position.lineNumber, e.position.column);
+      }
+    });
+
+    // Initial position
+    const pos = editor.getPosition();
+    if (pos && onCursorChange) {
+      onCursorChange(pos.lineNumber, pos.column);
+    }
 
     // Keyboard Shortcuts: Ctrl+S to save, Ctrl+Enter to run
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -204,12 +220,15 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
     }
   }, [targetProblem, activeFile]);
 
+  // Breadcrumb path parts
+  const pathParts = activeFile ? activeFile.split("/") : [];
+
   return (
-    <div className="h-full flex flex-col bg-[#0e0f12] overflow-hidden">
-      {/* Top Bar: Open Tabs + Run / Save Toolbar */}
-      <div className="flex items-center justify-between border-b border-[#24262b] bg-[#141518] px-2 flex-shrink-0 h-10 overflow-x-auto select-none">
+    <div className="h-full flex flex-col bg-[#0d0e10] overflow-hidden select-none">
+      {/* Top Tabs Bar: Classic IDE Rectangular Tabs (32px) */}
+      <div className="flex items-center justify-between border-b border-[#292c31] bg-[#111214] h-8 flex-shrink-0 select-none overflow-hidden">
         {/* Tab List */}
-        <div className="flex items-center gap-1 overflow-x-auto max-w-[calc(100%-180px)]">
+        <div className="flex items-center overflow-x-auto h-full scrollbar-none flex-1 min-w-0">
           {openFiles.map((path) => {
             const fileName = path.split("/").pop() || path;
             const isActive = activeFile === path;
@@ -219,48 +238,61 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
               <div
                 key={path}
                 onClick={() => onSelectFile(path)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-t-lg text-xs font-medium cursor-pointer border-t-2 transition-all flex-shrink-0 ${
+                className={`group flex items-center gap-2 px-3 h-full text-xs font-medium cursor-pointer border-r border-[#292c31] transition-colors flex-shrink-0 relative ${
                   isActive
-                    ? "bg-[#0e0f12] text-white border-cyan-400 font-semibold"
-                    : "bg-[#15171a] text-[#8f9299] border-transparent hover:text-[#eeeeec] hover:bg-[#1a1c20]"
+                    ? "bg-[#0d0e10] text-[#d4d7dc] border-t-2 border-t-cyan-500 font-semibold"
+                    : "bg-[#111214] text-[#858b94] hover:bg-[#151619] hover:text-[#d4d7dc] border-t-2 border-t-transparent"
                 }`}
                 title={path}
               >
-                <span>{fileName}</span>
-                {hasUnsaved && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" title="Unsaved changes" />
-                )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCloseFile(path);
-                  }}
-                  className="p-0.5 hover:text-white rounded text-[#8f9299] transition-colors"
-                  title="Close tab"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                <span className="truncate max-w-[150px]">{fileName}</span>
+
+                {/* Unsaved indicator or close icon */}
+                <div className="flex items-center justify-center w-3.5 h-3.5 flex-shrink-0">
+                  {hasUnsaved ? (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseFile(path);
+                      }}
+                      className="w-2 h-2 rounded-full bg-[#858b94] group-hover:hidden"
+                      title="Unsaved changes"
+                    />
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloseFile(path);
+                    }}
+                    className={`p-0.5 rounded-xs hover:bg-[#22252a] text-[#858b94] hover:text-white transition-colors ${
+                      hasUnsaved ? "hidden group-hover:block" : ""
+                    }`}
+                    title="Close tab"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* Right Action Controls: Save, Build, Test, Run */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* Action Controls: Compact IDE Toolbar Buttons */}
+        <div className="flex items-center gap-1 px-2 flex-shrink-0 border-l border-[#292c31] bg-[#111214] h-full">
           <button
             type="button"
             onClick={() => onSaveFile()}
             disabled={!activeFile || !isDirty}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1 px-2 h-6 rounded-xs text-[11px] font-medium transition-colors ${
               isDirty
-                ? "bg-[#1f2228] text-cyan-400 border border-cyan-500/40 hover:bg-[#252830] cursor-pointer"
-                : "text-[#555860] border border-transparent cursor-not-allowed"
+                ? "text-cyan-400 hover:bg-[#1c1f24] cursor-pointer"
+                : "text-[#555a62] cursor-not-allowed"
             }`}
             title="Save file (Ctrl+S)"
           >
             <Save className="w-3 h-3" />
-            <span className="hidden sm:inline">Save</span>
+            <span className="hidden md:inline">Save</span>
           </button>
 
           {onBuild && (
@@ -268,11 +300,11 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
               type="button"
               onClick={onBuild}
               disabled={isRunning}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#1a1c20] hover:bg-[#22252b] text-[#dedfe2] border border-[#2e3138] transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-2 h-6 rounded-xs text-[11px] font-medium text-[#858b94] hover:text-[#d4d7dc] hover:bg-[#1c1f24] transition-colors cursor-pointer"
               title="Build / Compile Sources"
             >
-              <Hammer className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden sm:inline">Build</span>
+              <Hammer className="w-3 h-3" />
+              <span className="hidden md:inline">Build</span>
             </button>
           )}
 
@@ -280,35 +312,44 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
             type="button"
             onClick={onTest}
             disabled={isRunning}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#1a1c20] hover:bg-[#22252b] text-[#dedfe2] border border-[#2e3138] transition-colors cursor-pointer"
-            title="Run test suite"
+            className="flex items-center gap-1 px-2 h-6 rounded-xs text-[11px] font-medium text-[#858b94] hover:text-[#d4d7dc] hover:bg-[#1c1f24] transition-colors cursor-pointer"
+            title="Run tests in browser sandbox"
           >
-            <PlayCircle className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Test</span>
+            <PlayCircle className="w-3 h-3" />
+            <span className="hidden md:inline">Test</span>
           </button>
 
           <button
             type="button"
             onClick={onRun}
             disabled={isRunning}
-            className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-1 px-2.5 h-6 rounded-xs text-[11px] font-semibold transition-colors cursor-pointer ${
               isRunning
-                ? "bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 animate-pulse"
-                : "bg-cyan-600 hover:bg-cyan-500 text-white shadow-xs"
+                ? "bg-amber-950/60 text-amber-300 border border-amber-800/60"
+                : "bg-cyan-600 hover:bg-cyan-500 text-white"
             }`}
             title="Execute project (Ctrl+Enter)"
           >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>{isRunning ? "Running..." : "Run"}</span>
+            <Play className="w-3 h-3 fill-current" />
+            <span>{isRunning ? "Running" : "Run"}</span>
           </button>
         </div>
       </div>
 
-      {/* Breadcrumb Path Info */}
+      {/* Classic IDE Breadcrumb Path Bar (22px) */}
       {activeFile && (
-        <div className="px-3 py-1 bg-[#101114] border-b border-[#24262b] text-[11px] font-mono text-[#73767d] flex items-center justify-between">
-          <span>{activeFile}</span>
-          <span className="uppercase tracking-wider text-[10px] text-[#555860]">{language}</span>
+        <div className="h-[22px] px-3 bg-[#0d0e10] border-b border-[#202227] text-[11px] font-mono text-[#666c75] flex items-center justify-between shrink-0 select-none">
+          <div className="flex items-center gap-1 truncate">
+            {pathParts.map((part, idx) => (
+              <React.Fragment key={idx}>
+                {idx > 0 && <ChevronRight className="w-2.5 h-2.5 text-[#444850] shrink-0" />}
+                <span className={idx === pathParts.length - 1 ? "text-[#a5abb5] font-medium" : "text-[#666c75]"}>
+                  {part}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+          <span className="uppercase text-[10px] text-[#525760] font-mono">{language}</span>
         </div>
       )}
 
@@ -321,30 +362,29 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
             value={activeContent}
             onChange={(val) => onUpdateContent(activeFile, val || "")}
             onMount={handleEditorMount}
-            theme="solix-dark"
+            theme="solix-ide-dark"
             options={{
-              fontSize: 14,
-              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+              fontSize: 13,
+              fontFamily: "JetBrains Mono, Menlo, Monaco, Consolas, monospace",
+              fontLigatures: true,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
               automaticLayout: true,
               tabSize: 4,
               wordWrap: "on",
-              renderLineHighlight: "all",
+              renderLineHighlight: "line",
               lineNumbers: "on",
               bracketPairColorization: { enabled: true },
               formatOnPaste: true,
               suggestOnTriggerCharacters: true,
+              padding: { top: 6, bottom: 6 },
             }}
           />
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[#73767d] select-none">
-            <div className="w-12 h-12 rounded-xl bg-[#141518] border border-[#24262b] flex items-center justify-center text-xl mb-3">
-              💻
-            </div>
-            <p className="text-sm text-[#eeeeec] font-medium mb-1">No file open</p>
-            <p className="text-xs max-w-xs text-[#73767d]">
-              Select a file from the explorer on the left or create a new file to start coding.
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[#666c75] select-none">
+            <p className="text-xs font-medium text-[#858b94] mb-1">No file is currently open</p>
+            <p className="text-[11px] max-w-xs text-[#525760]">
+              Select a file from the explorer on the left or create a new file to begin editing.
             </p>
           </div>
         )}
@@ -352,4 +392,3 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
     </div>
   );
 };
-

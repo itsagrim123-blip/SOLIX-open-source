@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowUp,
   Check,
@@ -16,7 +17,6 @@ import {
   Globe,
   Loader2,
   ShieldCheck,
-  Sparkles,
   Square,
   Wand2,
   X,
@@ -117,112 +117,113 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     let prompt = "";
     switch (action) {
       case "explain":
-        prompt = `Explain ${selectionTarget} and how it fits into the project architecture.`;
+        prompt = `Explain ${selectionTarget} and its architecture.`;
         break;
       case "debug":
-        prompt = `Find potential bugs or edge-case vulnerabilities in ${selectionTarget} and propose a fix.`;
+        prompt = `Inspect ${selectionTarget} for edge cases or bugs and propose a fix.`;
         break;
       case "fix":
-        prompt = `Fix any syntax, type, or runtime errors in ${selectionTarget} and provide a patch.`;
+        prompt = `Fix errors in ${selectionTarget} and generate a patch.`;
         break;
       case "refactor":
-        prompt = `Refactor ${selectionTarget} for improved readability, modern idioms, and performance.`;
+        prompt = `Refactor ${selectionTarget} for clean structure and performance.`;
         break;
       case "tests":
-        prompt = `Write comprehensive unit tests for ${selectionTarget}.`;
+        prompt = `Write unit tests for ${selectionTarget}.`;
         break;
       case "doc":
-        prompt = `Generate docstrings, type annotations, and documentation for ${selectionTarget}.`;
+        prompt = `Generate docstrings and type annotations for ${selectionTarget}.`;
         break;
     }
 
     onSendMessage(prompt, { customAction: action });
   };
 
-  const renderAgentStateBadge = (state: AgentState) => {
+  // Quiet agent status indicator
+  const renderAgentStatus = (state: AgentState) => {
     switch (state) {
       case "planning":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">
-            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            Planning
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-amber-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span>Planning</span>
           </span>
         );
       case "reading":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/30">
-            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            Reading
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-blue-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <span>Reading files</span>
           </span>
         );
       case "editing":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/30">
-            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            Editing
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-purple-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+            <span>Editing code</span>
           </span>
         );
       case "awaiting_approval":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/20 text-orange-400 border border-orange-500/40 animate-pulse">
-            <AlertTriangle className="w-2.5 h-2.5" />
-            Awaiting Approval
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-orange-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+            <span>Awaiting approval</span>
           </span>
         );
       case "applying":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            Applying
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-cyan-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span>Applying changes</span>
           </span>
         );
       case "building":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
-            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            Building
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-indigo-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+            <span>Building project</span>
           </span>
         );
       case "running":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            Running
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Executing</span>
           </span>
         );
       case "testing":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-500/10 text-teal-400 border border-teal-500/30">
-            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            Testing
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-teal-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+            <span>Running tests</span>
           </span>
         );
       case "debugging":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30">
-            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            Debugging
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-rose-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+            <span>Diagnosing error</span>
           </span>
         );
       case "completed":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <CheckCircle2 className="w-2.5 h-2.5" />
-            Done
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400">
+            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+            <span>Completed</span>
           </span>
         );
       case "failed":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/30">
-            <X className="w-2.5 h-2.5" />
-            Failed
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-rose-400">
+            <X className="w-3 h-3 text-rose-400" />
+            <span>Failed</span>
           </span>
         );
       case "cancelled":
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#2a2c33] text-[#a0a4ae] border border-[#3e414c]">
+          <span className="flex items-center gap-1.5 text-[11px] font-mono text-[#858b94]">
             <Square className="w-2.5 h-2.5" />
-            Cancelled
+            <span>Cancelled</span>
           </span>
         );
       default:
@@ -231,51 +232,29 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#111215] border-l border-[#24262b] select-none">
-      {/* AI Panel Header */}
-      <div className="flex flex-col gap-2 px-3 py-2 border-b border-[#24262b] bg-[#141518]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-[#191b20] border border-[#2e3138] grid place-items-center">
-              <SolixLogo size="sm" px={20} />
-            </div>
-            <span className="text-xs font-bold text-white tracking-wide">Solix Code AI</span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {/* Model Badge */}
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#1c1f26] text-cyan-400 border border-cyan-800/40">
-              <Cpu className="w-2.5 h-2.5" />
-              qwen2.5-coder:7b
-            </span>
-
-            {/* Web Search Toggle */}
-            <button
-              type="button"
-              onClick={onToggleWebSearch}
-              className={`p-1 rounded transition-colors cursor-pointer ${
-                webSearchEnabled
-                  ? "bg-cyan-950 text-cyan-300 border border-cyan-700"
-                  : "text-[#73767d] hover:text-[#eeeeec]"
-              }`}
-              title={webSearchEnabled ? "Web Search ON" : "Toggle Web Search for documentation"}
-            >
-              <Globe className="w-3.5 h-3.5" />
-            </button>
-          </div>
+    <div className="h-full flex flex-col bg-[#111214] border-l border-[#292c31] select-none text-[#d4d7dc]">
+      {/* Top Header: AI Developer Tool Panel (34px) */}
+      <div className="flex items-center justify-between px-3 h-[34px] border-b border-[#292c31] bg-[#111214] shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[10.5px] font-mono font-semibold tracking-wider text-[#858b94] uppercase">
+            SOLIX CODE AI
+          </span>
+          <span className="text-[10px] font-mono text-[#555a62] hidden sm:inline truncate">
+            qwen2.5-coder:7b
+          </span>
         </div>
 
-        {/* Mode Selector & Agent Controls */}
-        <div className="flex items-center justify-between pt-0.5">
+        {/* Action controls */}
+        <div className="flex items-center gap-1.5">
           {/* Segmented [Ask] vs [Agent] Toggle */}
-          <div className="flex items-center rounded-lg bg-[#0d0e12] p-0.5 border border-[#262830]">
+          <div className="flex items-center rounded-xs bg-[#0d0e10] p-0.5 border border-[#292c31]">
             <button
               type="button"
               onClick={() => onToggleAgentMode?.("ask")}
-              className={`px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+              className={`px-2 h-5 rounded-xs text-[10.5px] font-medium transition-colors cursor-pointer ${
                 agentMode === "ask"
-                  ? "bg-[#1f222a] text-white shadow-xs"
-                  : "text-[#73767d] hover:text-[#dedfe2]"
+                  ? "bg-[#22252a] text-white font-semibold"
+                  : "text-[#858b94] hover:text-[#d4d7dc]"
               }`}
             >
               Ask
@@ -283,137 +262,140 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             <button
               type="button"
               onClick={() => onToggleAgentMode?.("agent")}
-              className={`flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+              className={`px-2 h-5 rounded-xs text-[10.5px] font-semibold transition-colors cursor-pointer ${
                 agentMode === "agent"
-                  ? "bg-cyan-600 text-white shadow-xs"
-                  : "text-[#73767d] hover:text-[#dedfe2]"
+                  ? "bg-cyan-600 text-white"
+                  : "text-[#858b94] hover:text-[#d4d7dc]"
               }`}
             >
-              <Sparkles className="w-2.5 h-2.5" />
               Agent
             </button>
           </div>
 
-          {/* Mode Controls */}
+          {/* Auto Apply Toggle (in Agent mode) */}
           {agentMode === "agent" && (
-            <div className="flex items-center gap-1.5">
-              {/* Auto Apply Toggle */}
-              <button
-                type="button"
-                onClick={onToggleAutoApply}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${
-                  autoApply
-                    ? "bg-emerald-950/80 text-emerald-300 border border-emerald-700"
-                    : "bg-[#16181d] text-[#73767d] hover:text-[#dedfe2] border border-[#282b33]"
-                }`}
-                title={
-                  autoApply
-                    ? "Auto-apply ON: Changes apply automatically (Deletions always require approval)"
-                    : "Auto-apply OFF: File changes require explicit review & approval"
-                }
-              >
-                <ShieldCheck className="w-2.5 h-2.5" />
-                <span>Auto Apply</span>
-              </button>
-
-              {/* State Badge */}
-              {renderAgentStateBadge(agentState)}
-
-              {/* Stop Button if generating */}
-              {isGenerating && onStopAgent && (
-                <button
-                  type="button"
-                  onClick={onStopAgent}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-semibold transition-colors cursor-pointer shadow-xs animate-pulse"
-                  title="Stop Agent Execution"
-                >
-                  <Square className="w-2.5 h-2.5 fill-current" />
-                  <span>Stop</span>
-                </button>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={onToggleAutoApply}
+              className={`px-1.5 h-5 rounded-xs text-[10px] font-mono border transition-colors cursor-pointer ${
+                autoApply
+                  ? "bg-emerald-950/70 text-emerald-300 border-emerald-700"
+                  : "bg-[#16171a] text-[#666c75] border-[#292c31] hover:text-[#d4d7dc]"
+              }`}
+              title={
+                autoApply
+                  ? "Auto-apply ON: safe changes apply immediately"
+                  : "Auto-apply OFF: all file changes require review"
+              }
+            >
+              Auto-Apply
+            </button>
           )}
+
+          {/* Web Search Toggle */}
+          <button
+            type="button"
+            onClick={onToggleWebSearch}
+            className={`p-1 rounded-xs transition-colors cursor-pointer ${
+              webSearchEnabled
+                ? "text-cyan-400 bg-[#17202d] border border-cyan-800/50"
+                : "text-[#666c75] hover:text-[#d4d7dc]"
+            }`}
+            title={webSearchEnabled ? "Web Search Active" : "Toggle Web Search for Documentation"}
+          >
+            <Globe className="w-3 h-3" />
+          </button>
         </div>
       </div>
 
-      {/* Context Pill Indicator */}
-      <div className="px-3 py-1.5 bg-[#14161a] border-b border-[#24262b] text-[11px] text-[#8f9299] flex items-center justify-between">
-        <div className="flex items-center gap-1.5 truncate">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+      {/* Context & Quick Actions Bar (26px) */}
+      <div className="px-3 h-[26px] bg-[#0d0e10] border-b border-[#202227] text-[10.5px] font-mono text-[#666c75] flex items-center justify-between shrink-0">
+        <div className="truncate pr-2">
           {selectedCode ? (
-            <span className="truncate">
-              Selected: {selectedLineRange ? `lines ${selectedLineRange.start}–${selectedLineRange.end}` : "snippet"} in {activeFile || "file"}
+            <span className="text-[#a5abb5]">
+              Selected lines {selectedLineRange ? `${selectedLineRange.start}–${selectedLineRange.end}` : ""} in {activeFile || "file"}
             </span>
           ) : activeFile ? (
-            <span className="truncate">Context: {activeFile}</span>
+            <span className="text-[#a5abb5]">Context: {activeFile}</span>
           ) : (
             <span>Context: Entire Project</span>
           )}
         </div>
+
+        {/* Quick action buttons */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => handleActionClick("explain")}
+            className="hover:text-cyan-400 transition-colors"
+            title="Explain code"
+          >
+            Explain
+          </button>
+          <span className="text-[#3a3d45]">·</span>
+          <button
+            type="button"
+            onClick={() => handleActionClick("fix")}
+            className="hover:text-cyan-400 transition-colors"
+            title="Fix bug"
+          >
+            Fix
+          </button>
+          <span className="text-[#3a3d45]">·</span>
+          <button
+            type="button"
+            onClick={() => handleActionClick("tests")}
+            className="hover:text-cyan-400 transition-colors"
+            title="Generate tests"
+          >
+            Tests
+          </button>
+        </div>
       </div>
 
-      {/* Quick Action Pills */}
-      <div className="flex items-center gap-1 px-2.5 py-1.5 border-b border-[#24262b] bg-[#121316] overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => handleActionClick("explain")}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-[#191b20] hover:bg-[#20232a] text-[#dedfe2] border border-[#2e3138] transition-colors flex-shrink-0 cursor-pointer"
-        >
-          <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
-          <span>Explain</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleActionClick("debug")}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-[#191b20] hover:bg-[#20232a] text-[#dedfe2] border border-[#2e3138] transition-colors flex-shrink-0 cursor-pointer"
-        >
-          <Wand2 className="w-2.5 h-2.5 text-amber-400" />
-          <span>Debug</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleActionClick("fix")}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-[#191b20] hover:bg-[#20232a] text-[#dedfe2] border border-[#2e3138] transition-colors flex-shrink-0 cursor-pointer"
-        >
-          <Code2 className="w-2.5 h-2.5 text-rose-400" />
-          <span>Fix Bug</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleActionClick("refactor")}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-[#191b20] hover:bg-[#20232a] text-[#dedfe2] border border-[#2e3138] transition-colors flex-shrink-0 cursor-pointer"
-        >
-          <FileCheck className="w-2.5 h-2.5 text-emerald-400" />
-          <span>Refactor</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleActionClick("tests")}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-[#191b20] hover:bg-[#20232a] text-[#dedfe2] border border-[#2e3138] transition-colors flex-shrink-0 cursor-pointer"
-        >
-          <span>Tests</span>
-        </button>
-      </div>
+      {/* Real-time Agent Status line when active */}
+      {agentState !== "idle" && (
+        <div className="px-3 py-1.5 bg-[#141619] border-b border-[#292c31] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {renderAgentStatus(agentState)}
+          </div>
+          {isGenerating && onStopAgent && (
+            <button
+              type="button"
+              onClick={onStopAgent}
+              className="flex items-center gap-1 px-1.5 h-5 rounded-xs bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-[10px] font-mono transition-colors"
+            >
+              <Square className="w-2 h-2 fill-current" />
+              <span>Stop</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Messages Thread */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 font-sans text-xs select-text">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-4 text-[#73767d]">
-            <div className="w-10 h-10 rounded-xl bg-[#15171a] border border-[#24262b] flex items-center justify-center text-lg mb-2">
-              ⚡
+          <div className="h-full flex flex-col justify-center p-2 text-[#858b94] select-none">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-[#a5abb5] mb-1 font-semibold">
+              Solix Code AI
             </div>
-            <p className="text-xs font-medium text-[#dedfe2] mb-1">
-              {agentMode === "agent" ? "Solix Autonomous Coding Agent" : "Solix Code Intelligence"}
+            <p className="text-xs text-[#858b94] leading-relaxed mb-3">
+              Ask questions about the current project or assign tasks to the autonomous agent.
             </p>
-            <p className="text-[11px] max-w-[240px] text-[#73767d]">
-              {agentMode === "agent"
-                ? "Give high-level tasks like 'Add tests', 'Refactor calculator', or 'Create a FastAPI microservice'."
-                : "Ask questions about your codebase, request snippets, or analyze runtime errors."}
-            </p>
+            <div className="space-y-1 text-[11px] text-[#666c75] font-mono">
+              <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("explain")}>
+                &bull; Explain current file architecture
+              </div>
+              <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("debug")}>
+                &bull; Inspect potential bugs or errors
+              </div>
+              <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("tests")}>
+                &bull; Generate unit tests for workspace
+              </div>
+              <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => onSendMessage("Can you create a starter algorithm module?")}>
+                &bull; Create or refactor project files
+              </div>
+            </div>
           </div>
         ) : (
           messages.map((msg) => {
@@ -425,17 +407,14 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                 className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
               >
                 {isUser ? (
-                  <div className="w-fit max-w-[88%] bg-[#1a1c22] border border-[#2e3138] rounded-xl px-3 py-2 text-xs text-[#eeeeec] leading-relaxed whitespace-pre-wrap [overflow-wrap:break-word] [word-break:normal]">
+                  <div className="w-fit max-w-[92%] bg-[#181a1f] border border-[#292c31] rounded-xs px-2.5 py-1.5 text-xs text-[#d4d7dc] leading-relaxed whitespace-pre-wrap [overflow-wrap:break-word] [word-break:normal]">
                     {msg.content}
                   </div>
                 ) : (
-                  <div className="w-full space-y-2.5">
-                    <div className="flex items-center gap-2 text-[11px] font-semibold text-[#8f9299]">
-                      <span className="text-white">Solix</span>
-                      {msg.agentState && renderAgentStateBadge(msg.agentState)}
-                      {msg.isStreaming && !msg.agentState && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                      )}
+                  <div className="w-full space-y-2">
+                    <div className="flex items-center gap-2 text-[10.5px] font-mono text-[#858b94]">
+                      <span className="font-semibold text-[#d4d7dc]">SOLIX</span>
+                      {msg.agentState && renderAgentStatus(msg.agentState)}
                     </div>
 
                     {/* Step-by-Step Agent Plan Widget */}
@@ -470,13 +449,13 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                     )}
 
                     {/* Response Text / Markdown */}
-                    <div className="text-xs text-[#eeeeec] leading-relaxed break-words">
+                    <div className="text-xs text-[#d4d7dc] leading-relaxed break-words">
                       {msg.content ? (
                         <MarkdownRenderer content={msg.content} />
                       ) : msg.isStreaming ? (
-                        <div className="flex items-center gap-1.5 text-xs text-[#8f9299] py-1 animate-pulse">
-                          <span className="w-3 h-3 border-2 border-[#3a3d43] border-t-cyan-400 rounded-full animate-spin" />
-                          <span>Thinking...</span>
+                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#858b94] py-1">
+                          <span className="w-2.5 h-2.5 border border-[#3a3d43] border-t-cyan-400 rounded-full animate-spin" />
+                          <span>Processing...</span>
                         </div>
                       ) : null}
                     </div>
@@ -488,16 +467,16 @@ export const AIPanel: React.FC<AIPanelProps> = ({
 
                     {/* Legacy Single Proposed Patch Card */}
                     {msg.patch && !msg.approval && (
-                      <div className="p-2.5 rounded-lg border border-cyan-700/50 bg-[#121820] space-y-2">
+                      <div className="p-2 rounded-xs border border-[#292c31] bg-[#141519] space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
-                            <GitPullRequest className="w-3.5 h-3.5" />
-                            <span>Proposed Patch: {msg.patch.file}</span>
+                          <div className="flex items-center gap-1.5 text-cyan-400 font-mono text-[11px]">
+                            <GitPullRequest className="w-3 h-3" />
+                            <span>Patch: {msg.patch.file}</span>
                           </div>
                         </div>
 
                         {msg.patch.explanation && (
-                          <p className="text-[11px] text-[#c4c6cb] m-0">
+                          <p className="text-[11px] text-[#858b94] m-0">
                             {msg.patch.explanation}
                           </p>
                         )}
@@ -506,18 +485,17 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                           <button
                             type="button"
                             onClick={() => onReviewPatch(msg.patch!)}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#191e28] hover:bg-[#202735] text-cyan-300 text-xs font-medium border border-cyan-800/60 transition-colors cursor-pointer"
+                            className="px-2 h-6 rounded-xs bg-[#1c1f24] hover:bg-[#24272e] text-cyan-300 text-[11px] font-medium border border-[#2e3138] transition-colors cursor-pointer"
                           >
-                            <span>Review Diff</span>
+                            Review Diff
                           </button>
 
                           <button
                             type="button"
                             onClick={() => onApplyPatch(msg.patch!)}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                            className="px-2.5 h-6 rounded-xs bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-semibold transition-colors cursor-pointer"
                           >
-                            <Check className="w-3 h-3" />
-                            <span>Apply Changes</span>
+                            Apply Changes
                           </button>
                         </div>
                       </div>
@@ -531,16 +509,16 @@ export const AIPanel: React.FC<AIPanelProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Composer */}
-      <form onSubmit={handleSubmit} className="p-2.5 border-t border-[#24262b] bg-[#141518]">
-        <div className="relative rounded-lg border border-[#2e3138] bg-[#0e0f12] focus-within:border-[#454952] transition-colors">
+      {/* Input Command Box */}
+      <form onSubmit={handleSubmit} className="p-2 border-t border-[#292c31] bg-[#111214]">
+        <div className="rounded-xs border border-[#292c31] bg-[#0d0e10] focus-within:border-[#424650] transition-colors">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
               agentMode === "agent"
-                ? "Describe task for Autonomous Agent (Enter to execute)..."
+                ? "Assign task to agent (Enter to run)..."
                 : selectedCode
                 ? "Ask about selected code (Enter to send)..."
                 : activeFile
@@ -548,11 +526,11 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                 : "Ask Solix about this project..."
             }
             rows={2}
-            className="w-full bg-transparent px-2.5 py-2 text-xs text-[#eeeeec] placeholder:text-[#666970] outline-none resize-none"
+            className="w-full bg-transparent px-2.5 py-1.5 text-xs text-[#d4d7dc] placeholder:text-[#555a62] outline-none resize-none font-sans"
           />
 
-          <div className="flex items-center justify-between px-2 pb-1.5">
-            <span className="text-[10px] text-[#666970]">
+          <div className="flex items-center justify-between px-2 pb-1.5 pt-0.5">
+            <span className="text-[10px] font-mono text-[#555a62]">
               Shift+Enter for newline
             </span>
 
@@ -561,10 +539,10 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                 <button
                   type="button"
                   onClick={onStopAgent}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md bg-rose-600/90 hover:bg-rose-500 text-white text-[11px] font-semibold transition-colors cursor-pointer"
-                  title="Stop Agent"
+                  className="flex items-center gap-1 px-2 h-6 rounded-xs bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-[10.5px] font-mono transition-colors"
+                  title="Stop execution"
                 >
-                  <Square className="w-2.5 h-2.5 fill-current" />
+                  <Square className="w-2 h-2 fill-current" />
                   <span>Stop</span>
                 </button>
               )}
@@ -572,14 +550,15 @@ export const AIPanel: React.FC<AIPanelProps> = ({
               <button
                 type="submit"
                 disabled={!input.trim() || isGenerating}
-                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 h-6 rounded-xs text-[11px] font-semibold transition-colors cursor-pointer ${
                   input.trim() && !isGenerating
-                    ? "bg-cyan-600 text-white hover:bg-cyan-500"
-                    : "text-[#555860] cursor-not-allowed"
+                    ? "bg-cyan-600 hover:bg-cyan-500 text-white"
+                    : "bg-[#18191d] text-[#555a62] cursor-not-allowed border border-[#222429]"
                 }`}
-                title="Send (Enter)"
+                title="Send"
               >
-                <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Send</span>
+                <ArrowUp className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -591,39 +570,41 @@ export const AIPanel: React.FC<AIPanelProps> = ({
 
 // ── Subcomponents ──
 
+// Classic Task Checklist Plan
 const PlanWidget: React.FC<{ plan: AgentPlanStep[] }> = ({ plan }) => {
   const [isOpen, setIsOpen] = useState(true);
   const completedCount = plan.filter((p) => p.status === "completed").length;
 
   return (
-    <div className="rounded-lg border border-cyan-800/40 bg-[#12161f] overflow-hidden text-xs">
+    <div className="rounded-xs border border-[#292c31] bg-[#141519] overflow-hidden text-xs">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-1.5 bg-[#161c28] hover:bg-[#1a2232] transition-colors text-left cursor-pointer"
+        className="w-full flex items-center justify-between px-2.5 py-1 bg-[#16171c] hover:bg-[#1a1c22] transition-colors text-left cursor-pointer border-b border-[#202227]"
       >
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="font-semibold text-cyan-200">Autonomous Plan</span>
-          <span className="text-[10px] font-mono text-[#8f9299]">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10.5px] font-mono font-semibold text-[#858b94] uppercase tracking-wider">
+            Plan
+          </span>
+          <span className="text-[10px] font-mono text-[#666c75]">
             ({completedCount}/{plan.length})
           </span>
         </div>
         {isOpen ? (
-          <ChevronDown className="w-3.5 h-3.5 text-[#8f9299]" />
+          <ChevronDown className="w-3 h-3 text-[#666c75]" />
         ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-[#8f9299]" />
+          <ChevronRight className="w-3 h-3 text-[#666c75]" />
         )}
       </button>
 
       {isOpen && (
-        <div className="p-2 space-y-1.5 bg-[#0f1218]">
+        <div className="p-2 space-y-1 bg-[#0d0e10] font-mono text-[11px]">
           {plan.map((step) => {
-            let icon = <Clock className="w-3 h-3 text-[#666970]" />;
-            let textColor = "text-[#8f9299]";
+            let icon = <span className="text-[#666c75]">&bull;</span>;
+            let textColor = "text-[#858b94]";
             if (step.status === "completed") {
               icon = <Check className="w-3 h-3 text-emerald-400" />;
-              textColor = "text-[#c4c6cb] line-through decoration-[#4a4d55]";
+              textColor = "text-[#858b94] line-through decoration-[#444850]";
             } else if (step.status === "in_progress") {
               icon = <Loader2 className="w-3 h-3 text-cyan-400 animate-spin" />;
               textColor = "text-cyan-300 font-medium";
@@ -633,7 +614,7 @@ const PlanWidget: React.FC<{ plan: AgentPlanStep[] }> = ({ plan }) => {
             }
 
             return (
-              <div key={step.id} className="flex items-start gap-2 text-[11px] leading-snug">
+              <div key={step.id} className="flex items-start gap-1.5 leading-snug">
                 <span className="shrink-0 mt-0.5">{icon}</span>
                 <span className={`flex-1 ${textColor}`}>{step.text}</span>
               </div>
@@ -649,27 +630,27 @@ const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) =
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="rounded-lg border border-[#252830] bg-[#101216] overflow-hidden text-xs">
+    <div className="rounded-xs border border-[#292c31] bg-[#141519] overflow-hidden text-xs">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-1.5 bg-[#14171d] hover:bg-[#181c24] transition-colors text-left cursor-pointer"
+        className="w-full flex items-center justify-between px-2.5 py-1 bg-[#16171c] hover:bg-[#1a1c22] transition-colors text-left cursor-pointer border-b border-[#202227]"
       >
-        <div className="flex items-center gap-2">
-          <Code2 className="w-3 h-3 text-[#8f9299]" />
-          <span className="text-[11px] font-medium text-[#c4c6cb]">
-            Tools Activity ({tools.length})
+        <div className="flex items-center gap-1.5">
+          <Code2 className="w-3 h-3 text-[#666c75]" />
+          <span className="text-[10.5px] font-mono text-[#858b94] uppercase tracking-wide">
+            Tool Activity ({tools.length})
           </span>
         </div>
         {isOpen ? (
-          <ChevronDown className="w-3.5 h-3.5 text-[#8f9299]" />
+          <ChevronDown className="w-3 h-3 text-[#666c75]" />
         ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-[#8f9299]" />
+          <ChevronRight className="w-3 h-3 text-[#666c75]" />
         )}
       </button>
 
       {isOpen && (
-        <div className="p-2 space-y-1.5 bg-[#0b0c0e] max-h-48 overflow-y-auto">
+        <div className="p-1.5 space-y-1 bg-[#0d0e10] max-h-48 overflow-y-auto">
           {tools.map((t, i) => {
             const isRun = t.status === "running";
             const isErr = t.status === "error";
@@ -677,7 +658,7 @@ const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) =
             return (
               <div
                 key={t.id || i}
-                className="flex items-start gap-2 p-1.5 rounded bg-[#13151b] border border-[#1e2027] text-[10px] font-mono"
+                className="flex items-start gap-1.5 px-1.5 py-0.5 text-[10.5px] font-mono text-[#858b94]"
               >
                 <span className="shrink-0 mt-0.5">
                   {isRun ? (
@@ -689,9 +670,9 @@ const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) =
                   )}
                 </span>
                 <div className="flex-1 truncate">
-                  <span className="text-cyan-300 font-semibold">{t.name}</span>
-                  {t.args?.path && <span className="text-[#8f9299]"> ({t.args.path})</span>}
-                  {t.args?.query && <span className="text-[#8f9299]"> ("{t.args.query}")</span>}
+                  <span className="text-[#d4d7dc] font-medium">{t.name}</span>
+                  {t.args?.path && <span className="text-[#666c75]"> ({t.args.path})</span>}
+                  {t.args?.query && <span className="text-[#666c75]"> (&quot;{t.args.query}&quot;)</span>}
                 </div>
               </div>
             );
@@ -708,64 +689,54 @@ const ApprovalCard: React.FC<{
   onApprove: () => void;
   onReject: () => void;
 }> = ({ approval, onReview, onApprove, onReject }) => {
-  const opColor =
-    approval.operation === "create"
-      ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
-      : approval.operation === "delete"
-      ? "text-rose-400 bg-rose-500/10 border-rose-500/30"
-      : "text-amber-400 bg-amber-500/10 border-amber-500/30";
-
   return (
-    <div className="p-3 rounded-lg border border-amber-600/50 bg-[#16140f] space-y-2.5 animate-fade-in shadow-lg">
+    <div className="p-2.5 rounded-xs border border-amber-800/60 bg-[#16140f] space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-          <span className="text-xs font-bold text-amber-300">Approval Required</span>
+          <AlertTriangle className="w-3 h-3 text-amber-400" />
+          <span className="text-[11px] font-mono font-semibold text-amber-300">
+            Approval Required
+          </span>
         </div>
-        <span
-          className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase font-bold border ${opColor}`}
-        >
-          {approval.operation}
+        <span className="text-[10px] font-mono uppercase font-semibold text-amber-400">
+          [{approval.operation}]
         </span>
       </div>
 
-      <div className="text-xs text-[#dcded8]">
-        <span className="text-[#8f9299]">File: </span>
-        <span className="font-mono text-white font-medium">{approval.file}</span>
+      <div className="text-[11px] font-mono text-[#d4d7dc]">
+        <span className="text-[#858b94]">File: </span>
+        <span className="font-semibold text-white">{approval.file}</span>
       </div>
 
       {approval.explanation && (
-        <p className="text-[11px] text-[#b4b7be] m-0 leading-relaxed">
+        <p className="text-[11px] text-[#a5abb5] m-0 leading-relaxed font-sans">
           {approval.explanation}
         </p>
       )}
 
-      <div className="flex items-center gap-2 pt-1">
+      <div className="flex items-center gap-1.5 pt-1">
         <button
           type="button"
           onClick={onReview}
-          className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-[#222328] hover:bg-[#2b2d34] text-cyan-300 text-xs font-medium border border-[#3e424e] transition-colors cursor-pointer"
+          className="flex-1 px-2 h-6 rounded-xs bg-[#1f2229] hover:bg-[#282c35] text-cyan-300 text-[11px] font-medium border border-[#303440] transition-colors cursor-pointer"
         >
-          <Code2 className="w-3 h-3" />
-          <span>Review Diff</span>
+          Review Diff
         </button>
 
         <button
           type="button"
           onClick={onReject}
-          className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-medium border border-rose-800/60 transition-colors cursor-pointer"
+          className="px-2.5 h-6 rounded-xs bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800 text-[11px] font-medium transition-colors cursor-pointer"
         >
-          <X className="w-3 h-3" />
-          <span>Reject</span>
+          Reject
         </button>
 
         <button
           type="button"
           onClick={onApprove}
-          className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+          className="flex-1 px-2 h-6 rounded-xs bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition-colors cursor-pointer"
         >
-          <Check className="w-3 h-3" />
-          <span>Apply</span>
+          Apply
         </button>
       </div>
     </div>
