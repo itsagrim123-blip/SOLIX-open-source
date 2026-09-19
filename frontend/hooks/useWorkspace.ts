@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { workspaceStorage, StoredFile } from "@/lib/storage/workspaceStorage";
+import { workspaceMigration } from "@/lib/storage/workspaceMigration";
+import { executionEngine, SandboxStatus } from "@/lib/execution/ExecutionEngine";
 import { workspaceApi } from "@/lib/api";
 import {
   CodingChatMessage,
@@ -16,6 +19,13 @@ import {
   AgentToolActivity,
   AgentApprovalRequest,
 } from "@/types/workspace";
+
+export interface StorageStats {
+  bytes: number;
+  fileCount: number;
+  isSaving: boolean;
+  lastSavedAt: number | null;
+}
 
 export function useWorkspace() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -40,7 +50,14 @@ export function useWorkspace() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [targetProblem, setTargetProblem] = useState<Problem | null>(null);
   const [availableRuntimes, setAvailableRuntimes] = useState<LanguageRuntime[]>([]);
-  const [activeExecutionId, setActiveExecutionId] = useState<string | null>(null);
+
+  // Local Storage Stats & Auto-save
+  const [storageStats, setStorageStats] = useState<StorageStats>({
+    bytes: 0,
+    fileCount: 0,
+    isSaving: false,
+    lastSavedAt: null,
+  });
 
   // Git State
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
@@ -61,39 +78,49 @@ export function useWorkspace() {
   const [pendingApproval, setPendingApproval] = useState<AgentApprovalRequest | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const autoSaveTimerRef = useRef<Record<string, any>>({});
 
-  // Load Available Runtimes / Compilers
-  const loadRuntimes = useCallback(async () => {
-    try {
-      const runtimes = await workspaceApi.getRuntimes();
-      setAvailableRuntimes(runtimes);
-    } catch (err) {
-      console.error("Failed to load runtimes:", err);
-    }
+  // 1. Load Available Runtimes (Truthful Browser Engine)
+  const loadRuntimes = useCallback(() => {
+    const runtimes = executionEngine.getAvailableRuntimes();
+    setAvailableRuntimes(runtimes);
   }, []);
 
   useEffect(() => {
     loadRuntimes();
   }, [loadRuntimes]);
 
-  // Load Workspaces List
+  // 2. Load Local Workspaces from IndexedDB (with auto-migration check)
   const loadWorkspaces = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      let list = await workspaceApi.listWorkspaces();
-      if (!list || list.length === 0) {
-        // Automatically create a default starter workspace if none exists
-        const defaultWs = await workspaceApi.createWorkspace("My Project", "starter-python");
-        list = [defaultWs];
+      let list = await workspaceStorage.listWorkspaces();
+
+      if (list.length === 0) {
+        // Check if legacy workspaces exist on server
+        const hasLegacy = await workspaceMigration.checkPendingMigration();
+        if (hasLegacy) {
+          const migratedCount = await workspaceMigration.migrateServerWorkspaces();
+          if (migratedCount > 0) {
+            list = await workspaceStorage.listWorkspaces();
+          }
+        }
+
+        // If still empty, create default starter workspace locally
+        if (list.length === 0) {
+          const defaultWs = await workspaceStorage.createWorkspace("My Project", "starter-python");
+          list = [defaultWs];
+        }
       }
+
       setWorkspaces(list);
       if (!activeWorkspace && list.length > 0) {
         setActiveWorkspace(list[0]);
       }
     } catch (err: any) {
-      console.error("Failed to load workspaces:", err);
-      setError(err.message || "Failed to load workspaces");
+      console.error("Failed to load local workspaces:", err);
+      setError(err.message || "Failed to load local workspaces");
     } finally {
       setIsLoading(false);
     }
@@ -103,18 +130,24 @@ export function useWorkspace() {
     loadWorkspaces();
   }, [loadWorkspaces]);
 
-  // Load File Tree and Git status when active workspace changes
+  // 3. Refresh Workspace File Tree and Storage Stats
   const refreshWorkspace = useCallback(async () => {
     if (!activeWorkspace) return;
     try {
-      const [tree, git] = await Promise.all([
-        workspaceApi.getFileTree(activeWorkspace.id).catch(() => []),
-        workspaceApi.getGitStatus(activeWorkspace.id).catch(() => ({ is_repo: false, modified: [], untracked: [] })),
+      const [tree, usage] = await Promise.all([
+        workspaceStorage.getFileTree(activeWorkspace.id),
+        workspaceStorage.getStorageUsage(activeWorkspace.id),
       ]);
-      setFileTree(tree);
-      setGitStatus(git);
 
-      // If no file is open, open main.py, main.cpp, index.js or the first file found
+      setFileTree(tree);
+      setStorageStats((prev) => ({
+        ...prev,
+        bytes: usage.bytes,
+        fileCount: usage.fileCount,
+        lastSavedAt: Date.now(),
+      }));
+
+      // Open first file if no file is open
       if (openFiles.length === 0 && tree.length > 0) {
         const firstFile = tree.find((n) => !n.is_directory);
         if (firstFile) {
@@ -122,7 +155,7 @@ export function useWorkspace() {
         }
       }
     } catch (err: any) {
-      console.error("Failed to refresh workspace:", err);
+      console.error("Failed to refresh local workspace:", err);
     }
   }, [activeWorkspace, openFiles.length]);
 
@@ -143,20 +176,42 @@ export function useWorkspace() {
     setLastResult(null);
     setProblems([]);
     setTargetProblem(null);
-    setActiveExecutionId(null);
     setMessages([]);
     setActivePatch(null);
+    setPendingApproval(null);
   };
 
   // Create Workspace
   const createNewWorkspace = async (name?: string, template: string = "starter-python") => {
     try {
-      const ws = await workspaceApi.createWorkspace(name, template);
+      const wsName = name && name.trim() ? name.trim() : "New Project";
+      const ws = await workspaceStorage.createWorkspace(wsName, template);
       setWorkspaces((prev) => [ws, ...prev]);
       selectWorkspace(ws);
       return ws;
     } catch (err: any) {
       setError(err.message || "Failed to create workspace");
+      throw err;
+    }
+  };
+
+  // Delete Workspace
+  const deleteWorkspace = async (id: string) => {
+    try {
+      await workspaceStorage.deleteWorkspace(id);
+      const remaining = workspaces.filter((w) => w.id !== id);
+      setWorkspaces(remaining);
+      if (activeWorkspace?.id === id) {
+        if (remaining.length > 0) {
+          selectWorkspace(remaining[0]);
+        } else {
+          const defaultWs = await workspaceStorage.createWorkspace("My Project", "starter-python");
+          setWorkspaces([defaultWs]);
+          selectWorkspace(defaultWs);
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to delete workspace");
       throw err;
     }
   };
@@ -170,11 +225,11 @@ export function useWorkspace() {
     }
     setActiveFile(path);
 
-    // Fetch content if not already cached
+    // Read from local IndexedDB if not cached
     if (fileContents[path] === undefined) {
       try {
-        const fileData = await workspaceApi.readFile(activeWorkspace.id, path);
-        setFileContents((prev) => ({ ...prev, [path]: fileData.content }));
+        const content = await workspaceStorage.readFile(activeWorkspace.id, path);
+        setFileContents((prev) => ({ ...prev, [path]: content }));
       } catch (err: any) {
         console.error(`Failed to read file ${path}:`, err);
       }
@@ -186,25 +241,8 @@ export function useWorkspace() {
     const nextOpen = openFiles.filter((p) => p !== path);
     setOpenFiles(nextOpen);
 
-    // If closing active file, switch to adjacent tab
     if (activeFile === path) {
       setActiveFile(nextOpen.length > 0 ? nextOpen[nextOpen.length - 1] : null);
-    }
-  };
-
-  // Update file content in dirty state
-  const updateContent = (path: string, newContent: string) => {
-    const orig = fileContents[path] ?? "";
-    if (newContent === orig) {
-      // Clean
-      setDirtyFiles((prev) => {
-        const next = { ...prev };
-        delete next[path];
-        return next;
-      });
-    } else {
-      // Dirty
-      setDirtyFiles((prev) => ({ ...prev, [path]: newContent }));
     }
   };
 
@@ -217,19 +255,69 @@ export function useWorkspace() {
     if (contentToSave === undefined) return;
 
     try {
-      await workspaceApi.writeFile(activeWorkspace.id, path, contentToSave);
+      setStorageStats((prev) => ({ ...prev, isSaving: true }));
+      await workspaceStorage.writeFile(activeWorkspace.id, path, contentToSave);
       setFileContents((prev) => ({ ...prev, [path]: contentToSave }));
       setDirtyFiles((prev) => {
         const next = { ...prev };
         delete next[path];
         return next;
       });
-      // Refresh tree to update file sizes
-      const tree = await workspaceApi.getFileTree(activeWorkspace.id);
+      const tree = await workspaceStorage.getFileTree(activeWorkspace.id);
+      const usage = await workspaceStorage.getStorageUsage(activeWorkspace.id);
       setFileTree(tree);
+      setStorageStats({
+        bytes: usage.bytes,
+        fileCount: usage.fileCount,
+        isSaving: false,
+        lastSavedAt: Date.now(),
+      });
     } catch (err: any) {
       console.error(`Failed to save ${path}:`, err);
+      setStorageStats((prev) => ({ ...prev, isSaving: false }));
       setError(err.message || `Failed to save ${path}`);
+    }
+  };
+
+  // Update file content with debounced local auto-save (500ms)
+  const updateContent = (path: string, newContent: string) => {
+    const orig = fileContents[path] ?? "";
+    if (newContent === orig) {
+      setDirtyFiles((prev) => {
+        const next = { ...prev };
+        delete next[path];
+        return next;
+      });
+    } else {
+      setDirtyFiles((prev) => ({ ...prev, [path]: newContent }));
+      setStorageStats((prev) => ({ ...prev, isSaving: true }));
+
+      // Debounce auto-save
+      if (autoSaveTimerRef.current[path]) {
+        clearTimeout(autoSaveTimerRef.current[path]);
+      }
+      autoSaveTimerRef.current[path] = setTimeout(async () => {
+        if (activeWorkspace) {
+          try {
+            await workspaceStorage.writeFile(activeWorkspace.id, path, newContent);
+            setFileContents((prev) => ({ ...prev, [path]: newContent }));
+            setDirtyFiles((prev) => {
+              const next = { ...prev };
+              delete next[path];
+              return next;
+            });
+            const usage = await workspaceStorage.getStorageUsage(activeWorkspace.id);
+            setStorageStats({
+              bytes: usage.bytes,
+              fileCount: usage.fileCount,
+              isSaving: false,
+              lastSavedAt: Date.now(),
+            });
+          } catch (e) {
+            setStorageStats((prev) => ({ ...prev, isSaving: false }));
+          }
+        }
+      }, 500);
     }
   };
 
@@ -237,12 +325,18 @@ export function useWorkspace() {
   const createFileOrDir = async (path: string, isDirectory: boolean, initialContent: string = "") => {
     if (!activeWorkspace) return;
     try {
-      await workspaceApi.createFileOrDir(activeWorkspace.id, path, isDirectory, initialContent);
-      const tree = await workspaceApi.getFileTree(activeWorkspace.id);
+      if (isDirectory) {
+        await workspaceStorage.createFolder(activeWorkspace.id, path);
+      } else {
+        await workspaceStorage.writeFile(activeWorkspace.id, path, initialContent);
+      }
+      const tree = await workspaceStorage.getFileTree(activeWorkspace.id);
       setFileTree(tree);
       if (!isDirectory) {
         await openFile(path);
       }
+      const usage = await workspaceStorage.getStorageUsage(activeWorkspace.id);
+      setStorageStats((prev) => ({ ...prev, bytes: usage.bytes, fileCount: usage.fileCount }));
     } catch (err: any) {
       console.error("Failed to create file/folder:", err);
       throw err;
@@ -253,10 +347,13 @@ export function useWorkspace() {
   const deleteFileOrDir = async (path: string) => {
     if (!activeWorkspace) return;
     try {
-      await workspaceApi.deletePath(activeWorkspace.id, path);
+      await workspaceStorage.deleteFile(activeWorkspace.id, path);
+      await workspaceStorage.deleteFolder(activeWorkspace.id, path);
       closeFile(path);
-      const tree = await workspaceApi.getFileTree(activeWorkspace.id);
+      const tree = await workspaceStorage.getFileTree(activeWorkspace.id);
       setFileTree(tree);
+      const usage = await workspaceStorage.getStorageUsage(activeWorkspace.id);
+      setStorageStats((prev) => ({ ...prev, bytes: usage.bytes, fileCount: usage.fileCount }));
     } catch (err: any) {
       console.error("Failed to delete path:", err);
       throw err;
@@ -267,13 +364,11 @@ export function useWorkspace() {
   const renameFileOrDir = async (oldPath: string, newPath: string) => {
     if (!activeWorkspace) return;
     try {
-      await workspaceApi.renamePath(activeWorkspace.id, oldPath, newPath);
-      // Update open files if renamed
+      await workspaceStorage.renamePath(activeWorkspace.id, oldPath, newPath);
       setOpenFiles((prev) => prev.map((p) => (p === oldPath ? newPath : p)));
       if (activeFile === oldPath) {
         setActiveFile(newPath);
       }
-      // Migrate contents cache
       if (fileContents[oldPath] !== undefined) {
         setFileContents((prev) => {
           const next = { ...prev, [newPath]: prev[oldPath] };
@@ -281,7 +376,7 @@ export function useWorkspace() {
           return next;
         });
       }
-      const tree = await workspaceApi.getFileTree(activeWorkspace.id);
+      const tree = await workspaceStorage.getFileTree(activeWorkspace.id);
       setFileTree(tree);
     } catch (err: any) {
       console.error("Failed to rename path:", err);
@@ -301,106 +396,153 @@ export function useWorkspace() {
         await saveFile(activeFile);
       }
 
-      const result = await workspaceApi.build(activeWorkspace.id);
-      setActiveExecutionId(result.execution_id || null);
-      setProblems(result.problems || []);
+      const allFiles = await workspaceStorage.getAllFiles(activeWorkspace.id);
+      const runtime = executionEngine.detectRuntime(allFiles, activeFile);
 
-      const combined = result.stdout + (result.stderr ? "\n" + result.stderr : "");
-      const statusText = result.success
-        ? `\n[Build succeeded in ${result.build_time}s${result.binary_path ? ` -> ${result.binary_path}` : ""}]`
-        : `\n[Build failed with code ${result.exit_code} in ${result.build_time}s]`;
-
-      setTerminalOutput((prev) => prev + combined + statusText);
-
-      // Automatically focus problems tab if there are errors or diagnostics
-      if (!result.success || (result.problems && result.problems.length > 0)) {
-        setTerminalTab("problems");
+      if (!runtime.build_required) {
+        const msg = `[Build]: ${runtime.display_name} is an interpreted/transpiled language. Direct build step not required.\nUse 'Run' to execute in the browser sandbox.\n`;
+        setTerminalOutput((prev) => prev + msg);
+        return;
       }
-      return result;
-    } catch (err: any) {
-      setTerminalOutput((prev) => prev + `\n[Build Error]: ${err.message || "Failed to build project"}`);
+
+      const status = executionEngine.getSandboxStatus(allFiles, activeFile);
+      if (status.mode === "unavailable") {
+        const errText = `\n[Build Unavailable]: ${runtime.display_name} local compiler is unavailable in the browser sandbox.\n` +
+                        `To build ${runtime.display_name}, connect the optional Solix Native Runtime.\n`;
+        setTerminalOutput((prev) => prev + errText);
+        setTerminalTab("problems");
+        setProblems([
+          {
+            severity: "error",
+            file: activeFile || "",
+            line: 1,
+            column: 1,
+            message: `${runtime.display_name} local compiler unavailable in browser`,
+            source: "Solix",
+          },
+        ]);
+      }
     } finally {
       setIsRunning(false);
-      setActiveExecutionId(null);
     }
   };
 
-  // Execute Code (Run)
-  const runProject = async (customCommand?: string) => {
+  // Execute Code in Browser-Local Web Worker
+  const runProject = async () => {
     if (!activeWorkspace || isRunning) return;
     try {
       setIsRunning(true);
       setTerminalTab("terminal");
-      setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + "▶ Running project...\n");
+      const target = activeFile || "main.py";
+      setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + `▶ ${target}\n`);
 
-      // Save active dirty files before running
+      // Save any pending dirty edits
       if (activeFile && dirtyFiles[activeFile] !== undefined) {
         await saveFile(activeFile);
       }
 
-      const result = await workspaceApi.run(activeWorkspace.id, customCommand);
-      setActiveExecutionId(result.execution_id || null);
+      const allFiles = await workspaceStorage.getAllFiles(activeWorkspace.id);
+
+      const result = await executionEngine.run(activeWorkspace.id, allFiles, activeFile, {
+        onStdout: (chunk) => setTerminalOutput((prev) => prev + chunk),
+        onStderr: (chunk) => setTerminalOutput((prev) => prev + chunk),
+      });
+
       setLastResult(result);
       if (result.problems) {
         setProblems(result.problems);
       }
-      const combined = result.stdout + (result.stderr ? "\n" + result.stderr : "");
-      setTerminalOutput((prev) => prev + combined + `\n[Process exited with code ${result.exit_code} in ${result.execution_time}s]`);
-      // Update problems tab if error or diagnostics found
+
+      setTerminalOutput(
+        (prev) => prev + `\n[Process exited with code ${result.exit_code} in ${result.execution_time}s]\n`
+      );
+
       if (result.exit_code !== 0 || (result.problems && result.problems.length > 0)) {
         setTerminalTab("problems");
       }
       return result;
     } catch (err: any) {
-      setTerminalOutput((prev) => prev + `\n[Error]: ${err.message || "Failed to execute code"}`);
+      setTerminalOutput((prev) => prev + `\n[Error]: ${err.message || "Failed to execute code"}\n`);
     } finally {
       setIsRunning(false);
-      setActiveExecutionId(null);
     }
   };
 
-  // Run Tests (Test)
-  const testProject = async (customCommand?: string) => {
+  // Run Tests in Browser-Local Web Worker
+  const testProject = async () => {
     if (!activeWorkspace || isRunning) return;
     try {
       setIsRunning(true);
       setTerminalTab("terminal");
-      setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + "🧪 Running tests...\n");
+      setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + "🧪 Running test suite in browser sandbox...\n");
 
       if (activeFile && dirtyFiles[activeFile] !== undefined) {
         await saveFile(activeFile);
       }
 
-      const result = await workspaceApi.test(activeWorkspace.id, customCommand);
-      setActiveExecutionId(result.execution_id || null);
+      const allFiles = await workspaceStorage.getAllFiles(activeWorkspace.id);
+
+      const result = await executionEngine.test(activeWorkspace.id, allFiles, {
+        onStdout: (chunk) => setTerminalOutput((prev) => prev + chunk),
+        onStderr: (chunk) => setTerminalOutput((prev) => prev + chunk),
+      });
+
       setLastResult(result);
       if (result.problems) {
         setProblems(result.problems);
       }
-      const combined = result.stdout + (result.stderr ? "\n" + result.stderr : "");
-      setTerminalOutput((prev) => prev + combined + `\n[Tests completed with code ${result.exit_code} in ${result.execution_time}s]`);
+
+      setTerminalOutput(
+        (prev) => prev + `\n[Tests completed with code ${result.exit_code} in ${result.execution_time}s]\n`
+      );
+
       if (result.exit_code !== 0 || (result.problems && result.problems.length > 0)) {
         setTerminalTab("problems");
       }
       return result;
     } catch (err: any) {
-      setTerminalOutput((prev) => prev + `\n[Test Error]: ${err.message || "Failed to run tests"}`);
+      setTerminalOutput((prev) => prev + `\n[Test Error]: ${err.message || "Failed to run tests"}\n`);
     } finally {
       setIsRunning(false);
-      setActiveExecutionId(null);
     }
   };
 
-  // Stop Running Process
-  const stopProject = async () => {
+  // Stop Running Execution
+  const stopProject = () => {
+    executionEngine.stop();
+    setIsRunning(false);
+    setTerminalOutput((prev) => prev + "\n[Execution stopped by user]\n");
+  };
+
+  // Export Project to ZIP (100% Local, zero server uploads)
+  const exportProject = async () => {
     if (!activeWorkspace) return;
     try {
-      await workspaceApi.stop(activeWorkspace.id, activeExecutionId || undefined);
-      setIsRunning(false);
-      setActiveExecutionId(null);
-      setTerminalOutput((prev) => prev + "\n[Execution stopped by user]");
+      const blob = await workspaceStorage.exportWorkspace(activeWorkspace.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${activeWorkspace.name.replace(/[^a-zA-Z0-9_-]/g, "_")}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (err: any) {
-      console.error("Failed to stop process:", err);
+      console.error("Export failed:", err);
+      alert("Failed to export project ZIP: " + err.message);
+    }
+  };
+
+  // Import Project Files (from folder or drag-and-drop)
+  const importProject = async (files: Array<{ path: string; content: string }>) => {
+    if (!activeWorkspace) return;
+    try {
+      const count = await workspaceStorage.importFiles(activeWorkspace.id, files);
+      await refreshWorkspace();
+      return count;
+    } catch (err: any) {
+      console.error("Import failed:", err);
+      throw err;
     }
   };
 
@@ -485,6 +627,10 @@ export function useWorkspace() {
     abortControllerRef.current = new AbortController();
 
     try {
+      // Collect local files to send snapshot to ephemeral backend agent
+      const localFiles = await workspaceStorage.getAllFiles(activeWorkspace.id);
+      const filesPayload = localFiles.map((f) => ({ path: f.path, content: f.content }));
+
       const response = await fetch(workspaceApi.getAgentRunUrl(activeWorkspace.id), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -494,6 +640,7 @@ export function useWorkspace() {
           current_file: activeFile || null,
           active_file: activeFile || null,
           auto_apply: autoApply,
+          files: filesPayload,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -532,24 +679,18 @@ export function useWorkspace() {
             } else if (event.type === "state_change") {
               setAgentState(event.state);
               setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId ? { ...m, agentState: event.state } : m
-                )
+                prev.map((m) => (m.id === assistantMsgId ? { ...m, agentState: event.state } : m))
               );
             } else if (event.type === "plan_created") {
               latestPlan = event.plan || [];
               setCurrentPlan(latestPlan);
               setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId ? { ...m, plan: latestPlan } : m
-                )
+                prev.map((m) => (m.id === assistantMsgId ? { ...m, plan: latestPlan } : m))
               );
             } else if (event.type === "token" && event.text) {
               accumulatedText += event.text;
               setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId ? { ...m, content: accumulatedText } : m
-                )
+                prev.map((m) => (m.id === assistantMsgId ? { ...m, content: accumulatedText } : m))
               );
             } else if (event.type === "tool_started") {
               const newTool: AgentToolActivity = {
@@ -560,9 +701,7 @@ export function useWorkspace() {
               };
               currentTools = [...currentTools, newTool];
               setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId ? { ...m, tools: currentTools } : m
-                )
+                prev.map((m) => (m.id === assistantMsgId ? { ...m, tools: currentTools } : m))
               );
             } else if (event.type === "tool_completed") {
               currentTools = currentTools.map((t) =>
@@ -575,16 +714,10 @@ export function useWorkspace() {
                   : t
               );
               setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId ? { ...m, tools: currentTools } : m
-                )
+                prev.map((m) => (m.id === assistantMsgId ? { ...m, tools: currentTools } : m))
               );
 
-              // If tool produced execution output, update terminal panel
-              if (
-                ["workspace_run", "workspace_test", "workspace_build"].includes(event.tool) &&
-                event.result
-              ) {
+              if (["workspace_run", "workspace_test", "workspace_build"].includes(event.tool) && event.result) {
                 const res = event.result;
                 setLastResult(res);
                 if (res.stdout || res.stderr) {
@@ -612,19 +745,16 @@ export function useWorkspace() {
               );
             } else if (event.type === "changes_applied") {
               setPendingApproval(null);
-              // Refresh file content if available
+              // Save change directly into local IndexedDB
               if (event.file && activeWorkspace) {
-                workspaceApi
-                  .readFile(activeWorkspace.id, event.file)
-                  .then((content) => {
-                    setFileContents((prev) => ({ ...prev, [event.file]: content }));
-                    setDirtyFiles((prev) => {
-                      const next = { ...prev };
-                      delete next[event.file];
-                      return next;
-                    });
-                  })
-                  .catch(() => {});
+                const afterContent = event.result?.content ?? "";
+                if (event.operation === "delete") {
+                  workspaceStorage.deleteFile(activeWorkspace.id, event.file).catch(() => {});
+                } else if (afterContent) {
+                  workspaceStorage.writeFile(activeWorkspace.id, event.file, afterContent).then(() => {
+                    setFileContents((prev) => ({ ...prev, [event.file]: afterContent }));
+                  }).catch(() => {});
+                }
               }
               refreshWorkspace();
             } else if (event.type === "changes_rejected") {
@@ -644,8 +774,6 @@ export function useWorkspace() {
                   setTerminalTab("problems");
                 }
               }
-            } else if (event.type === "problem_detected") {
-              setTerminalTab("problems");
             } else if (event.type === "agent_completed") {
               setAgentState("completed");
               refreshWorkspace();
@@ -654,9 +782,7 @@ export function useWorkspace() {
             } else if (event.type === "agent_cancelled") {
               setAgentState("cancelled");
             }
-          } catch {
-            // Ignore parse errors on partial stream chunks
-          }
+          } catch {}
         }
       }
 
@@ -708,7 +834,6 @@ export function useWorkspace() {
   ) => {
     if (!activeWorkspace || isAIGenerating || !prompt.trim()) return;
 
-    // Route to Autonomous Agent mode if enabled and not a custom quick action
     if (agentMode === "agent" && !options.customAction) {
       return sendAutonomousAgentMessage(prompt);
     }
@@ -716,7 +841,6 @@ export function useWorkspace() {
     const userMsgId = `user-${Date.now()}`;
     const assistantMsgId = `asst-${Date.now()}`;
 
-    // Include terminal context if debugging
     let termCtx = "";
     if (options.customAction === "debug" || prompt.toLowerCase().includes("debug") || (lastResult && lastResult.exit_code !== 0)) {
       if (lastResult?.stderr) {
@@ -816,9 +940,7 @@ export function useWorkspace() {
                 )
               );
             }
-          } catch {
-            // Ignore parse errors on partial chunks
-          }
+          } catch {}
         }
       }
 
@@ -845,20 +967,19 @@ export function useWorkspace() {
     }
   };
 
-  // Apply proposed patch
+  // Apply proposed patch to local IndexedDB storage
   const applyPatch = async (patch: CodePatch) => {
     if (!activeWorkspace) return;
     try {
-      await workspaceApi.applyPatch(activeWorkspace.id, patch.file, patch.replacement_content);
-      // Update cached content and clear dirty state
+      await workspaceStorage.writeFile(activeWorkspace.id, patch.file, patch.replacement_content);
       setFileContents((prev) => ({ ...prev, [patch.file]: patch.replacement_content }));
       setDirtyFiles((prev) => {
         const next = { ...prev };
         delete next[patch.file];
         return next;
       });
-      // Make sure the file is opened
       await openFile(patch.file);
+      await refreshWorkspace();
       setIsReviewingDiff(false);
       setActivePatch(null);
     } catch (err: any) {
@@ -878,6 +999,7 @@ export function useWorkspace() {
     activeWorkspace,
     selectWorkspace,
     createNewWorkspace,
+    deleteWorkspace,
     fileTree,
     refreshWorkspace,
     isLoading,
@@ -919,6 +1041,11 @@ export function useWorkspace() {
     availableRuntimes,
     loadRuntimes,
 
+    // Local Storage & Export/Import
+    exportProject,
+    importProject,
+    storageStats,
+
     // Git
     gitStatus,
 
@@ -948,4 +1075,3 @@ export function useWorkspace() {
     stopAgent,
   };
 }
-

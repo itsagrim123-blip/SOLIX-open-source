@@ -68,6 +68,7 @@ class AgentRunRequest(BaseModel):
     current_file: Optional[str] = None
     active_file: Optional[str] = None
     auto_apply: bool = Field(default=False, description="Whether to auto-apply safe file changes")
+    files: Optional[List[Dict[str, str]]] = Field(default=None, description="Client-provided local file snapshot")
 
     @property
     def prompt(self) -> str:
@@ -83,7 +84,60 @@ class AgentApprovalRequest(BaseModel):
     approved: bool = Field(..., description="True to apply changes, False to reject")
 
 
-# ── Workspace CRUD Endpoints ──────────────────────────────────────────────────
+# ── Workspace CRUD & Legacy Migration Endpoints ───────────────────────────────
+
+@router.get("/legacy-export")
+async def export_legacy_server_workspaces():
+    """Export existing server-side workspaces for client-side IndexedDB migration."""
+    exported = []
+    try:
+        if not workspace_storage.base_path.exists():
+            return []
+        
+        workspaces = workspace_storage.list_workspaces()
+        for ws in workspaces:
+            ws_id = ws["id"]
+            files_data = []
+            try:
+                tree = workspace_storage.get_workspace_tree(ws_id)
+                def collect_files(nodes):
+                    for n in nodes:
+                        if n.get("is_directory"):
+                            collect_files(n.get("children", []))
+                        else:
+                            f_path = n["path"]
+                            try:
+                                content = workspace_storage.read_file(ws_id, f_path)["content"]
+                                files_data.append({"path": f_path, "content": content})
+                            except Exception:
+                                pass
+                collect_files(tree)
+                exported.append({
+                    "id": ws_id,
+                    "name": ws.get("name", "Migrated Project"),
+                    "template": ws.get("template", "starter-python"),
+                    "files": files_data,
+                })
+            except Exception as e:
+                logger.warning(f"Failed to export legacy workspace {ws_id}: {e}")
+    except Exception as e:
+        logger.error(f"Error scanning legacy workspaces: {e}")
+    return exported
+
+
+@router.post("/legacy-cleanup")
+async def cleanup_legacy_server_workspaces():
+    """Remove permanent server-side workspaces after successful client migration."""
+    cleaned = 0
+    try:
+        workspaces = workspace_storage.list_workspaces()
+        for ws in workspaces:
+            workspace_storage.delete_workspace(ws["id"])
+            cleaned += 1
+    except Exception as e:
+        logger.error(f"Failed to cleanup legacy workspaces: {e}")
+    return {"cleaned": cleaned, "permanent_storage_active": False}
+
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_workspace(payload: CreateWorkspaceRequest):
@@ -494,6 +548,7 @@ async def run_autonomous_agent(workspace_id: str, payload: AgentRunRequest):
             user_request=user_prompt,
             active_file=payload.target_file,
             auto_apply=payload.auto_apply,
+            client_files=payload.files,
         )
 
         return StreamingResponse(

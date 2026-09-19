@@ -88,6 +88,44 @@ class WorkspaceStorage:
             raise ValueError(f"Workspace path traversal attempt detected: {workspace_id}")
         return ws_dir
 
+    def create_ephemeral_workspace(self, workspace_id: str, files: List[Dict[str, str]]) -> Path:
+        """Create a temporary sandbox directory for ephemeral agent execution."""
+        clean_id = Path(workspace_id).name
+        ws_dir = (self.base_path / clean_id).resolve()
+        if ws_dir.exists():
+            shutil.rmtree(ws_dir, ignore_errors=True)
+        ws_dir.mkdir(parents=True, exist_ok=True)
+        meta = {
+            "id": workspace_id,
+            "name": "Ephemeral Workspace",
+            "template": "ephemeral",
+            "created_at": time.time(),
+            "updated_at": time.time(),
+            "ephemeral": True,
+        }
+        (ws_dir / ".solix_workspace.json").write_text(json.dumps(meta), encoding="utf-8")
+        for f in files:
+            p_rel = f.get("path", "").replace("\\", "/").lstrip("/")
+            if p_rel:
+                try:
+                    p = self.resolve_safe_path(workspace_id, p_rel)
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    p.write_text(f.get("content", ""), encoding="utf-8")
+                except Exception as e:
+                    logger.warning(f"Could not stage ephemeral file {p_rel}: {e}")
+        return ws_dir
+
+    def cleanup_ephemeral_workspace(self, workspace_id: str) -> None:
+        """Purge temporary sandbox directory after execution completes."""
+        try:
+            clean_id = Path(workspace_id).name
+            ws_dir = (self.base_path / clean_id).resolve()
+            if ws_dir.exists():
+                shutil.rmtree(ws_dir, ignore_errors=True)
+                logger.info(f"[WorkspaceStorage] Purged ephemeral workspace {workspace_id}")
+        except Exception as e:
+            logger.warning(f"Failed to cleanup ephemeral workspace {workspace_id}: {e}")
+
     def resolve_safe_path(self, workspace_id: str, relative_path: str) -> Path:
         """Resolve a relative file path inside a workspace with strict jail validation.
 

@@ -174,13 +174,21 @@ class CodingAgentEngine:
         user_request: str,
         active_file: Optional[str] = None,
         auto_apply: bool = False,
+        client_files: Optional[List[Dict[str, str]]] = None,
     ) -> AsyncGenerator[str, None]:
         """Core autonomous agent loop streaming SSE events to frontend."""
         task_id = str(uuid.uuid4())
         task = AgentTaskState(task_id, workspace_id, user_request, auto_apply=auto_apply)
         self.active_tasks[task_id] = task
 
-        logger.info(f"[AgentEngine] Starting autonomous task={task_id} in ws={workspace_id} for: {user_request[:60]}")
+        is_ephemeral = bool(client_files)
+        if client_files:
+            try:
+                workspace_storage.create_ephemeral_workspace(workspace_id, client_files)
+            except Exception as e:
+                logger.error(f"[AgentEngine] Failed to stage ephemeral files: {e}")
+
+        logger.info(f"[AgentEngine] Starting autonomous task={task_id} in ws={workspace_id} (ephemeral={is_ephemeral}) for: {user_request[:60]}")
 
         # Initial event
         yield f"data: {json.dumps({'type': 'agent_started', 'task_id': task_id, 'model': settings.OLLAMA_CODING_MODEL, 'user_request': user_request})}\n\n"
@@ -482,6 +490,11 @@ class CodingAgentEngine:
             logger.error(f"[AgentEngine] Unexpected error in agent loop: {e}", exc_info=True)
             yield f"data: {json.dumps({'type': 'agent_failed', 'error': str(e)})}\n\n"
         finally:
+            if is_ephemeral:
+                try:
+                    workspace_storage.cleanup_ephemeral_workspace(workspace_id)
+                except Exception as e:
+                    logger.warning(f"[AgentEngine] Cleanup error: {e}")
             self.active_tasks.pop(task_id, None)
 
 

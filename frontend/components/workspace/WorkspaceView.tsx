@@ -1,20 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Check,
   Code2,
   Cpu,
+  Download,
   FolderTree,
-  Hammer,
+  HardDrive,
   MessageSquare,
-  Play,
-  PlayCircle,
   Plus,
   RefreshCw,
-  Server,
   Sparkles,
   Terminal as TerminalIcon,
+  Trash2,
   X,
   XCircle,
 } from "lucide-react";
@@ -26,6 +25,15 @@ import { TerminalPanel } from "./TerminalPanel";
 import { DiffReviewModal } from "./DiffReviewModal";
 import { SolixLogo } from "@/components/brand/SolixLogo";
 import { CodePatch } from "@/types/workspace";
+import { workspaceMigration } from "@/lib/storage/workspaceMigration";
+
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
 
 interface WorkspaceViewProps {
   onBackToChat?: () => void;
@@ -38,6 +46,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     activeWorkspace,
     selectWorkspace,
     createNewWorkspace,
+    deleteWorkspace,
     fileTree,
     refreshWorkspace,
     isLoading,
@@ -79,6 +88,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     availableRuntimes,
     loadRuntimes,
 
+    // Local Storage & Export/Import
+    exportProject,
+    importProject,
+    storageStats,
+
     // Git
     gitStatus,
 
@@ -111,11 +125,41 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [newWorkspaceTemplate, setNewWorkspaceTemplate] = useState("starter-python");
   const [showRuntimesModal, setShowRuntimesModal] = useState(false);
+  const [showSandboxModal, setShowSandboxModal] = useState(false);
+  const [showStorageModal, setShowStorageModal] = useState(false);
+
+  // Legacy workspace migration states
+  const [pendingMigration, setPendingMigration] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationBannerDismissed, setMigrationBannerDismissed] = useState(false);
+  const [migrationSuccessMsg, setMigrationSuccessMsg] = useState<string | null>(null);
 
   // Reviewing diff modal state
   const [reviewingModalPatch, setReviewingModalPatch] = useState<CodePatch | null>(null);
   const [reviewingOperation, setReviewingOperation] = useState<"create" | "modify" | "delete" | undefined>();
   const [reviewingApprovalId, setReviewingApprovalId] = useState<string | null>(null);
+
+  // Check for legacy migration on mount
+  useEffect(() => {
+    workspaceMigration.checkPendingMigration().then((hasPending) => {
+      setPendingMigration(hasPending);
+    }).catch(() => {});
+  }, []);
+
+  const handleMigrateLegacy = async () => {
+    setIsMigrating(true);
+    try {
+      const count = await workspaceMigration.migrateServerWorkspaces();
+      await refreshWorkspace();
+      setPendingMigration(false);
+      setMigrationSuccessMsg(`Successfully imported ${count} legacy project(s) to local browser storage.`);
+      setTimeout(() => setMigrationSuccessMsg(null), 6000);
+    } catch (err: any) {
+      alert("Failed to migrate workspaces: " + (err.message || "Unknown error"));
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   const handleReviewPatch = (
     patch: CodePatch,
@@ -215,11 +259,30 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
 
-          {/* Sandboxed Badge */}
-          <span className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            Local Sandbox
-          </span>
+          {/* Local Storage Indicator Pill */}
+          <button
+            type="button"
+            onClick={() => setShowStorageModal(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#18191e] hover:bg-[#202228] text-[#a0a3ab] hover:text-[#eeeeec] border border-[#2c2f36] transition-colors cursor-pointer"
+            title="Inspect local browser storage & export backup"
+          >
+            <HardDrive className="w-3 h-3 text-cyan-400" />
+            <span>
+              {storageStats.isSaving ? "Saving..." : "Local"}
+              {storageStats.bytes > 0 ? ` · ${formatBytes(storageStats.bytes)}` : ""}
+            </span>
+          </button>
+
+          {/* Sandboxed Badge (Truthful & Interactive) */}
+          <button
+            type="button"
+            onClick={() => setShowSandboxModal(true)}
+            className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 transition-colors cursor-pointer"
+            title="Inspect sandbox isolation & execution runtime"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Browser Sandbox</span>
+          </button>
 
           {/* Runtimes & Compilers Pill */}
           <button
@@ -260,6 +323,58 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
           </div>
         </div>
       </div>
+
+      {/* Legacy Migration Notification Banner */}
+      {pendingMigration && !migrationBannerDismissed && (
+        <div className="bg-gradient-to-r from-cyan-950/90 via-blue-950/80 to-[#14161c] border-b border-cyan-500/30 px-3.5 py-2 flex items-center justify-between text-xs text-cyan-200 z-10">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-base">📦</span>
+            <span className="font-medium text-white">Legacy Server Projects Detected:</span>
+            <span className="text-cyan-200/80 hidden sm:inline">
+              Import server workspaces to your local browser storage for client-side persistence and execution.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleMigrateLegacy}
+              disabled={isMigrating}
+              className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors text-xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+            >
+              {isMigrating ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Migrating...</span>
+                </>
+              ) : (
+                <span>Migrate to Local</span>
+              )}
+            </button>
+            <button
+              onClick={() => setMigrationBannerDismissed(true)}
+              className="p-1 text-cyan-400/60 hover:text-white transition-colors cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Migration Success Toast */}
+      {migrationSuccessMsg && (
+        <div className="bg-emerald-950/90 border-b border-emerald-500/30 px-3.5 py-1.5 flex items-center justify-between text-xs text-emerald-300 z-10">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-400" />
+            <span>{migrationSuccessMsg}</span>
+          </div>
+          <button
+            onClick={() => setMigrationSuccessMsg(null)}
+            className="p-1 text-emerald-400/60 hover:text-white cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Mobile Tab Switcher Bar (visible only on screens < 1024px) */}
       <div className="lg:hidden flex items-center justify-around bg-[#121316] border-b border-[#25272c] py-1 px-2 shrink-0">
@@ -324,6 +439,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             onCreateFileOrDir={createFileOrDir}
             onDeletePath={deleteFileOrDir}
             onRenamePath={renameFileOrDir}
+            onExportZip={exportProject}
+            onImportFiles={importProject}
           />
         </div>
 
@@ -419,6 +536,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               onCreateFileOrDir={createFileOrDir}
               onDeletePath={deleteFileOrDir}
               onRenamePath={renameFileOrDir}
+              onExportZip={exportProject}
+              onImportFiles={importProject}
             />
           </div>
         )}
@@ -583,15 +702,15 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                   onChange={(e) => setNewWorkspaceTemplate(e.target.value)}
                   className="w-full px-3 py-1.5 text-xs bg-[#191a1e] border border-[#2e3137] rounded-lg text-white focus:outline-none focus:border-cyan-500 cursor-pointer"
                 >
-                  <option value="starter-python">Python 3 (main.py, test_main.py)</option>
-                  <option value="starter-cpp">C++ (GCC) (main.cpp, math_utils.cpp, include/)</option>
-                  <option value="starter-node">Node.js (index.js, package.json)</option>
+                  <option value="starter-python">Python 3 (main.py, test_main.py) — In-Browser WASM</option>
+                  <option value="starter-web">JavaScript / Node (index.js) — In-Browser Worker</option>
+                  <option value="starter-cpp">C++ (main.cpp, math_utils.cpp) — Native Compiler</option>
                   <option value="empty">Empty Project (blank canvas)</option>
                 </select>
               </div>
 
               <div className="text-[11px] text-[#666970]">
-                A sandboxed environment will be created with starter templates, build tasks, and test suites.
+                All files will be saved directly into your device's local IndexedDB and executed in the local sandbox.
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
@@ -611,6 +730,175 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Sandbox Isolation & Runtime Details Modal */}
+      {showSandboxModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg bg-[#141518] border border-[#2e3137] rounded-xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#252830] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <h3 className="text-sm font-semibold text-white">Browser Sandbox Architecture</h3>
+              </div>
+              <button
+                onClick={() => setShowSandboxModal(false)}
+                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#8f9299] leading-relaxed">
+              Solix Workspace operates with a <strong className="text-[#dedfe2]">Local-First Architecture</strong>. Your code is stored on your device and executed directly in your browser using WebAssembly and Web Workers.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
+                <div className="text-[10.5px] text-[#8f9299] uppercase font-bold tracking-wider mb-0.5">
+                  Execution Mode
+                </div>
+                <div className="font-semibold text-emerald-400">100% In-Browser</div>
+                <div className="text-[11px] text-[#666970] mt-0.5">Isolated Web Worker & Pyodide WASM</div>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
+                <div className="text-[10.5px] text-[#8f9299] uppercase font-bold tracking-wider mb-0.5">
+                  Timeout Protection
+                </div>
+                <div className="font-semibold text-cyan-400">15 Seconds Watchdog</div>
+                <div className="text-[11px] text-[#666970] mt-0.5">Auto-terminates infinite loops</div>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
+                <div className="text-[10.5px] text-[#8f9299] uppercase font-bold tracking-wider mb-0.5">
+                  Output Buffer Cap
+                </div>
+                <div className="font-semibold text-white">500 KB Limit</div>
+                <div className="text-[11px] text-[#666970] mt-0.5">Prevents browser memory freezes</div>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
+                <div className="text-[10.5px] text-[#8f9299] uppercase font-bold tracking-wider mb-0.5">
+                  Source Privacy
+                </div>
+                <div className="font-semibold text-emerald-400">Zero Server Storage</div>
+                <div className="text-[11px] text-[#666970] mt-0.5">Source files never permanently stored</div>
+              </div>
+            </div>
+
+            <div className="border-t border-[#252830] pt-3">
+              <div className="text-[11px] font-semibold text-white mb-2">Browser Compilers & Interpreters</div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs px-2.5 py-2 rounded bg-[#18191e]">
+                  <span className="text-white">Python 3.12 (Pyodide WASM)</span>
+                  <span className="text-emerald-400 font-medium">✓ Local WebAssembly</span>
+                </div>
+                <div className="flex items-center justify-between text-xs px-2.5 py-2 rounded bg-[#18191e]">
+                  <span className="text-white">JavaScript / TypeScript (Worker)</span>
+                  <span className="text-emerald-400 font-medium">✓ Local Web Worker</span>
+                </div>
+                <div className="flex items-center justify-between text-xs px-2.5 py-2 rounded bg-[#18191e]">
+                  <span className="text-[#8f9299]">C / C++ (GCC / Clang)</span>
+                  <span className="text-zinc-500 font-medium">Requires Native Runtime</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-[#252830]">
+              <button
+                type="button"
+                onClick={() => setShowSandboxModal(false)}
+                className="px-3.5 py-1.5 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors cursor-pointer"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Local Storage & Export Modal */}
+      {showStorageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-[#141518] border border-[#2e3137] rounded-xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#252830] pb-3">
+              <div className="flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-sm font-semibold text-white">Local Storage & Persistence</h3>
+              </div>
+              <button
+                onClick={() => setShowStorageModal(false)}
+                className="p-1 rounded text-[#8f9299] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
+                <span className="text-[#8f9299]">Active Project:</span>
+                <span className="font-semibold text-white truncate max-w-[200px]">
+                  {activeWorkspace?.name || "None"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
+                <span className="text-[#8f9299]">Project Storage Used:</span>
+                <span className="font-mono text-cyan-400 font-semibold">
+                  {formatBytes(storageStats.bytes)} ({storageStats.fileCount} files)
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
+                <span className="text-[#8f9299]">Storage Engine:</span>
+                <span className="text-emerald-400 font-mono">IndexedDB + OPFS</span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#18191e] border border-[#26282e]">
+                <span className="text-[#8f9299]">Auto-Save:</span>
+                <span className="text-white">Active (500ms debounce)</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  await exportProject();
+                  setShowStorageModal(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Project as ZIP (100% Client-Side)</span>
+              </button>
+
+              {activeWorkspace && workspaces.length > 1 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm(`Are you sure you want to permanently delete "${activeWorkspace.name}" from your local browser storage?`)) {
+                      await deleteWorkspace(activeWorkspace.id);
+                      setShowStorageModal(false);
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete This Project</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-[#252830]">
+              <button
+                type="button"
+                onClick={() => setShowStorageModal(false)}
+                className="px-3.5 py-1.5 text-xs font-semibold bg-[#1e2025] hover:bg-[#282a30] text-[#dedfe2] rounded-lg transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
