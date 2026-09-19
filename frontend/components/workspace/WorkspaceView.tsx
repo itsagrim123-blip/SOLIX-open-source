@@ -27,7 +27,7 @@ import { PreviewPanel } from "./PreviewPanel";
 import { DiffReviewModal } from "./DiffReviewModal";
 import { CommandPaletteModal } from "./CommandPaletteModal";
 import { SolixLogo } from "@/components/brand/SolixLogo";
-import type { CodePatch } from "@/types/workspace";
+import type { CodePatch, Workspace } from "@/types/workspace";
 import { workspaceMigration } from "@/lib/storage/workspaceMigration";
 
 function formatBytes(bytes: number): string {
@@ -184,6 +184,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [newWorkspaceTemplate, setNewWorkspaceTemplate] = useState("starter-web");
+  const [projectToDelete, setProjectToDelete] = useState<Workspace | null>(null);
+  const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
   const [showRuntimesModal, setShowRuntimesModal] = useState(false);
   const [showSandboxModal, setShowSandboxModal] = useState(false);
   const [showStorageModal, setShowStorageModal] = useState(false);
@@ -509,6 +511,17 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
+
+          {activeWorkspace && (
+            <button
+              onClick={() => setProjectToDelete(activeWorkspace)}
+              className="p-1 rounded-xs text-[#858b94] hover:text-rose-400 hover:bg-[#1a1c21] transition-colors cursor-pointer"
+              title={`Delete Project "${activeWorkspace.name}"`}
+              aria-label="Delete Active Project"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           <button
             onClick={() => refreshWorkspace()}
@@ -1297,18 +1310,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 <span>Export Project as ZIP</span>
               </button>
 
-              {activeWorkspace && workspaces.length > 1 && (
+              {activeWorkspace && (
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (
-                      confirm(
-                        `Are you sure you want to permanently delete "${activeWorkspace.name}" from your local browser storage?`
-                      )
-                    ) {
-                      await deleteWorkspace(activeWorkspace.id);
-                      setShowStorageModal(false);
-                    }
+                  onClick={() => {
+                    setShowStorageModal(false);
+                    setProjectToDelete(activeWorkspace);
                   }}
                   className="w-full flex items-center justify-center gap-1.5 h-7 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 rounded-xs text-xs font-medium transition-colors cursor-pointer"
                 >
@@ -1402,6 +1409,65 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
         </div>
       )}
 
+      {/* Delete Project Confirmation Modal */}
+      {projectToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-sm bg-[#141518] border border-[#292c31] rounded-xs p-4 shadow-2xl space-y-3.5">
+            <div className="flex items-center justify-between border-b border-[#22252a] pb-2">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <span className="text-xs font-mono font-semibold uppercase text-white tracking-wider">
+                  Delete Project
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isDeletingWorkspace && setProjectToDelete(null)}
+                className="p-1 rounded-xs text-[#858b94] hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                disabled={isDeletingWorkspace}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#c0c5cc] leading-relaxed">
+              Delete <span className="font-semibold text-white font-mono">&ldquo;{projectToDelete.name}&rdquo;</span>? This will permanently remove the project and its local files from this browser.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#22252a]">
+              <button
+                type="button"
+                onClick={() => setProjectToDelete(null)}
+                disabled={isDeletingWorkspace}
+                className="px-3 h-7 text-xs font-medium text-[#858b94] hover:text-white rounded-xs transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingWorkspace}
+                onClick={async () => {
+                  if (!projectToDelete) return;
+                  try {
+                    setIsDeletingWorkspace(true);
+                    const targetId = projectToDelete.id;
+                    await deleteWorkspace(targetId);
+                    setProjectToDelete(null);
+                  } catch (err: any) {
+                    alert("Failed to delete project: " + (err.message || "Unknown error"));
+                  } finally {
+                    setIsDeletingWorkspace(false);
+                  }
+                }}
+                className="px-3 h-7 text-xs font-semibold bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xs transition-colors cursor-pointer"
+              >
+                {isDeletingWorkspace ? "Deleting..." : "Delete Project"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Professional Command Palette / Quick Open Modal */}
       <CommandPaletteModal
         isOpen={isCommandPaletteOpen}
@@ -1420,6 +1486,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
         onNewFile={() => createFileOrDir("new_file.py", false)}
         onNewFolder={() => createFileOrDir("new_folder", true)}
         onNewProject={() => setIsCreatingWorkspace(true)}
+        onDeleteProject={() => activeWorkspace && setProjectToDelete(activeWorkspace)}
         onExportZip={exportProject}
         onImportFiles={() => {
           if (typeof document === "undefined") return;

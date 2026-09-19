@@ -955,12 +955,25 @@ export function useWorkspace() {
               setPendingApproval(null);
               // Save change directly into local IndexedDB
               if (event.file && activeWorkspace) {
-                const afterContent = event.result?.content ?? "";
+                const afterContent = event.content ?? event.result?.content ?? "";
                 if (event.operation === "delete") {
                   workspaceStorage.deleteFile(activeWorkspace.id, event.file).catch(() => {});
-                } else if (afterContent) {
+                  setFileContents((prev) => {
+                    const copy = { ...prev };
+                    delete copy[event.file];
+                    return copy;
+                  });
+                  setOpenFiles((prev) => prev.filter((p) => p !== event.file));
+                  if (activeFile === event.file) {
+                    setActiveFile(null);
+                  }
+                } else if (typeof afterContent === "string") {
                   workspaceStorage.writeFile(activeWorkspace.id, event.file, afterContent).then(() => {
                     setFileContents((prev) => ({ ...prev, [event.file]: afterContent }));
+                    if (!activeFile) {
+                      setActiveFile(event.file);
+                      setOpenFiles((prev) => (prev.includes(event.file) ? prev : [...prev, event.file]));
+                    }
                   }).catch(() => {});
                 }
               }
@@ -984,6 +997,14 @@ export function useWorkspace() {
               }
             } else if (event.type === "agent_completed") {
               setAgentState("completed");
+              if (event.file_contents && activeWorkspace) {
+                for (const [filePath, fileText] of Object.entries(event.file_contents)) {
+                  if (typeof fileText === "string") {
+                    workspaceStorage.writeFile(activeWorkspace.id, filePath, fileText).catch(() => {});
+                    setFileContents((prev) => ({ ...prev, [filePath]: fileText }));
+                  }
+                }
+              }
               refreshWorkspace();
             } else if (event.type === "agent_failed") {
               setAgentState("failed");

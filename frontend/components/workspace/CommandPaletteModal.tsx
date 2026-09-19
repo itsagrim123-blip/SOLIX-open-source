@@ -23,6 +23,7 @@ import {
   X,
   Sparkles,
   Globe,
+  Trash2,
 } from "lucide-react";
 import { FileNode } from "@/types/workspace";
 
@@ -52,6 +53,7 @@ interface CommandPaletteModalProps {
   onNewFile: () => void;
   onNewFolder: () => void;
   onNewProject: () => void;
+  onDeleteProject?: () => void;
   onExportZip: () => void;
   onImportFiles: () => void;
   onClearTerminal: () => void;
@@ -93,6 +95,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   onNewFile,
   onNewFolder,
   onNewProject,
+  onDeleteProject,
   onExportZip,
   onImportFiles,
   onClearTerminal,
@@ -271,6 +274,20 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
           onNewProject();
         },
       },
+      ...(onDeleteProject
+        ? [
+            {
+              id: "delete-project",
+              label: "Delete Active Project...",
+              category: "Project" as const,
+              icon: <Trash2 className="w-3.5 h-3.5 text-rose-400" />,
+              action: () => {
+                onClose();
+                onDeleteProject();
+              },
+            },
+          ]
+        : []),
       {
         id: "export-zip",
         label: "Export Project (ZIP)",
