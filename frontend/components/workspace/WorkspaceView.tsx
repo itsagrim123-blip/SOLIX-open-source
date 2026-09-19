@@ -8,10 +8,7 @@ import {
   Download,
   FolderTree,
   HardDrive,
-  Hammer,
   MessageSquare,
-  Play,
-  PlayCircle,
   Plus,
   RefreshCw,
   Search,
@@ -484,46 +481,6 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               <span className="truncate">Search files or commands...</span>
             </div>
             <span className="text-[10px] font-mono text-[#555a62] shrink-0 ml-1">Ctrl+P</span>
-          </button>
-        </div>
-
-        {/* CENTER / RIGHT: Compact Execution Actions */}
-        <div className="hidden md:flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => buildProject()}
-            disabled={isRunning}
-            className="flex items-center gap-1 px-2.5 h-6 rounded-xs text-[11px] font-medium text-[#858b94] hover:text-[#d4d7dc] hover:bg-[#1c1f24] transition-colors cursor-pointer"
-            title="Build Project"
-          >
-            <Hammer className="w-3 h-3" />
-            <span>Build</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => testProject()}
-            disabled={isRunning}
-            className="flex items-center gap-1 px-2.5 h-6 rounded-xs text-[11px] font-medium text-[#858b94] hover:text-[#d4d7dc] hover:bg-[#1c1f24] transition-colors cursor-pointer"
-            title="Run Unit Tests"
-          >
-            <PlayCircle className="w-3 h-3" />
-            <span>Test</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => runProject()}
-            disabled={isRunning}
-            className={`flex items-center gap-1 px-2.5 h-6 rounded-xs text-[11px] font-semibold transition-colors cursor-pointer ${
-              isRunning
-                ? "bg-amber-950/60 text-amber-300 border border-amber-800/60"
-                : "bg-cyan-600 hover:bg-cyan-500 text-white"
-            }`}
-            title="Run active file in browser sandbox"
-          >
-            <Play className="w-3 h-3 fill-current" />
-            <span>{isRunning ? "Running..." : "Run"}</span>
           </button>
         </div>
 
