@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Check,
   Code2,
   Cpu,
   Download,
   FolderTree,
+  Globe,
   HardDrive,
   MessageSquare,
   Plus,
@@ -22,6 +23,7 @@ import { FileExplorer } from "./FileExplorer";
 import { CodeEditorPanel } from "./CodeEditorPanel";
 import { AIPanel } from "./AIPanel";
 import { TerminalPanel } from "./TerminalPanel";
+import { PreviewPanel } from "./PreviewPanel";
 import { DiffReviewModal } from "./DiffReviewModal";
 import { CommandPaletteModal } from "./CommandPaletteModal";
 import { SolixLogo } from "@/components/brand/SolixLogo";
@@ -147,7 +149,6 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     rejectPatch,
     webSearchEnabled,
     setWebSearchEnabled,
-
     // Autonomous Agent
     agentMode,
     setAgentMode,
@@ -158,16 +159,31 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     pendingApproval,
     respondApproval,
     stopAgent,
+
+    // Web Project & Live Preview
+    isWebProject,
+    isPreviewOpen,
+    setIsPreviewOpen,
+    togglePreview,
+    isLivePreview,
+    setIsLivePreview,
+    toggleLivePreview,
+    previewViewport,
+    setPreviewViewport,
+    previewHtml,
+    refreshPreview,
+    consoleLogs,
+    clearConsole,
   } = workspace;
 
   // Editor cursor tracking for IDE status bar
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
 
   // Navigation tab for mobile viewports
-  const [mobileTab, setMobileTab] = useState<"files" | "editor" | "ai" | "terminal">("editor");
+  const [mobileTab, setMobileTab] = useState<"files" | "editor" | "preview" | "ai" | "terminal">("editor");
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
-  const [newWorkspaceTemplate, setNewWorkspaceTemplate] = useState("starter-python");
+  const [newWorkspaceTemplate, setNewWorkspaceTemplate] = useState("starter-web");
   const [showRuntimesModal, setShowRuntimesModal] = useState(false);
   const [showSandboxModal, setShowSandboxModal] = useState(false);
   const [showStorageModal, setShowStorageModal] = useState(false);
@@ -289,10 +305,49 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
     document.addEventListener("mouseup", onMouseUp);
   };
 
+  const [previewWidth, setPreviewWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("solix_ide_preview_width");
+      if (saved) return Math.max(260, Math.min(900, parseInt(saved, 10)));
+    }
+    return 480;
+  });
+
+  const startResizingPreview = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = previewWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = Math.max(260, Math.min(950, startWidth - (moveEvent.clientX - startX)));
+      setPreviewWidth(newWidth);
+      localStorage.setItem("solix_ide_preview_width", String(newWidth));
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+
+      // Ctrl+Shift+V -> Toggle Live Preview
+      if (isCtrlOrCmd && e.shiftKey && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        togglePreview();
+        return;
+      }
 
       // Ctrl+Shift+P -> Command Palette (Commands mode)
       if (isCtrlOrCmd && e.shiftKey && e.key.toLowerCase() === "p") {
@@ -573,6 +628,20 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
           <span>Editor</span>
         </button>
 
+        {isWebProject && (
+          <button
+            onClick={() => setMobileTab("preview")}
+            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium transition-colors ${
+              mobileTab === "preview"
+                ? "text-cyan-400 border-b-2 border-cyan-400 font-semibold"
+                : "text-[#858b94] hover:text-[#d4d7dc]"
+            }`}
+          >
+            <Globe className="w-3 h-3" />
+            <span>Preview</span>
+          </button>
+        )}
+
         <button
           onClick={() => setMobileTab("terminal")}
           className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium transition-colors ${
@@ -633,32 +702,66 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
         {/* Center Column: Code Editor + Docked Bottom Panel */}
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-          {/* Top: Code Editor */}
-          <div className="flex-1 min-h-0 overflow-hidden relative">
-            <CodeEditorPanel
-              openFiles={openFiles}
-              activeFile={activeFile}
-              fileContents={fileContents}
-              dirtyFiles={dirtyFiles}
-              onSelectFile={openFile}
-              onCloseFile={closeFile}
-              onUpdateContent={updateContent}
-              onSaveFile={saveFile}
-              onBuild={() => buildProject()}
-              onRun={() => runProject()}
-              onTest={() => testProject()}
-              isRunning={isRunning}
-              problems={problems}
-              targetProblem={targetProblem}
-              onSelectionChange={(code, range) => {
-                setSelectedCode(code);
-                setSelectedLineRange(range);
-              }}
-              onCursorChange={(line, col) => setCursorPos({ line, col })}
-            />
+          {/* Top: Code Editor + Live Preview (Side-by-Side Split View) */}
+          <div className="flex-1 min-h-0 overflow-hidden relative flex">
+            {/* Editor Panel */}
+            <div className="flex-1 min-w-0 h-full overflow-hidden">
+              <CodeEditorPanel
+                openFiles={openFiles}
+                activeFile={activeFile}
+                fileContents={fileContents}
+                dirtyFiles={dirtyFiles}
+                onSelectFile={openFile}
+                onCloseFile={closeFile}
+                onUpdateContent={updateContent}
+                onSaveFile={saveFile}
+                onBuild={() => buildProject()}
+                onRun={() => runProject()}
+                onTest={() => testProject()}
+                isRunning={isRunning}
+                problems={problems}
+                targetProblem={targetProblem}
+                onSelectionChange={(code, range) => {
+                  setSelectedCode(code);
+                  setSelectedLineRange(range);
+                }}
+                onCursorChange={(line, col) => setCursorPos({ line, col })}
+                isWebProject={isWebProject}
+                isPreviewOpen={isPreviewOpen}
+                onTogglePreview={togglePreview}
+              />
+            </div>
+
+            {/* Split Resizer Handle between Editor and Live Preview */}
+            {isPreviewOpen && (
+              <>
+                <div
+                  onMouseDown={startResizingPreview}
+                  className="w-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-col-resize shrink-0 transition-colors z-10 border-l border-r border-[#22242a]"
+                  title="Drag to resize Website Live Preview"
+                />
+                <div
+                  style={{ width: `${previewWidth}px` }}
+                  className="h-full shrink-0 min-w-[280px] max-w-[80vw]"
+                >
+                  <PreviewPanel
+                    html={previewHtml}
+                    onRefresh={refreshPreview}
+                    onClose={togglePreview}
+                    isLive={isLivePreview}
+                    onToggleLive={toggleLivePreview}
+                    viewport={previewViewport}
+                    onViewportChange={setPreviewViewport}
+                    problems={problems}
+                    onSelectProblem={jumpToProblem}
+                    entryFile={activeFile && activeFile.endsWith(".html") ? activeFile : "index.html"}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Bottom: Docked Terminal / Problems Panel (Resizable) */}
+          {/* Bottom: Docked Terminal / Problems / Console Panel (Resizable) */}
           {isTerminalOpen && (
             <div className="shrink-0 flex flex-col">
               {/* Terminal Horizontal Resizer Splitter */}
@@ -680,6 +783,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                   onTabChange={setTerminalTab}
                   problems={problems}
                   onSelectProblem={jumpToProblem}
+                  consoleLogs={consoleLogs}
+                  onClearConsole={clearConsole}
                 />
               </div>
             </div>
@@ -774,7 +879,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               }}
               onRun={() => {
                 runProject();
-                setMobileTab("terminal");
+                if (isWebProject) {
+                  setMobileTab("preview");
+                } else {
+                  setMobileTab("terminal");
+                }
               }}
               onTest={() => {
                 testProject();
@@ -783,11 +892,37 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               isRunning={isRunning}
               problems={problems}
               targetProblem={targetProblem}
+              isWebProject={isWebProject}
+              isPreviewOpen={isPreviewOpen}
+              onTogglePreview={() => {
+                togglePreview();
+                if (!isPreviewOpen) setMobileTab("preview");
+              }}
               onSelectionChange={(code, range) => {
                 setSelectedCode(code);
                 setSelectedLineRange(range);
               }}
               onCursorChange={(line, col) => setCursorPos({ line, col })}
+            />
+          </div>
+        )}
+
+        {mobileTab === "preview" && isWebProject && (
+          <div className="flex-1 min-h-0 flex flex-col bg-[#0b0c0e]">
+            <PreviewPanel
+              html={previewHtml}
+              isLive={isLivePreview}
+              onToggleLive={toggleLivePreview}
+              onRefresh={refreshPreview}
+              viewport={previewViewport}
+              onViewportChange={setPreviewViewport}
+              onClose={() => setMobileTab("editor")}
+              problems={problems}
+              onSelectProblem={(prob) => {
+                jumpToProblem(prob);
+                setMobileTab("editor");
+              }}
+              entryFile={activeFile && activeFile.endsWith(".html") ? activeFile : "index.html"}
             />
           </div>
         )}
@@ -809,6 +944,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 jumpToProblem(prob);
                 setMobileTab("editor");
               }}
+              consoleLogs={consoleLogs}
+              onClearConsole={clearConsole}
             />
           </div>
         )}
@@ -875,7 +1012,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             title="Inspect sandbox isolation & execution runtime"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span>Python (Pyodide WASM)</span>
+            <span>{isWebProject ? "Web Sandbox (Isolated)" : "Python (Pyodide WASM)"}</span>
           </button>
 
           <span className="text-[#2a2d35]">·</span>
@@ -980,8 +1117,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                   onChange={(e) => setNewWorkspaceTemplate(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs bg-[#0d0e10] border border-[#292c31] rounded-xs text-white focus:outline-none focus:border-cyan-500 cursor-pointer font-mono"
                 >
+                  <option value="starter-web">Web Project (HTML / CSS / JavaScript)</option>
+                  <option value="starter-web-landing">Landing Page (HTML / CSS / JavaScript)</option>
+                  <option value="starter-web-app">JavaScript Web App (SPA)</option>
+                  <option value="starter-web-blank">Blank Website (HTML / CSS / JS)</option>
                   <option value="starter-python">Python 3 (In-Browser WASM)</option>
-                  <option value="starter-web">JavaScript / Node (In-Browser Worker)</option>
                   <option value="starter-cpp">C++ (Native Compiler)</option>
                   <option value="empty">Empty Project</option>
                 </select>
@@ -1067,8 +1207,16 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               </div>
               <div className="space-y-1 font-mono text-xs">
                 <div className="flex items-center justify-between p-1.5 rounded-xs bg-[#0d0e10]">
+                  <span className="text-white">Web Sandbox (HTML / CSS / JS Preview)</span>
+                  <span className="text-emerald-400 text-[11px]">
+                    {isWebProject ? "✓ Active" : "✓ Available"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-1.5 rounded-xs bg-[#0d0e10]">
                   <span className="text-white">Python 3.12 (Pyodide WASM)</span>
-                  <span className="text-emerald-400 text-[11px]">✓ Available</span>
+                  <span className="text-emerald-400 text-[11px]">
+                    {!isWebProject ? "✓ Active" : "✓ Available"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between p-1.5 rounded-xs bg-[#0d0e10]">
                   <span className="text-white">JavaScript / TypeScript (Worker)</span>
@@ -1268,6 +1416,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
         onToggleTerminal={() => setIsTerminalOpen((prev) => !prev)}
         onToggleExplorer={() => setIsExplorerOpen((prev) => !prev)}
         onToggleAi={() => setIsAiOpen((prev) => !prev)}
+        onTogglePreview={togglePreview}
         onNewFile={() => createFileOrDir("new_file.py", false)}
         onNewFolder={() => createFileOrDir("new_folder", true)}
         onNewProject={() => setIsCreatingWorkspace(true)}

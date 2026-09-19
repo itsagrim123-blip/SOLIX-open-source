@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { ChevronRight, Hammer, Play, PlayCircle, Save, X } from "lucide-react";
+import { ChevronRight, Globe, Hammer, Play, PlayCircle, Save, X } from "lucide-react";
 import { Problem } from "@/types/workspace";
 
 // Dynamically load Monaco Editor with SSR disabled
@@ -36,6 +36,9 @@ interface CodeEditorPanelProps {
   onCursorChange?: (line: number, column: number) => void;
   problems?: Problem[];
   targetProblem?: Problem | null;
+  isWebProject?: boolean;
+  isPreviewOpen?: boolean;
+  onTogglePreview?: () => void;
 }
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -78,6 +81,9 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   onCursorChange,
   problems,
   targetProblem,
+  isWebProject,
+  isPreviewOpen,
+  onTogglePreview,
 }) => {
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -155,13 +161,21 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
       onCursorChange(pos.lineNumber, pos.column);
     }
 
-    // Keyboard Shortcuts: Ctrl+S to save, Ctrl+Enter to run
+    // Keyboard Shortcuts: Ctrl+S to save, Ctrl+Enter to run, Ctrl+Shift+V for preview
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       onSaveFile();
     });
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       onRun();
     });
+    if (onTogglePreview) {
+      editor.addCommand(
+        monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV,
+        () => {
+          onTogglePreview();
+        }
+      );
+    }
   };
 
   // Set real compiler / interpreter error and warning markers on Monaco editor model
@@ -344,6 +358,22 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
             <Play className="w-3 h-3 fill-current" />
             <span>{isRunning ? "Running" : "Run"}</span>
           </button>
+
+          {(isWebProject || onTogglePreview) && (
+            <button
+              type="button"
+              onClick={onTogglePreview}
+              className={`flex items-center gap-1 px-2.5 h-6 rounded-xs text-[11px] font-medium transition-colors cursor-pointer ${
+                isPreviewOpen
+                  ? "bg-cyan-950/80 text-cyan-300 border border-cyan-800"
+                  : "text-[#858b94] hover:text-[#d4d7dc] hover:bg-[#1c1f24]"
+              }`}
+              title="Toggle Website Live Preview (Ctrl+Shift+V)"
+            >
+              <Globe className="w-3 h-3 text-cyan-400" />
+              <span className="hidden md:inline">Preview</span>
+            </button>
+          )}
         </div>
       </div>
 

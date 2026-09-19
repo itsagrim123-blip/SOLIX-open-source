@@ -22,6 +22,7 @@ import {
   Upload,
   X,
   Sparkles,
+  Globe,
 } from "lucide-react";
 import { FileNode } from "@/types/workspace";
 
@@ -47,6 +48,7 @@ interface CommandPaletteModalProps {
   onToggleTerminal: () => void;
   onToggleExplorer: () => void;
   onToggleAi: () => void;
+  onTogglePreview?: () => void;
   onNewFile: () => void;
   onNewFolder: () => void;
   onNewProject: () => void;
@@ -87,6 +89,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   onToggleTerminal,
   onToggleExplorer,
   onToggleAi,
+  onTogglePreview,
   onNewFile,
   onNewFolder,
   onNewProject,
@@ -193,6 +196,21 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
           onToggleExplorer();
         },
       },
+      ...(onTogglePreview
+        ? [
+            {
+              id: "toggle-preview",
+              label: "Toggle Live Web Preview",
+              category: "View" as const,
+              shortcut: "Ctrl+Shift+V",
+              icon: <Globe className="w-3.5 h-3.5 text-cyan-400" />,
+              action: () => {
+                onClose();
+                onTogglePreview();
+              },
+            },
+          ]
+        : []),
       {
         id: "ai-explain",
         label: "Solix AI: Explain Active Code",

@@ -131,3 +131,25 @@ export interface CodingChatMessage {
   approval?: AgentApprovalRequest;
   agentState?: AgentState;
 }
+
+export interface ConsoleLogMessage {
+  id: string;
+  level: "log" | "info" | "warn" | "error";
+  text: string;
+  args?: any[];
+  timestamp: number;
+  file?: string;
+  line?: number;
+  column?: number;
+}
+
+export interface WebBuildResult {
+  success: boolean;
+  entryFile: string;
+  linkedStyles: string[];
+  linkedScripts: string[];
+  assets: string[];
+  problems: Problem[];
+  html: string;
+  timestamp: number;
+}

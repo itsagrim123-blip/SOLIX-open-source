@@ -7,14 +7,18 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  Filter,
   GitBranch,
+  Info,
+  Radio,
   RotateCcw,
   Square,
   Terminal as TerminalIcon,
   Trash2,
   Wrench,
+  XCircle,
 } from "lucide-react";
-import { ExecutionResult, GitStatus, Problem } from "@/types/workspace";
+import { ConsoleLogMessage, ExecutionResult, GitStatus, Problem } from "@/types/workspace";
 
 interface TerminalPanelProps {
   output: string;
@@ -24,10 +28,12 @@ interface TerminalPanelProps {
   onStop: () => void;
   onDebugError: (errorDetails: string) => void;
   gitStatus: GitStatus | null;
-  activeTab: "terminal" | "problems" | "git";
-  onTabChange: (tab: "terminal" | "problems" | "git") => void;
+  activeTab: "terminal" | "problems" | "git" | "console";
+  onTabChange: (tab: "terminal" | "problems" | "git" | "console") => void;
   problems?: Problem[];
   onSelectProblem?: (problem: Problem) => void;
+  consoleLogs?: ConsoleLogMessage[];
+  onClearConsole?: () => void;
 }
 
 export const TerminalPanel: React.FC<TerminalPanelProps> = ({
@@ -42,10 +48,13 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   onTabChange,
   problems = [],
   onSelectProblem,
+  consoleLogs = [],
+  onClearConsole,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [consoleFilter, setConsoleFilter] = useState<"all" | "error" | "warn" | "log">("all");
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on new output
@@ -136,6 +145,27 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
             <span>GIT</span>
             {gitStatus?.is_repo && gitStatus.branch && (
               <span className="text-[10px] text-[#666c75] font-mono">({gitStatus.branch})</span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsCollapsed(false);
+              onTabChange("console");
+            }}
+            className={`flex items-center gap-1.5 px-3 h-full text-[11px] font-mono tracking-wider transition-colors cursor-pointer border-b-2 ${
+              activeTab === "console"
+                ? "text-[#e2e8f0] border-cyan-500 bg-[#16171b] font-semibold"
+                : "text-[#858b94] border-transparent hover:text-[#d4d7dc] hover:bg-[#141518]"
+            }`}
+          >
+            <Radio className="w-3 h-3 text-cyan-400" />
+            <span>CONSOLE</span>
+            {consoleLogs.length > 0 && (
+              <span className="text-[10px] font-mono text-[#858b94]">
+                ({consoleLogs.length})
+              </span>
             )}
           </button>
         </div>
@@ -381,6 +411,117 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
               ) : (
                 <div className="text-[#555a62] italic">
                   Not a Git repository.
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "console" && (
+            <div className="space-y-2 text-xs">
+              {/* Console Toolbar Controls */}
+              <div className="flex items-center justify-between pb-1.5 border-b border-[#1f2228] text-[11px] font-mono">
+                <div className="flex items-center gap-1">
+                  {(["all", "error", "warn", "log"] as const).map((filter) => {
+                    const count =
+                      filter === "all"
+                        ? consoleLogs.length
+                        : consoleLogs.filter((l) => l.level === filter).length;
+
+                    return (
+                      <button
+                        key={filter}
+                        type="button"
+                        onClick={() => setConsoleFilter(filter)}
+                        className={`px-2 py-0.5 rounded-xs text-[10px] uppercase font-mono transition-colors cursor-pointer ${
+                          consoleFilter === filter
+                            ? "bg-[#22252c] text-white font-semibold"
+                            : "text-[#6b7280] hover:text-[#d1d5db]"
+                        }`}
+                      >
+                        {filter} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {onClearConsole && consoleLogs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={onClearConsole}
+                    className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-[#6b7280] hover:text-rose-400 transition-colors cursor-pointer"
+                    title="Clear console"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Clear</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Logs List */}
+              {consoleLogs.length === 0 ? (
+                <div className="text-[11px] text-[#555a62] font-mono py-3 text-center">
+                  Console is empty. Logs, warnings, and preview errors will stream here in real time.
+                </div>
+              ) : (
+                <div className="space-y-1 font-mono text-[11px]">
+                  {consoleLogs
+                    .filter((l) => consoleFilter === "all" || l.level === consoleFilter)
+                    .map((log) => {
+                      const isErr = log.level === "error";
+                      const isWarn = log.level === "warn";
+                      const isInfo = log.level === "info";
+
+                      return (
+                        <div
+                          key={log.id}
+                          className={`p-1 px-2 rounded-xs flex items-start justify-between gap-2 leading-relaxed ${
+                            isErr
+                              ? "bg-rose-950/20 text-rose-300 border-l-2 border-rose-500"
+                              : isWarn
+                              ? "bg-amber-950/20 text-amber-300 border-l-2 border-amber-500"
+                              : isInfo
+                              ? "bg-cyan-950/20 text-cyan-300 border-l-2 border-cyan-500"
+                              : "text-[#d4d7dc] hover:bg-[#14161a]"
+                          }`}
+                        >
+                          <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                            <span className="shrink-0 mt-0.5 opacity-60">
+                              {isErr ? (
+                                <XCircle className="w-3 h-3 text-rose-400" />
+                              ) : isWarn ? (
+                                <AlertTriangle className="w-3 h-3 text-amber-400" />
+                              ) : isInfo ? (
+                                <Info className="w-3 h-3 text-cyan-400" />
+                              ) : (
+                                <span className="text-[#6b7280]">›</span>
+                              )}
+                            </span>
+                            <span className="whitespace-pre-wrap break-all">{log.text}</span>
+                          </div>
+
+                          {/* Source & clickable line jump for errors */}
+                          {log.file && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onSelectProblem?.({
+                                  severity: isErr ? "error" : "warning",
+                                  file: log.file!,
+                                  line: log.line || 1,
+                                  column: log.column || 1,
+                                  message: log.text,
+                                  source: "Preview Console",
+                                });
+                              }}
+                              className="shrink-0 text-[10px] text-[#6b7280] hover:text-cyan-300 hover:underline transition-colors cursor-pointer"
+                              title="Jump to source in Monaco"
+                            >
+                              {log.file}:{log.line || 1}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               )}
             </div>

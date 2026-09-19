@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { workspaceStorage, StoredFile } from "@/lib/storage/workspaceStorage";
 import { workspaceMigration } from "@/lib/storage/workspaceMigration";
 import { executionEngine, SandboxStatus } from "@/lib/execution/ExecutionEngine";
+import { webPreviewBuilder } from "@/lib/execution/WebPreviewBuilder";
 import { workspaceApi } from "@/lib/api";
 import {
   CodingChatMessage,
   CodePatch,
+  ConsoleLogMessage,
   ExecutionResult,
   FileNode,
   GitStatus,
@@ -46,10 +48,32 @@ export function useWorkspace() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [terminalOutput, setTerminalOutput] = useState<string>("");
   const [lastResult, setLastResult] = useState<ExecutionResult | null>(null);
-  const [terminalTab, setTerminalTab] = useState<"terminal" | "problems" | "git">("terminal");
+  const [terminalTab, setTerminalTab] = useState<"terminal" | "problems" | "git" | "console">("terminal");
   const [problems, setProblems] = useState<Problem[]>([]);
   const [targetProblem, setTargetProblem] = useState<Problem | null>(null);
   const [availableRuntimes, setAvailableRuntimes] = useState<LanguageRuntime[]>([]);
+
+  // Web Live Preview & Console State
+  const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("solix_ide_preview_open") === "true";
+    }
+    return false;
+  });
+  const [isLivePreview, setIsLivePreview] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("solix_ide_preview_live") !== "false";
+    }
+    return true;
+  });
+  const [previewViewport, setPreviewViewportState] = useState<"desktop" | "tablet" | "mobile" | "responsive">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("solix_ide_preview_viewport") as any) || "desktop";
+    }
+    return "desktop";
+  });
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [consoleLogs, setConsoleLogs] = useState<ConsoleLogMessage[]>([]);
 
   // Local Storage Stats & Auto-save
   const [storageStats, setStorageStats] = useState<StorageStats>({
@@ -179,7 +203,115 @@ export function useWorkspace() {
     setMessages([]);
     setActivePatch(null);
     setPendingApproval(null);
+    setConsoleLogs([]);
   };
+
+  // Web Project Detection
+  const isWebProject = Boolean(
+    activeWorkspace?.template?.startsWith("starter-web") ||
+    fileTree.some((f) => f.path === "index.html" || f.name === "index.html") ||
+    openFiles.some((f) => f.endsWith(".html"))
+  );
+
+  const togglePreview = useCallback(() => {
+    setIsPreviewOpen((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("solix_ide_preview_open", String(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleLivePreview = useCallback(() => {
+    setIsLivePreview((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("solix_ide_preview_live", String(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const setPreviewViewport = useCallback((vp: "desktop" | "tablet" | "mobile" | "responsive") => {
+    setPreviewViewportState(vp);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("solix_ide_preview_viewport", vp);
+    }
+  }, []);
+
+  const clearConsole = useCallback(() => {
+    setConsoleLogs([]);
+  }, []);
+
+  const refreshPreview = useCallback(async () => {
+    if (!activeWorkspace) return null;
+    try {
+      const allFiles = await workspaceStorage.getAllFiles(activeWorkspace.id);
+      const res = await webPreviewBuilder.buildAndValidate(allFiles, activeFile);
+      setPreviewHtml(res.html);
+      return res;
+    } catch (err) {
+      console.error("Failed to refresh preview:", err);
+      return null;
+    }
+  }, [activeWorkspace, activeFile]);
+
+  // Handle postMessage from preview iframe sandbox
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+
+      if (data.type === "solix-preview-console") {
+        const newLog: ConsoleLogMessage = {
+          id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          level: data.level || "log",
+          text: data.text || "",
+          timestamp: data.timestamp || Date.now(),
+        };
+        setConsoleLogs((prev) => [...prev.slice(-200), newLog]);
+      } else if (data.type === "solix-preview-error") {
+        const errorLog: ConsoleLogMessage = {
+          id: `err-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          level: "error",
+          text: data.message || "Runtime error in preview",
+          timestamp: data.timestamp || Date.now(),
+          file: data.file,
+          line: data.line,
+          column: data.column,
+        };
+        setConsoleLogs((prev) => [...prev.slice(-200), errorLog]);
+
+        const prob: Problem = {
+          severity: "error",
+          file: data.file || "script.js",
+          line: data.line || 1,
+          column: data.column || 1,
+          message: data.message || "Runtime error in preview",
+          source: "Preview Runtime",
+        };
+        setProblems((prev) => {
+          const exists = prev.some(
+            (p) => p.file === prob.file && p.line === prob.line && p.message === prob.message
+          );
+          return exists ? prev : [...prev, prob];
+        });
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  // Debounced live preview snapshot update
+  useEffect(() => {
+    if (!isLivePreview || !isPreviewOpen || !activeWorkspace) return;
+    const timer = setTimeout(() => {
+      refreshPreview();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [fileContents, dirtyFiles, isLivePreview, isPreviewOpen, activeWorkspace, refreshPreview]);
 
   // Create Workspace
   const createNewWorkspace = async (name?: string, template: string = "starter-python") => {
@@ -390,13 +522,40 @@ export function useWorkspace() {
     try {
       setIsRunning(true);
       setTerminalTab("terminal");
-      setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + "🔨 Building project...\n");
 
       if (activeFile && dirtyFiles[activeFile] !== undefined) {
         await saveFile(activeFile);
       }
 
       const allFiles = await workspaceStorage.getAllFiles(activeWorkspace.id);
+
+      // Web Project Validation Pipeline
+      if (webPreviewBuilder.isWebProject(allFiles)) {
+        setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + "🔨 Building & Validating Web Project...\n");
+        const res = await webPreviewBuilder.buildAndValidate(allFiles, activeFile);
+        setPreviewHtml(res.html);
+
+        let report = `Entry point: ${res.entryFile || "none"}\n` +
+          `Linked styles: ${res.linkedStyles.join(", ") || "none"}\n` +
+          `Linked scripts: ${res.linkedScripts.join(", ") || "none"}\n` +
+          `Assets: ${res.assets.length} referenced\n`;
+
+        if (res.problems.length > 0) {
+          report += `Diagnostics: ${res.problems.length} issue(s) detected.\n`;
+          setProblems((prev) => {
+            const nonWeb = prev.filter((p) => !p.source.includes("Validator"));
+            return [...nonWeb, ...res.problems];
+          });
+          setTerminalTab("problems");
+        } else {
+          report += `✓ Validation passed. Preview snapshot ready.\n`;
+        }
+
+        setTerminalOutput((prev) => prev + report);
+        return;
+      }
+
+      setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + "🔨 Building project...\n");
       const runtime = executionEngine.detectRuntime(allFiles, activeFile);
 
       if (!runtime.build_required) {
@@ -427,14 +586,12 @@ export function useWorkspace() {
     }
   };
 
-  // Execute Code in Browser-Local Web Worker
+  // Execute Code in Browser-Local Web Worker or Launch Web Preview
   const runProject = async () => {
     if (!activeWorkspace || isRunning) return;
     try {
       setIsRunning(true);
       setTerminalTab("terminal");
-      const target = activeFile || "main.py";
-      setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + `▶ ${target}\n`);
 
       // Save any pending dirty edits
       if (activeFile && dirtyFiles[activeFile] !== undefined) {
@@ -442,6 +599,34 @@ export function useWorkspace() {
       }
 
       const allFiles = await workspaceStorage.getAllFiles(activeWorkspace.id);
+
+      // Web Project Launch
+      if (webPreviewBuilder.isWebProject(allFiles)) {
+        setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + `▶ Web Project Preview\n`);
+        const res = await webPreviewBuilder.buildAndValidate(allFiles, activeFile);
+        setPreviewHtml(res.html);
+        setIsPreviewOpen(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("solix_ide_preview_open", "true");
+        }
+
+        let report = `Local virtual file system mounted.\n` +
+          `Preview launched for ${res.entryFile || "index.html"}.\n`;
+
+        if (res.problems.length > 0) {
+          setProblems((prev) => {
+            const nonWeb = prev.filter((p) => !p.source.includes("Validator"));
+            return [...nonWeb, ...res.problems];
+          });
+          report += `[Warning]: ${res.problems.length} issue(s) detected during build. Check Problems tab.\n`;
+        }
+
+        setTerminalOutput((prev) => prev + report);
+        return;
+      }
+
+      const target = activeFile || "main.py";
+      setTerminalOutput((prev) => prev + (prev ? "\n\n" : "") + `▶ ${target}\n`);
 
       const result = await executionEngine.run(activeWorkspace.id, allFiles, activeFile, {
         onStdout: (chunk) => setTerminalOutput((prev) => prev + chunk),
@@ -468,7 +653,7 @@ export function useWorkspace() {
     }
   };
 
-  // Run Tests in Browser-Local Web Worker
+  // Run Tests in Browser-Local Web Worker or Run Web Validation Suite
   const testProject = async () => {
     if (!activeWorkspace || isRunning) return;
     try {
@@ -481,6 +666,29 @@ export function useWorkspace() {
       }
 
       const allFiles = await workspaceStorage.getAllFiles(activeWorkspace.id);
+
+      // Web Project Validation Test Suite
+      if (webPreviewBuilder.isWebProject(allFiles)) {
+        const res = await webPreviewBuilder.buildAndValidate(allFiles, activeFile);
+        let report = `[Web Project Validation Test Suite]:\n` +
+          `HTML & Asset Links: ${res.problems.filter(p => p.source.includes("HTML") || p.source.includes("Link")).length === 0 ? "✓ Passed" : "✕ Errors detected"}\n` +
+          `CSS Syntax: ${res.problems.filter(p => p.source.includes("CSS")).length === 0 ? "✓ Passed" : "✕ Errors detected"}\n` +
+          `JavaScript Syntax: ${res.problems.filter(p => p.source.includes("JavaScript")).length === 0 ? "✓ Passed" : "✕ Errors detected"}\n`;
+
+        if (res.problems.length > 0) {
+          setProblems((prev) => {
+            const nonWeb = prev.filter((p) => !p.source.includes("Validator"));
+            return [...nonWeb, ...res.problems];
+          });
+          setTerminalTab("problems");
+          report += `\nTest suite finished with ${res.problems.length} failure(s).\n`;
+        } else {
+          report += `\nAll web validation tests passed successfully (0 errors).\n`;
+        }
+
+        setTerminalOutput((prev) => prev + report);
+        return;
+      }
 
       const result = await executionEngine.test(activeWorkspace.id, allFiles, {
         onStdout: (chunk) => setTerminalOutput((prev) => prev + chunk),
@@ -1073,5 +1281,20 @@ export function useWorkspace() {
     setPendingApproval,
     respondApproval,
     stopAgent,
+
+    // Web Project & Live Preview
+    isWebProject,
+    isPreviewOpen,
+    setIsPreviewOpen,
+    togglePreview,
+    isLivePreview,
+    setIsLivePreview,
+    toggleLivePreview,
+    previewViewport,
+    setPreviewViewport,
+    previewHtml,
+    refreshPreview,
+    consoleLogs,
+    clearConsole,
   };
 }

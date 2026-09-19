@@ -280,8 +280,596 @@ Your code is never stored on a server.
   "starter-web": {
     files: [
       {
+        path: "index.html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solix Web Project</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-container">
+    <header class="header">
+      <div class="badge">Local Web Development</div>
+      <h1>Welcome to Solix Web</h1>
+      <p class="subtitle">Edit HTML, CSS, and JavaScript with instant live preview.</p>
+    </header>
+
+    <section class="interactive-card">
+      <div class="counter-display">
+        <span class="label">Click Counter</span>
+        <span id="counter" class="count">0</span>
+      </div>
+      <div class="actions">
+        <button id="increment-btn" class="btn primary">Click Me</button>
+        <button id="reset-btn" class="btn secondary">Reset</button>
+      </div>
+      <p id="status-text" class="status-msg">Click the button to test live JavaScript!</p>
+    </section>
+
+    <footer class="footer">
+      <span>100% Client-side sandbox · Instant reload</span>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
+`,
+      },
+      {
+        path: "style.css",
+        content: `:root {
+  --bg: #0d0f12;
+  --surface: #15181e;
+  --border: #262930;
+  --text: #f0f2f5;
+  --muted: #8c929d;
+  --accent: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 540px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  margin-bottom: 14px;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.interactive-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.counter-display {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.counter-display .label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.counter-display .count {
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #030712;
+}
+
+.btn.primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn.secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.status-msg {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.footer {
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.8;
+}
+`,
+      },
+      {
+        path: "script.js",
+        content: `// Solix Web Starter Script
+console.log("🚀 Solix Web Preview loaded successfully!");
+
+let count = 0;
+const counterEl = document.getElementById("counter");
+const incrementBtn = document.getElementById("increment-btn");
+const resetBtn = document.getElementById("reset-btn");
+const statusEl = document.getElementById("status-text");
+
+if (incrementBtn && counterEl) {
+  incrementBtn.addEventListener("click", () => {
+    count++;
+    counterEl.textContent = count;
+    statusEl.textContent = \`Updated! Count is now \${count}.\`;
+    console.log(\`[Counter]: Button clicked, count = \${count}\`);
+  });
+}
+
+if (resetBtn && counterEl) {
+  resetBtn.addEventListener("click", () => {
+    count = 0;
+    counterEl.textContent = count;
+    statusEl.textContent = "Counter reset to 0.";
+    console.info("[Counter]: Reset to 0");
+  });
+}
+`,
+      },
+      {
+        path: "README.md",
+        content: `# Solix Web Project
+
+A browser-based HTML, CSS, and JavaScript project with live preview.
+
+## Features
+- **Instant Live Preview**: Automatically updates when you edit code.
+- **Isolated Sandbox**: Runs securely inside a browser iframe.
+- **Console Inspector**: Captures \`console.log\` messages and runtime errors in real time.
+- **Local-First**: All files persist locally in your browser IndexedDB.
+`,
+      },
+    ],
+  },
+  "starter-web-blank": {
+    files: [
+      {
+        path: "index.html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blank Website</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Blank Website</h1>
+  <p>Start building your HTML, CSS, and JavaScript application.</p>
+  <script src="script.js"></script>
+</body>
+</html>
+`,
+      },
+      {
+        path: "style.css",
+        content: `* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  padding: 2rem;
+  background: #0f172a;
+  color: #f8fafc;
+}
+`,
+      },
+      {
+        path: "script.js",
+        content: `// Blank Web Application
+console.log("Website initialized.");
+`,
+      },
+    ],
+  },
+  "starter-web-landing": {
+    files: [
+      {
+        path: "index.html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Landing Page</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="logo">✦ Aurora</div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <button class="nav-btn">Get Started</button>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-badge">Next-Gen Web Architecture</div>
+    <h1 class="hero-title">Build faster, deliver sooner with Aurora.</h1>
+    <p class="hero-sub">The modern toolset designed for engineering teams that ship remarkable digital experiences.</p>
+    <div class="hero-cta">
+      <button id="primary-cta" class="btn primary">Start Free Trial</button>
+      <button class="btn ghost">View Documentation</button>
+    </div>
+  </header>
+
+  <section id="features" class="features">
+    <div class="card">
+      <div class="icon">⚡</div>
+      <h3>Lightning Speed</h3>
+      <p>Sub-millisecond latency and edge delivery straight to your users.</p>
+    </div>
+    <div class="card">
+      <div class="icon">🔒</div>
+      <h3>Zero-Trust Security</h3>
+      <p>End-to-end encrypted execution sandboxes for total isolation.</p>
+    </div>
+    <div class="card">
+      <div class="icon">📈</div>
+      <h3>Real-Time Analytics</h3>
+      <p>Live metrics and performance tracing without telemetry bloat.</p>
+    </div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
+`,
+      },
+      {
+        path: "style.css",
+        content: `:root {
+  --bg: #090b10;
+  --surface: #11141c;
+  --border: #1f2430;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 40px;
+  border-bottom: 1px solid var(--border);
+}
+.logo { font-weight: 700; font-size: 18px; letter-spacing: -0.02em; color: var(--primary); }
+.nav-links { display: flex; gap: 24px; align-items: center; }
+.nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; }
+.nav-links a:hover { color: var(--text); }
+.nav-btn {
+  padding: 7px 16px;
+  background: var(--primary);
+  border: 0;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.hero {
+  max-width: 780px;
+  margin: 60px auto 40px;
+  text-align: center;
+  padding: 0 20px;
+}
+.hero-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  margin-bottom: 16px;
+}
+.hero-title { font-size: 42px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 16px; }
+.hero-sub { font-size: 16px; color: var(--muted); margin-bottom: 28px; }
+.hero-cta { display: flex; gap: 12px; justify-content: center; }
+
+.btn {
+  padding: 10px 22px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.btn.primary { background: var(--primary); color: white; }
+.btn.primary:hover { background: var(--primary-hover); }
+.btn.ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.btn.ghost:hover { background: rgba(255, 255, 255, 0.05); }
+
+.features {
+  max-width: 960px;
+  margin: 40px auto 80px;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+.card .icon { font-size: 24px; margin-bottom: 12px; }
+.card h3 { font-size: 16px; margin-bottom: 8px; }
+.card p { font-size: 13.5px; color: var(--muted); }
+`,
+      },
+      {
+        path: "script.js",
+        content: `// Landing page interactive behaviors
+console.log("Landing page loaded.");
+
+document.getElementById("primary-cta")?.addEventListener("click", () => {
+  alert("Thank you for trying Aurora!");
+  console.log("User converted on hero CTA");
+});
+`,
+      },
+    ],
+  },
+  "starter-web-app": {
+    files: [
+      {
+        path: "index.html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Tasks SPA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Task Board</h1>
+      <p id="task-summary">0 tasks remaining</p>
+    </header>
+
+    <form id="todo-form">
+      <input id="todo-input" type="text" placeholder="Add a new task..." required autocomplete="off">
+      <button type="submit">Add Task</button>
+    </form>
+
+    <ul id="todo-list"></ul>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
+`,
+      },
+      {
+        path: "style.css",
+        content: `* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0f1117;
+  color: #e2e8f0;
+  font-family: system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px;
+}
+.app {
+  width: 100%;
+  max-width: 440px;
+  background: #181b24;
+  border: 1px solid #272c3b;
+  border-radius: 10px;
+  padding: 24px;
+}
+header { margin-bottom: 20px; }
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+#task-summary { font-size: 13px; color: #818cf8; }
+
+#todo-form { display: flex; gap: 8px; margin-bottom: 20px; }
+#todo-input {
+  flex: 1;
+  background: #0f1117;
+  border: 1px solid #272c3b;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  outline: none;
+}
+#todo-input:focus { border-color: #6366f1; }
+#todo-form button {
+  background: #6366f1;
+  border: 0;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#todo-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #0f1117;
+  border: 1px solid #202430;
+  border-radius: 6px;
+  font-size: 13.5px;
+}
+.todo-item.completed span { text-decoration: line-through; opacity: 0.5; }
+.todo-item button { background: none; border: none; color: #f87171; cursor: pointer; font-size: 14px; }
+`,
+      },
+      {
+        path: "script.js",
+        content: `// Task Manager SPA
+console.log("Task manager initialized.");
+
+const form = document.getElementById("todo-form");
+const input = document.getElementById("todo-input");
+const list = document.getElementById("todo-list");
+const summary = document.getElementById("task-summary");
+
+let tasks = [
+  { id: 1, text: "Explore Solix Web Preview", completed: true },
+  { id: 2, text: "Test live HTML/CSS updates", completed: false }
+];
+
+function render() {
+  list.innerHTML = "";
+  tasks.forEach((t) => {
+    const li = document.createElement("li");
+    li.className = "todo-item" + (t.completed ? " completed" : "");
+    li.innerHTML = \`
+      <span style="cursor:pointer;">\${t.text}</span>
+      <button data-id="\${t.id}">✕</button>
+    \`;
+
+    li.querySelector("span").addEventListener("click", () => {
+      t.completed = !t.completed;
+      render();
+    });
+
+    li.querySelector("button").addEventListener("click", () => {
+      tasks = tasks.filter((item) => item.id !== t.id);
+      render();
+    });
+
+    list.appendChild(li);
+  });
+
+  const pending = tasks.filter((t) => !t.completed).length;
+  summary.textContent = \`\${pending} task\${pending === 1 ? "" : "s"} remaining\`;
+  console.log(\`Rendered \${tasks.length} tasks (\${pending} remaining)\`);
+}
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const val = input.value.trim();
+  if (!val) return;
+  tasks.push({ id: Date.now(), text: val, completed: false });
+  input.value = "";
+  render();
+});
+
+render();
+`,
+      },
+    ],
+  },
+  "starter-js": {
+    files: [
+      {
         path: "index.js",
-        content: `// Solix JavaScript / Node project
+        content: `// Solix JavaScript Worker project
 console.log("Hello from Solix Local JavaScript Worker!");
 
 function calculateTotal(items) {
@@ -394,14 +982,22 @@ export class LocalWorkspaceStorage {
       updated_at: now,
     };
 
+    const initialActiveFile = template.startsWith("starter-web")
+      ? "index.html"
+      : template === "starter-js"
+      ? "index.js"
+      : template === "starter-cpp"
+      ? "main.cpp"
+      : "main.py";
+
     // Store workspace
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(["workspaces", "workspaceSettings"], "readwrite");
       tx.objectStore("workspaces").put(ws);
       tx.objectStore("workspaceSettings").put({
         workspaceId: id,
-        activeFile: template === "starter-web" ? "index.js" : template === "starter-cpp" ? "main.cpp" : "main.py",
-        openFiles: [template === "starter-web" ? "index.js" : template === "starter-cpp" ? "main.cpp" : "main.py"],
+        activeFile: initialActiveFile,
+        openFiles: [initialActiveFile],
         updatedAt: now,
       });
       tx.oncomplete = () => resolve();
