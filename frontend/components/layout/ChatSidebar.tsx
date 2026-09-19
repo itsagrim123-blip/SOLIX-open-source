@@ -34,6 +34,7 @@ interface ChatSidebarProps {
   onSelectView?: (view: "chat" | "coding") => void;
   transitionState?: "idle" | "entering" | "active" | "exiting";
   searchFocusSignal?: number;
+  isWorkspaceSupported?: boolean;
 }
 
 function getGroupKey(dateStr: string): "TODAY" | "YESTERDAY" | "PREVIOUS 7 DAYS" | "EARLIER" {
@@ -69,6 +70,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onSelectView,
   transitionState = "idle",
   searchFocusSignal,
+  isWorkspaceSupported = true,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -332,38 +334,40 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
       {/* Sidebar Body Content */}
       <div className="flex-1 min-h-0 flex flex-col p-2.5 overflow-hidden">
-        {/* View Mode Navigation: Chat vs Coding Workspace */}
-        <div className="grid grid-cols-2 gap-1 p-1 bg-[#101114] border border-[#22242a] rounded-xs mb-2 shrink-0">
-        <button
-          onClick={() => {
-            onSelectView?.("chat");
-            if (isMobile) onCloseMobile();
-          }}
-          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xs text-xs font-semibold transition-all cursor-pointer ${
-            activeView === "chat"
-              ? "bg-[#1f2127] text-white shadow-xs border border-[#32353c]"
-              : "text-[#858b94] hover:text-white"
-          }`}
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>Chat</span>
-        </button>
+        {/* View Mode Navigation: Dual switcher on desktop, omitted on mobile/unsupported */}
+        {isWorkspaceSupported && (
+          <div className="grid grid-cols-2 gap-1 p-1 bg-[#101114] border border-[#22242a] rounded-xs mb-2 shrink-0">
+            <button
+              onClick={() => {
+                onSelectView?.("chat");
+                if (isMobile) onCloseMobile();
+              }}
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xs text-xs font-semibold transition-all cursor-pointer ${
+                activeView === "chat"
+                  ? "bg-[#1f2127] text-white shadow-xs border border-[#32353c]"
+                  : "text-[#858b94] hover:text-white"
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Chat</span>
+            </button>
 
-        <button
-          onClick={() => {
-            onSelectView?.("coding");
-            if (isMobile) onCloseMobile();
-          }}
-          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xs text-xs font-semibold transition-all cursor-pointer ${
-            activeView === "coding"
-              ? "bg-cyan-500/15 text-cyan-400 shadow-xs border border-cyan-500/30"
-              : "text-[#858b94] hover:text-cyan-300"
-          }`}
-        >
-          <Code2 className="w-3.5 h-3.5" />
-          <span>Workspace</span>
-        </button>
-      </div>
+            <button
+              onClick={() => {
+                onSelectView?.("coding");
+                if (isMobile) onCloseMobile();
+              }}
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xs text-xs font-semibold transition-all cursor-pointer ${
+                activeView === "coding"
+                  ? "bg-cyan-500/15 text-cyan-400 shadow-xs border border-cyan-500/30"
+                  : "text-[#858b94] hover:text-cyan-300"
+              }`}
+            >
+              <Code2 className="w-3.5 h-3.5" />
+              <span>Workspace</span>
+            </button>
+          </div>
+        )}
 
       {/* New Chat Action Button */}
       <button
@@ -522,34 +526,38 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
           <div className="w-6 h-[1px] bg-[#22242a]" />
 
-          {/* View Switch Icons */}
-          <button
-            onClick={() => onSelectView?.("chat")}
-            className={`p-2 rounded-xs transition-colors cursor-pointer ${
-              activeView === "chat"
-                ? "bg-[#1f2127] text-white border border-[#32353c]"
-                : "text-[#858b94] hover:text-white"
-            }`}
-            title="Chat mode"
-            aria-label="Chat mode"
-          >
-            <MessageSquare className="w-4 h-4" />
-          </button>
+          {/* View Switch Icons (Desktop only) */}
+          {isWorkspaceSupported && (
+            <>
+              <button
+                onClick={() => onSelectView?.("chat")}
+                className={`p-2 rounded-xs transition-colors cursor-pointer ${
+                  activeView === "chat"
+                    ? "bg-[#1f2127] text-white border border-[#32353c]"
+                    : "text-[#858b94] hover:text-white"
+                }`}
+                title="Chat mode"
+                aria-label="Chat mode"
+              >
+                <MessageSquare className="w-4 h-4" />
+              </button>
 
-          <button
-            onClick={() => onSelectView?.("coding")}
-            className={`p-2 rounded-xs transition-colors cursor-pointer ${
-              activeView === "coding"
-                ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
-                : "text-[#858b94] hover:text-cyan-300"
-            }`}
-            title="Workspace mode"
-            aria-label="Workspace mode"
-          >
-            <Code2 className="w-4 h-4" />
-          </button>
+              <button
+                onClick={() => onSelectView?.("coding")}
+                className={`p-2 rounded-xs transition-colors cursor-pointer ${
+                  activeView === "coding"
+                    ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+                    : "text-[#858b94] hover:text-cyan-300"
+                }`}
+                title="Workspace mode"
+                aria-label="Workspace mode"
+              >
+                <Code2 className="w-4 h-4" />
+              </button>
 
-          <div className="w-6 h-[1px] bg-[#22242a]" />
+              <div className="w-6 h-[1px] bg-[#22242a]" />
+            </>
+          )}
 
           {/* New Chat Icon */}
           <button

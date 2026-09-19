@@ -12,6 +12,8 @@ import { WorkspaceTransitionOverlay } from "@/components/workspace/WorkspaceTran
 import { playWorkspaceTransitionSFX } from "@/lib/sound";
 import { useChat } from "@/hooks/useChat";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspaceAvailability } from "@/hooks/useWorkspaceAvailability";
+import { Monitor } from "lucide-react";
 
 export default function SolixApp() {
   const {
@@ -50,6 +52,9 @@ export default function SolixApp() {
   // Lifted Workspace State: Persists open files, terminal, patches, and AI chat across view switches
   const workspace = useWorkspace();
 
+  // Desktop Capability / Hardware Pointer Detection
+  const { isSupported: isWorkspaceSupported, status: workspaceStatus } = useWorkspaceAvailability();
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -62,6 +67,21 @@ export default function SolixApp() {
     "idle" | "entering-workspace" | "workspace-active" | "exiting-workspace" | "chat-active"
   >("idle");
   const transitionTimersRef = useRef<NodeJS.Timeout[]>([]);
+
+  // Support direct deep link ?view=workspace on supported desktop devices
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("view") === "workspace" && isWorkspaceSupported) {
+          setViewMode("workspace");
+          setTransitionState("workspace-active");
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [isWorkspaceSupported]);
 
   // Derived active view for subcomponent indicators
   const activeView: "chat" | "coding" =
@@ -142,6 +162,10 @@ export default function SolixApp() {
       ) {
         return;
       }
+      // Prevent opening workspace on unsupported/mobile devices
+      if (target === "coding" && !isWorkspaceSupported) {
+        return;
+      }
       if (
         target === "coding" &&
         (viewMode === "workspace" || transitionState === "workspace-active")
@@ -215,7 +239,7 @@ export default function SolixApp() {
         transitionTimersRef.current = [tLogo, tReveal, tComplete];
       }
     },
-    [viewMode, transitionState]
+    [viewMode, transitionState, isWorkspaceSupported]
   );
 
   const getEffectiveSystemPrompt = useCallback(() => {
@@ -285,6 +309,7 @@ export default function SolixApp() {
               ? "exiting"
               : "idle"
           }
+          isWorkspaceSupported={isWorkspaceSupported}
         />
 
         {/* Main Content Column on Right */}
@@ -375,6 +400,27 @@ export default function SolixApp() {
           onBackToChat={() => handleSwitchView("chat")}
           workspace={workspace}
         />
+
+        {/* Desktop Screen Resize Guard (Preserves all workspace memory and state underneath) */}
+        {viewMode === "workspace" && !isWorkspaceSupported && workspaceStatus === "unsupported" && (
+          <div className="absolute inset-0 z-50 bg-[#0d0e10]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
+            <div className="w-12 h-12 rounded-xs bg-[#141518] border border-[#26282f] flex items-center justify-center mb-4 text-[#858b94] shadow-xs">
+              <Monitor className="w-6 h-6 text-cyan-400" />
+            </div>
+            <h2 className="text-base font-semibold text-white font-sans tracking-tight mb-1.5">
+              Workspace requires a larger screen
+            </h2>
+            <p className="text-xs text-[#858b94] font-sans max-w-sm leading-relaxed mb-5">
+              Solix Workspace is optimized for desktop displays with a physical keyboard. Please expand your browser window or return to Chat.
+            </p>
+            <button
+              onClick={() => handleSwitchView("chat")}
+              className="px-4 py-2 rounded-xs bg-[#181a1f] border border-[#2b2e36] hover:border-[#3d424e] hover:bg-[#202229] text-xs font-semibold text-white transition-all cursor-pointer shadow-xs active:scale-98"
+            >
+              Return to Chat
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
