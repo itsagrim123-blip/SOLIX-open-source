@@ -156,6 +156,7 @@ class ExecutionManager:
 
         import shlex
         parts = shlex.split(raw_cmd, posix=(os.name != "nt"))
+        parts = [p.strip('"\'') for p in parts if p.strip()]
         if not parts:
             raise ValueError("Command cannot be empty.")
 

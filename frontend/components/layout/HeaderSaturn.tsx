@@ -26,7 +26,7 @@ export const HeaderSaturn: React.FC<HeaderSaturnProps> = ({ className = "" }) =>
   if (!mounted) {
     return (
       <div
-        className={`header-saturn hidden sm:flex items-center justify-center w-[88px] h-[34px] shrink-0 pointer-events-none select-none opacity-0 ${className}`}
+        className={`header-saturn hidden sm:flex items-center justify-center w-[92px] h-[40px] shrink-0 pointer-events-none select-none opacity-0 ${className}`}
         aria-hidden="true"
       />
     );
@@ -34,7 +34,7 @@ export const HeaderSaturn: React.FC<HeaderSaturnProps> = ({ className = "" }) =>
 
   return (
     <div
-      className={`header-saturn hidden sm:flex items-center justify-center w-[88px] h-[34px] shrink-0 pointer-events-none select-none relative overflow-hidden ${className}`}
+      className={`header-saturn hidden sm:flex items-center justify-center w-[92px] h-[40px] shrink-0 pointer-events-none select-none relative overflow-hidden ${className}`}
       aria-hidden="true"
     >
       <ParticleSaturn
@@ -61,3 +61,4 @@ export const HeaderSaturn: React.FC<HeaderSaturnProps> = ({ className = "" }) =>
 };
 
 export default HeaderSaturn;
+

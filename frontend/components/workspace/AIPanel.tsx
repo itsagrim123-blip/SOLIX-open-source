@@ -189,7 +189,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     }
   };
 
-  const isWorking = isGenerating || (agentState && agentState !== "idle" && agentState !== "completed" && agentState !== "failed" && agentState !== "cancelled");
+  const isWorking = isGenerating || agentState === "awaiting_approval";
 
   const fileName = activeFile ? activeFile.split("/").pop() || activeFile : null;
 
@@ -211,8 +211,11 @@ export const AIPanel: React.FC<AIPanelProps> = ({
           <div className="flex items-center rounded-xs bg-[#0d0e10] p-0.5 border border-[#23262d]">
             <button
               type="button"
+              disabled={isWorking}
               onClick={() => onToggleAgentMode?.("ask")}
-              className={`px-2 py-0.5 rounded-xs text-[10.5px] transition-colors cursor-pointer ${
+              className={`px-2 py-0.5 rounded-xs text-[10.5px] transition-colors ${
+                isWorking ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              } ${
                 agentMode === "ask"
                   ? "bg-[#20232a] text-white font-medium"
                   : "text-[#717680] hover:text-[#d4d7dc]"
@@ -222,8 +225,11 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             </button>
             <button
               type="button"
+              disabled={isWorking}
               onClick={() => onToggleAgentMode?.("agent")}
-              className={`px-2 py-0.5 rounded-xs text-[10.5px] transition-colors cursor-pointer ${
+              className={`px-2 py-0.5 rounded-xs text-[10.5px] transition-colors ${
+                isWorking ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              } ${
                 agentMode === "agent"
                   ? "bg-cyan-600/90 text-white font-medium"
                   : "text-[#717680] hover:text-[#d4d7dc]"
@@ -536,10 +542,14 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                       />
                     )}
 
-                    {/* Response Text / Markdown */}
+                    {/* Response Text / Markdown / Error Box */}
                     <div className="text-xs text-[#d4d7dc] leading-relaxed break-words">
                       {cleanContent ? (
-                        <MarkdownRenderer content={cleanContent} />
+                        cleanContent.includes("[Error:") || cleanContent.includes("[Agent Error:") ? (
+                          <ErrorDisplayCard content={cleanContent} />
+                        ) : (
+                          <MarkdownRenderer content={cleanContent} />
+                        )
                       ) : msg.isStreaming ? (
                         <div className="flex items-center gap-1.5 text-[11px] text-[#858b94] py-1">
                           <Loader2 className="w-3 h-3 text-cyan-400 animate-spin" />
@@ -941,6 +951,51 @@ const ApprovalCard: React.FC<{
         >
           Apply
         </button>
+      </div>
+    </div>
+  );
+};
+
+// Safe, non-secret Error Card with collapsible technical details
+const ErrorDisplayCard: React.FC<{ content: string }> = ({ content }) => {
+  const [showTechnical, setShowTechnical] = useState(false);
+
+  const errorMatch = content.match(/\[(?:Agent )?Error:\s*([\s\S]*?)\]/);
+  const rawError = errorMatch ? errorMatch[1].trim() : content;
+
+  const noteMatch = content.match(/\*Note:\s*([\s\S]*?)\*/);
+  const diagnostic = noteMatch ? noteMatch[1].trim() : null;
+
+  return (
+    <div className="p-2.5 rounded-xs border border-rose-800/40 bg-[#171012] text-xs font-sans space-y-2 my-1">
+      <div className="flex items-center gap-2 text-rose-300 font-medium">
+        <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+        <span>Execution Error</span>
+      </div>
+
+      {diagnostic ? (
+        <div className="text-[11.5px] text-[#e2e8f0] leading-relaxed">
+          {diagnostic}
+        </div>
+      ) : (
+        <div className="text-[11.5px] text-[#e2e8f0] leading-relaxed">
+          The operation encountered an issue with the local AI runtime.
+        </div>
+      )}
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowTechnical(!showTechnical)}
+          className="text-[10px] font-mono text-[#9ca3af] hover:text-white transition-colors cursor-pointer"
+        >
+          {showTechnical ? "▾ Hide technical details" : "▸ Show technical details"}
+        </button>
+        {showTechnical && (
+          <div className="mt-1 p-2 rounded-xs bg-[#0c0608] border border-rose-900/30 text-[10px] font-mono text-rose-300/90 whitespace-pre-wrap break-all max-h-36 overflow-y-auto select-text">
+            {rawError}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -135,28 +135,38 @@ class WorkspaceStorage:
           - Null bytes
           - Escaping the workspace root directory
         """
-        if not relative_path or not relative_path.strip():
+        if relative_path is None:
             raise ValueError("File path cannot be empty.")
 
-        if "\x00" in relative_path:
+        raw = str(relative_path).strip()
+        if "\x00" in raw:
             raise ValueError("Null bytes in path are disallowed.")
 
         ws_dir = self._get_workspace_dir(workspace_id)
         if not ws_dir.exists():
             raise FileNotFoundError(f"Workspace '{workspace_id}' not found.")
 
-        raw = relative_path.strip()
-        if raw.startswith("/") or raw.startswith("\\") or (len(raw) > 1 and raw[1] == ":"):
-            raise ValueError(f"Absolute paths or drive specifications are disallowed: {relative_path}")
+        if not raw or raw in (".", "/", "\\", "./", ".\\"):
+            return ws_dir
 
-        # Normalize separators
-        clean_rel = raw.replace("\\", "/")
-        parts = clean_rel.split("/")
+        if len(raw) > 1 and raw[1] == ":":
+            raise ValueError(f"Absolute drive specifications are disallowed: {relative_path}")
+
+        # Normalize separators and strip leading slashes/dots
+        clean_rel = raw.replace("\\", "/").strip()
+        while clean_rel.startswith("./"):
+            clean_rel = clean_rel[2:].strip()
+        clean_rel = clean_rel.lstrip("/")
+
+        if not clean_rel or clean_rel == ".":
+            return ws_dir
+
+        parts = [p for p in clean_rel.split("/") if p]
         for part in parts:
-            if part in ("..", ""):
+            if part == "..":
                 raise ValueError(f"Directory traversal component '{part}' is disallowed.")
 
-        resolved = (ws_dir / clean_rel).resolve()
+        resolved = (ws_dir / "/".join(parts)).resolve()
         if not str(resolved).startswith(str(ws_dir)):
             raise ValueError(f"Path traversal outside workspace root is disallowed: {relative_path}")
 

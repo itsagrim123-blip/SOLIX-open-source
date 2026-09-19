@@ -962,7 +962,7 @@ export function useWorkspace() {
               if (event.file && activeWorkspace) {
                 const afterContent = event.content ?? event.result?.content ?? "";
                 if (event.operation === "delete") {
-                  workspaceStorage.deleteFile(activeWorkspace.id, event.file).catch(() => {});
+                  await workspaceStorage.deleteFile(activeWorkspace.id, event.file).catch(() => {});
                   setFileContents((prev) => {
                     const copy = { ...prev };
                     delete copy[event.file];
@@ -973,16 +973,15 @@ export function useWorkspace() {
                     setActiveFile(null);
                   }
                 } else if (typeof afterContent === "string") {
-                  workspaceStorage.writeFile(activeWorkspace.id, event.file, afterContent).then(() => {
-                    setFileContents((prev) => ({ ...prev, [event.file]: afterContent }));
-                    if (!activeFile) {
-                      setActiveFile(event.file);
-                      setOpenFiles((prev) => (prev.includes(event.file) ? prev : [...prev, event.file]));
-                    }
-                  }).catch(() => {});
+                  await workspaceStorage.writeFile(activeWorkspace.id, event.file, afterContent).catch(() => {});
+                  setFileContents((prev) => ({ ...prev, [event.file]: afterContent }));
+                  if (!activeFile) {
+                    setActiveFile(event.file);
+                    setOpenFiles((prev) => (prev.includes(event.file) ? prev : [...prev, event.file]));
+                  }
                 }
               }
-              refreshWorkspace();
+              await refreshWorkspace();
             } else if (event.type === "changes_rejected") {
               setPendingApproval(null);
             } else if (event.type === "run_completed" || event.type === "test_completed") {
@@ -1002,18 +1001,19 @@ export function useWorkspace() {
               }
             } else if (event.type === "agent_completed") {
               setAgentState("completed");
+              const summaryText = event.summary || accumulatedText || "Task completed successfully.";
               setMessages((prev) =>
-                prev.map((m) => (m.id === assistantMsgId ? { ...m, agentState: "completed" } : m))
+                prev.map((m) => (m.id === assistantMsgId ? { ...m, agentState: "completed", content: summaryText } : m))
               );
               if (event.file_contents && activeWorkspace) {
                 for (const [filePath, fileText] of Object.entries(event.file_contents)) {
                   if (typeof fileText === "string") {
-                    workspaceStorage.writeFile(activeWorkspace.id, filePath, fileText).catch(() => {});
+                    await workspaceStorage.writeFile(activeWorkspace.id, filePath, fileText).catch(() => {});
                     setFileContents((prev) => ({ ...prev, [filePath]: fileText }));
                   }
                 }
               }
-              refreshWorkspace();
+              await refreshWorkspace();
             } else if (event.type === "agent_failed") {
               setAgentState("failed");
               setMessages((prev) =>
@@ -1043,8 +1043,17 @@ export function useWorkspace() {
             ? {
                 ...m,
                 isStreaming: false,
-                agentState: m.agentState === "planning" ? "completed" : m.agentState,
-                content: accumulatedText || m.content,
+                agentState:
+                  m.agentState === "planning" ||
+                  m.agentState === "running" ||
+                  m.agentState === "editing" ||
+                  m.agentState === "reading" ||
+                  m.agentState === "testing" ||
+                  m.agentState === "building" ||
+                  m.agentState === "debugging"
+                    ? "completed"
+                    : m.agentState,
+                content: m.content || accumulatedText || "Task completed.",
                 plan: latestPlan.length > 0 ? latestPlan : m.plan,
                 tools: currentTools,
               }
@@ -1073,6 +1082,18 @@ export function useWorkspace() {
       setIsAIGenerating(false);
       setActiveTaskId(null);
       abortControllerRef.current = null;
+      setAgentState((prev) =>
+        prev === "planning" ||
+        prev === "reading" ||
+        prev === "editing" ||
+        prev === "running" ||
+        prev === "building" ||
+        prev === "testing" ||
+        prev === "debugging" ||
+        prev === "applying"
+          ? "completed"
+          : prev
+      );
     }
   };
 
@@ -1207,7 +1228,9 @@ export function useWorkspace() {
                 )
               );
             } else if (event.type === "error") {
-              accumulatedText += (accumulatedText ? "\n\n" : "") + `[Error: ${event.error || "Generation error"}]`;
+              const errText = event.error || "Generation error";
+              const diagText = event.diagnostic ? `\n\n*Note: ${event.diagnostic}*` : "";
+              accumulatedText += (accumulatedText ? "\n\n" : "") + `[Error: ${errText}]${diagText}`;
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantMsgId ? { ...m, content: accumulatedText } : m

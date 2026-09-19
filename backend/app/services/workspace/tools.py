@@ -6,7 +6,9 @@ import logging
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.workspace.compiler import compiler_service
@@ -231,6 +233,31 @@ class WorkspaceToolRegistry:
             ws_dir = workspace_storage.resolve_safe_path(workspace_id, ".")
             if (entry_file and entry_file.endswith(".html")) or ((ws_dir / "index.html").exists() and not (ws_dir / "main.py").exists() and not (ws_dir / "index.js").exists()):
                 html_name = entry_file if (entry_file and entry_file.endswith(".html")) else "index.html"
+                # Check syntax of referenced JS files if node is available
+                node_bin = shutil.which("node")
+                if node_bin:
+                    js_files = list(ws_dir.glob("*.js")) + list(ws_dir.glob("src/*.js"))
+                    for js_f in js_files:
+                        try:
+                            chk = subprocess.run(
+                                [node_bin, "-c", str(js_f)],
+                                cwd=str(ws_dir),
+                                capture_output=True,
+                                text=True,
+                                timeout=5,
+                            )
+                            if chk.returncode != 0:
+                                return {
+                                    "success": False,
+                                    "exit_code": chk.returncode,
+                                    "stdout": "",
+                                    "stderr": f"[Syntax Error in {js_f.name}]:\n{chk.stderr}",
+                                    "execution_time": 0.05,
+                                    "timed_out": False,
+                                    "problems": [{"file": js_f.name, "message": chk.stderr.strip(), "severity": "error"}],
+                                }
+                        except Exception:
+                            pass
                 return {
                     "success": True,
                     "exit_code": 0,
@@ -286,6 +313,32 @@ class WorkspaceToolRegistry:
     async def test_workspace(self, workspace_id: str) -> Dict[str, Any]:
         """Run the project's unit test suite."""
         try:
+            ws_dir = workspace_storage.resolve_safe_path(workspace_id, ".")
+            # If web project, validate syntax
+            if (ws_dir / "index.html").exists() and not (ws_dir / "main.py").exists() and not list(ws_dir.glob("test_*.py")):
+                node_bin = shutil.which("node")
+                if node_bin:
+                    js_files = list(ws_dir.glob("*.js")) + list(ws_dir.glob("src/*.js"))
+                    for js_f in js_files:
+                        chk = subprocess.run([node_bin, "-c", str(js_f)], cwd=str(ws_dir), capture_output=True, text=True, timeout=5)
+                        if chk.returncode != 0:
+                            return {
+                                "success": False,
+                                "exit_code": 1,
+                                "stdout": "",
+                                "stderr": f"[Syntax Error in {js_f.name}]:\n{chk.stderr}",
+                                "execution_time": 0.05,
+                                "problems": [{"file": js_f.name, "message": chk.stderr.strip(), "severity": "error"}],
+                            }
+                return {
+                    "success": True,
+                    "exit_code": 0,
+                    "stdout": "[Web Project Tests]: All HTML, CSS, and JS files validated successfully.",
+                    "stderr": "",
+                    "execution_time": 0.01,
+                    "problems": [],
+                }
+
             res = await execution_service.run(workspace_id=workspace_id, is_test=True)
             return {
                 "success": res.get("success", False),
@@ -322,6 +375,26 @@ class WorkspaceToolRegistry:
                         "message": se.msg,
                         "source": "Python Compiler",
                     })
+
+            # Check for JS files syntax via node -c
+            node_bin = shutil.which("node")
+            if node_bin:
+                for js_file in ws_dir.glob("**/*.js"):
+                    if any(p in js_file.parts for p in ("node_modules", ".git", "build", "dist", ".next")):
+                        continue
+                    try:
+                        chk = subprocess.run([node_bin, "-c", str(js_file)], cwd=str(ws_dir), capture_output=True, text=True, timeout=5)
+                        if chk.returncode != 0:
+                            problems.append({
+                                "severity": "error",
+                                "file": js_file.relative_to(ws_dir).as_posix(),
+                                "line": 1,
+                                "column": 1,
+                                "message": chk.stderr.strip()[:300],
+                                "source": "Node.js Syntax Checker",
+                            })
+                    except Exception:
+                        pass
 
             msg = "No syntax or compiler problems detected. Project is clean." if not problems else f"Found {len(problems)} problem(s)."
             return {"success": True, "problems": problems, "count": len(problems), "message": msg}

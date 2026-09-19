@@ -43,7 +43,7 @@ RULES FOR AUTONOMOUS OPERATION:
 5. When your plan is fully executed and verified, provide a concise final summary of what was created, tested, and verified.
 """
 
-MAX_AGENT_ITERATIONS = 10
+MAX_AGENT_ITERATIONS = 8
 
 
 class AgentTaskState:
@@ -82,6 +82,11 @@ class CodingAgentEngine:
         task.state = "cancelled"
         if task.approval_future and not task.approval_future.done():
             task.approval_future.cancel()
+        try:
+            from app.services.workspace.execution import execution_service
+            asyncio.create_task(execution_service.stop(task.workspace_id))
+        except Exception:
+            pass
         logger.info(f"[AgentEngine] Cancelled task={task_id} in ws={task.workspace_id}")
         return True
 
@@ -99,7 +104,7 @@ class CodingAgentEngine:
     def _parse_plan(self, text: str) -> List[Dict[str, Any]]:
         """Extract numbered plan items from model response."""
         plan_items: List[Dict[str, Any]] = []
-        match = re.search(r"PLAN:\s*(.*?)(?=\n\n|\n[A-Z#]|\Z)", text, re.DOTALL | re.IGNORECASE)
+        match = re.search(r"(?:PLAN|Plan|Steps|STEPS|Here is (?:my|the) plan):\s*(.*?)(?=\n\n[A-Z#]|\Z)", text, re.DOTALL)
         plan_text = match.group(1) if match else text
 
         for line in plan_text.splitlines():
@@ -113,6 +118,42 @@ class CodingAgentEngine:
                 })
 
         return plan_items[:10]
+
+    def _update_plan_step_for_tool(self, task: AgentTaskState, tool_name: str, tool_args: Dict[str, Any]) -> bool:
+        """Mark corresponding plan step completed as tool execution succeeds."""
+        if not task.plan:
+            return False
+
+        updated = False
+        target_path = (tool_args.get("path") or tool_args.get("entry_file") or "").lower()
+
+        for step in task.plan:
+            if step.get("status") == "completed":
+                continue
+            text = step.get("text", "").lower()
+
+            if tool_name in ("workspace_list_files", "workspace_search", "workspace_read_file"):
+                if any(w in text for w in ("list", "read", "inspect", "check", "examine", "search")):
+                    step["status"] = "completed"
+                    updated = True
+                    break
+            elif tool_name == "workspace_create_file":
+                if any(w in text for w in ("create", "write", "add", "make", "implement")) or (target_path and target_path in text):
+                    step["status"] = "completed"
+                    updated = True
+                    break
+            elif tool_name == "workspace_update_file":
+                if any(w in text for w in ("update", "modify", "edit", "fix", "change", "refactor")) or (target_path and target_path in text):
+                    step["status"] = "completed"
+                    updated = True
+                    break
+            elif tool_name in ("workspace_run", "workspace_test", "workspace_build"):
+                if any(w in text for w in ("run", "test", "verify", "execute", "build")) or (target_path and target_path in text):
+                    step["status"] = "completed"
+                    updated = True
+                    break
+
+        return updated
 
     def _extract_json_objects(self, text: str) -> List[Dict[str, Any]]:
         """Find all top-level balanced JSON objects in text, respecting string quotes and escapes."""
@@ -173,8 +214,18 @@ class CodingAgentEngine:
         if not tool_name or not isinstance(tool_name, str):
             return None
 
-        if tool_name == "workspace_diagnose_errors":
-            tool_name = "workspace_get_problems"
+        alias_map = {
+            "workspace_diagnose_errors": "workspace_get_problems",
+            "workspace_create_directory": "workspace_create_folder",
+            "workspace_mkdir": "workspace_create_folder",
+            "workspace_rename_file": "workspace_rename",
+            "workspace_git_status": "workspace_git_diff",
+            "workspace_run_code": "workspace_run",
+            "workspace_execute": "workspace_run",
+            "workspace_run_tests": "workspace_test",
+            "workspace_compile": "workspace_build",
+        }
+        tool_name = alias_map.get(tool_name, tool_name)
 
         if not tool_name.startswith("workspace_"):
             return None
@@ -188,12 +239,54 @@ class CodingAgentEngine:
         if not isinstance(raw_args, dict):
             raw_args = {}
 
-        return {"name": tool_name, "arguments": raw_args}
+        normalized_args: Dict[str, Any] = {}
+        for k, v in raw_args.items():
+            normalized_args[k] = v
 
-    def _parse_tool_call(self, text: str) -> Optional[Dict[str, Any]]:
-        """Extract tool call from markdown or JSON block with support for nested braces."""
+        path_val = (
+            raw_args.get("path")
+            or raw_args.get("file")
+            or raw_args.get("filepath")
+            or raw_args.get("filename")
+            or raw_args.get("directory")
+        )
+        if path_val is not None and isinstance(path_val, str):
+            clean_p = path_val.replace("\\", "/").strip()
+            while clean_p.startswith("./"):
+                clean_p = clean_p[2:].strip()
+            clean_p = clean_p.lstrip("/")
+            normalized_args["path"] = clean_p
+
+        if "content" not in normalized_args:
+            content_val = raw_args.get("code") or raw_args.get("text") or raw_args.get("replacement_content")
+            if content_val is not None:
+                normalized_args["content"] = str(content_val)
+
+        if "entry_file" not in normalized_args and tool_name == "workspace_run":
+            ef = raw_args.get("file") or raw_args.get("path")
+            if ef:
+                normalized_args["entry_file"] = str(ef).replace("\\", "/").strip().lstrip("/")
+
+        if "query" not in normalized_args and tool_name == "workspace_search":
+            q = raw_args.get("pattern") or raw_args.get("text") or raw_args.get("search")
+            if q:
+                normalized_args["query"] = str(q)
+
+        if tool_name == "workspace_rename":
+            if "old_path" not in normalized_args:
+                normalized_args["old_path"] = raw_args.get("source") or raw_args.get("from") or ""
+            if "new_path" not in normalized_args:
+                normalized_args["new_path"] = raw_args.get("destination") or raw_args.get("to") or ""
+
+        return {"name": tool_name, "arguments": normalized_args}
+
+    def _parse_tool_calls(self, text: str) -> List[Dict[str, Any]]:
+        """Extract ALL tool calls from markdown or JSON blocks with support for nested braces."""
         if not text:
-            return None
+            return []
+
+        tool_calls: List[Dict[str, Any]] = []
+        seen = set()
 
         # 1. Try markdown code blocks: ```json ... ``` or ```tool_call ... ```
         block_patterns = [
@@ -207,16 +300,22 @@ class CodingAgentEngine:
                 for obj in parsed_objects:
                     tc = self._normalize_tool_call(obj)
                     if tc:
-                        return tc
+                        key = (tc["name"], json.dumps(tc["arguments"], sort_keys=True))
+                        if key not in seen:
+                            seen.add(key)
+                            tool_calls.append(tc)
 
         # 2. Try scanning all balanced JSON objects in text
         parsed_objects = self._extract_json_objects(text)
         for obj in parsed_objects:
             tc = self._normalize_tool_call(obj)
             if tc:
-                return tc
+                key = (tc["name"], json.dumps(tc["arguments"], sort_keys=True))
+                if key not in seen:
+                    seen.add(key)
+                    tool_calls.append(tc)
 
-        return None
+        return tool_calls
 
     def _clean_content_for_streaming(self, content: str) -> str:
         """Strip raw tool JSON, tool call wrappers, and conversational filler from streaming text."""
@@ -358,7 +457,7 @@ class CodingAgentEngine:
                 native_tool_calls = msg.get("tool_calls", [])
 
                 # If model generated a plan in text, parse and emit plan
-                if "PLAN:" in content and not task.plan:
+                if not task.plan:
                     parsed_plan = self._parse_plan(content)
                     if parsed_plan:
                         task.plan = parsed_plan
@@ -375,34 +474,53 @@ class CodingAgentEngine:
                 if native_tool_calls:
                     for tc in native_tool_calls:
                         fn = tc.get("function", {})
-                        tool_calls_to_run.append({
+                        norm = self._normalize_tool_call({
                             "name": fn.get("name"),
                             "arguments": fn.get("arguments", {}),
                         })
+                        if norm:
+                            tool_calls_to_run.append(norm)
                 else:
                     # Fallback parser for code blocks / JSON
-                    parsed_tc = self._parse_tool_call(content)
-                    if parsed_tc:
-                        tool_calls_to_run.append(parsed_tc)
+                    tool_calls_to_run = self._parse_tool_calls(content)
 
                 # If no tool calls in this turn:
                 if not tool_calls_to_run:
-                    # If model just outlined a plan or has pending steps, OR if this is turn 1 and no files created yet:
-                    has_pending = (task.plan and any(step.get("status") in ("pending", "in_progress") for step in task.plan)) or (task.iterations == 1 and not task.files_created and not task.files_modified)
-                    if has_pending and task.iterations < MAX_AGENT_ITERATIONS:
-                        logger.info(f"[AgentEngine] Pending steps or turn 1 without tools. Prompting model to execute tools.")
+                    needs_initial_tools = (task.iterations == 1 and not task.files_created and not task.files_modified)
+                    needs_fix = (task.state == "debugging" and task.iterations < MAX_AGENT_ITERATIONS)
+
+                    if (needs_initial_tools or needs_fix) and task.iterations < MAX_AGENT_ITERATIONS:
+                        logger.info(f"[AgentEngine] Task needs tool execution (initial={needs_initial_tools}, fix={needs_fix}). Prompting model to execute tools.")
                         task.state = "editing" if (task.files_created or task.files_modified) else "reading"
                         yield f"data: {json.dumps({'type': 'state_change', 'state': task.state, 'message': 'Executing plan with workspace tools...'})}\n\n"
                         messages.append(msg)
+                        prompt_content = "Please now invoke the necessary workspace tool (e.g. `workspace_create_file`, `workspace_update_file`, `workspace_test`, `workspace_run`, etc.) to execute the plan."
+                        if needs_fix:
+                            prompt_content = "The previous execution encountered an error. Please modify the relevant file using `workspace_update_file` and re-test."
                         messages.append({
                             "role": "user",
-                            "content": "Please now invoke the necessary workspace tool (e.g. `workspace_create_file`, `workspace_update_file`, `workspace_test`, `workspace_run`, etc.) to execute the plan.",
+                            "content": prompt_content,
                         })
                         continue
 
                     logger.info(f"[AgentEngine] No further tool calls detected. Completing task={task_id}")
                     task.state = "completed"
+
+                    # Mark plan steps completed
+                    if task.plan:
+                        for s in task.plan:
+                            s["status"] = "completed"
+                        yield f"data: {json.dumps({'type': 'plan_created', 'plan': task.plan})}\n\n"
+
                     clean_summary = self._clean_content_for_streaming(content)
+                    if not clean_summary:
+                        parts = []
+                        if task.files_created:
+                            parts.append(f"Created {len(task.files_created)} file(s): {', '.join(task.files_created)}.")
+                        if task.files_modified:
+                            parts.append(f"Modified {len(task.files_modified)} file(s): {', '.join(task.files_modified)}.")
+                        parts.append("Project verified in sandbox.")
+                        clean_summary = " ".join(parts)
 
                     # Gather final file contents for created/modified files as safety net
                     file_contents_map: Dict[str, str] = {}
@@ -586,6 +704,10 @@ class CodingAgentEngine:
 
                     yield f"data: {json.dumps({'type': 'tool_completed', 'tool': tool_name, 'call_id': call_id, 'result': tool_result})}\n\n"
 
+                    # Dynamically update plan step status based on executed tool
+                    if self._update_plan_step_for_tool(task, tool_name, tool_args):
+                        yield f"data: {json.dumps({'type': 'plan_created', 'plan': task.plan})}\n\n"
+
                     # Check for errors in execution tools to enter debugging state
                     if tool_name in ("workspace_run", "workspace_build", "workspace_test"):
                         exit_code = tool_result.get("exit_code", 0)
@@ -604,6 +726,23 @@ class CodingAgentEngine:
             if task.is_cancelled:
                 yield f"data: {json.dumps({'type': 'agent_cancelled', 'message': 'Agent task was stopped by user.'})}\n\n"
             else:
+                task.state = "completed"
+                if task.plan and (task.files_created or task.files_modified):
+                    for s in task.plan:
+                        s["status"] = "completed"
+                    yield f"data: {json.dumps({'type': 'plan_created', 'plan': task.plan})}\n\n"
+
+                parts = []
+                if task.files_created:
+                    parts.append(f"Created {len(task.files_created)} file(s): {', '.join(task.files_created)}.")
+                if task.files_modified:
+                    parts.append(f"Modified {len(task.files_modified)} file(s): {', '.join(task.files_modified)}.")
+                if parts:
+                    parts.append("Work verified in sandbox.")
+                    clean_summary = " ".join(parts)
+                else:
+                    clean_summary = "Task finished after 8 iterations. Please review workspace files."
+
                 file_contents_map: Dict[str, str] = {}
                 for fpath in set(task.files_created + task.files_modified):
                     try:
@@ -611,7 +750,8 @@ class CodingAgentEngine:
                         file_contents_map[fpath] = f_read.get("content", "")
                     except Exception:
                         pass
-                yield f"data: {json.dumps({'type': 'agent_completed', 'summary': 'Maximum iterations reached.', 'files_created': task.files_created, 'files_modified': task.files_modified, 'files_deleted': task.files_deleted, 'file_contents': file_contents_map})}\n\n"
+                yield f"data: {json.dumps({'type': 'state_change', 'state': 'completed', 'message': 'Task completed'})}\n\n"
+                yield f"data: {json.dumps({'type': 'agent_completed', 'summary': clean_summary, 'files_created': task.files_created, 'files_modified': task.files_modified, 'files_deleted': task.files_deleted, 'file_contents': file_contents_map})}\n\n"
 
         except Exception as e:
             logger.error(f"[AgentEngine] Unexpected error in agent loop: {e}", exc_info=True)

@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 from typing import AsyncGenerator, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -439,7 +439,7 @@ async def workspace_chat(workspace_id: str, payload: WorkspaceChatRequest):
         provider, is_connected = await get_active_provider()
         if not is_connected:
             async def offline_generator() -> AsyncGenerator[str, None]:
-                yield f"data: {json.dumps({'type': 'error', 'error': f'Code AI unavailable — Ollama is offline at {settings.OLLAMA_BASE_URL}. Please start Ollama.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'error': f'Code AI unavailable — Ollama is offline at {settings.OLLAMA_BASE_URL}.', 'diagnostic': 'Please ensure Ollama is running (`ollama serve`) and accessible at ' + settings.OLLAMA_BASE_URL})}\n\n"
             return StreamingResponse(
                 offline_generator(),
                 media_type="text/event-stream",
@@ -528,7 +528,13 @@ async def workspace_chat(workspace_id: str, payload: WorkspaceChatRequest):
 
             except Exception as e:
                 logger.error(f"Coding stream error: {e}", exc_info=True)
-                yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+                err_str = str(e)
+                diag = "Check that Ollama is running and qwen2.5-coder:7b is installed."
+                if "connection" in err_str.lower() or "connect" in err_str.lower():
+                    diag = f"Could not connect to Ollama at {settings.OLLAMA_BASE_URL}."
+                elif "not found" in err_str.lower():
+                    diag = f"Model '{model_name}' was not found in Ollama. Run `ollama pull {model_name}`."
+                yield f"data: {json.dumps({'type': 'error', 'error': err_str, 'diagnostic': diag})}\n\n"
             finally:
                 if is_ephemeral:
                     workspace_storage.cleanup_ephemeral_workspace(workspace_id)
@@ -553,23 +559,49 @@ async def workspace_chat(workspace_id: str, payload: WorkspaceChatRequest):
 # ── Autonomous Coding Agent Endpoints ──────────────────────────────────────────
 
 @router.post("/{workspace_id}/agent/run")
-async def run_autonomous_agent(workspace_id: str, payload: AgentRunRequest):
+async def run_autonomous_agent(workspace_id: str, payload: AgentRunRequest, request: Request):
     """Initiate an autonomous coding agent loop with SSE streaming."""
     try:
         user_prompt = payload.prompt
         if not user_prompt:
             raise HTTPException(status_code=422, detail="Message or request prompt is required")
 
-        generator = coding_agent_engine.run_agent_loop(
-            workspace_id=workspace_id,
-            user_request=user_prompt,
-            active_file=payload.target_file,
-            auto_apply=payload.auto_apply,
-            client_files=payload.files,
-        )
+        task_id_ref = [None]
+
+        async def monitored_agent_generator() -> AsyncGenerator[str, None]:
+            try:
+                async for chunk in coding_agent_engine.run_agent_loop(
+                    workspace_id=workspace_id,
+                    user_request=user_prompt,
+                    active_file=payload.target_file,
+                    auto_apply=payload.auto_apply,
+                    client_files=payload.files,
+                ):
+                    if await request.is_disconnected():
+                        logger.info(f"[AgentEndpoint] Client disconnected for workspace={workspace_id}, cancelling task.")
+                        if task_id_ref[0]:
+                            coding_agent_engine.cancel_task(task_id_ref[0])
+                        break
+
+                    # Extract task_id from started event
+                    if task_id_ref[0] is None and "agent_started" in chunk:
+                        try:
+                            raw_json = chunk.strip().removeprefix("data:").strip()
+                            evt = json.loads(raw_json)
+                            if evt.get("type") == "agent_started":
+                                task_id_ref[0] = evt.get("task_id")
+                        except Exception:
+                            pass
+
+                    yield chunk
+            except asyncio.CancelledError:
+                logger.info(f"[AgentEndpoint] Request cancelled for workspace={workspace_id}")
+                if task_id_ref[0]:
+                    coding_agent_engine.cancel_task(task_id_ref[0])
+                raise
 
         return StreamingResponse(
-            generator,
+            monitored_agent_generator(),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
