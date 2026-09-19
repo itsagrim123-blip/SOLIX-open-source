@@ -404,7 +404,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
               {/* Model Dropdown Menu */}
               {showModelPicker && (
                 <div className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] rounded-xl bg-[#141518] border border-[#292b30] p-2 z-50 animate-fade-in shadow-[0_12px_40px_rgba(0,0,0,0.7)]">
-                  <div className="px-2 py-1 text-[10px] font-bold text-[#666970] uppercase tracking-wider flex items-center justify-between">
+                  <div className="px-2 py-1 text-[10px] font-semibold text-[#666970] uppercase tracking-wider flex items-center justify-between">
                     <span>Available Models</span>
                     <span className="text-[10px] font-mono text-[#8f9299]">
                       {models.length} ready
@@ -467,7 +467,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
               ) : (
                 <Globe className="w-3.5 h-3.5 shrink-0" />
               )}
-              <span className="text-xs">Web Search</span>
+              <span style={{ fontSize: "12px" }}>Web Search</span>
             </button>
 
             {/* Attachment Button */}

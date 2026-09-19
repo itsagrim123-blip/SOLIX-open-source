@@ -247,7 +247,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
       <div className="flex items-center justify-between px-3 h-[34px] border-b border-[#22242a] bg-[#111214] shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <SolixLogo size="sm" px={16} />
-          <span className="text-[10.5px] font-mono font-semibold tracking-wider text-white uppercase">
+          <span className="text-[10.5px] font-semibold tracking-wider text-white uppercase select-none">
             SOLIX CODE AI
           </span>
           <span className="text-[#3c4048] font-mono text-[10px]">·</span>

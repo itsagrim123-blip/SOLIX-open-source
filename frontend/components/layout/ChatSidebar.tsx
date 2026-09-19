@@ -304,7 +304,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           <div className="w-8.5 h-8.5 flex items-center justify-center shrink-0">
             <SolixLogo size="md" px={36} className="scale-115 object-contain" />
           </div>
-          <span className="text-[16px] font-bold text-white tracking-[0.22em] uppercase font-sans select-none">
+          <span className="text-[15px] font-semibold text-white tracking-[0.18em] uppercase font-sans select-none">
             SOLIX
           </span>
         </div>
@@ -376,7 +376,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           onNewChat();
           if (isMobile) onCloseMobile();
         }}
-        className="w-full flex items-center justify-center gap-2 h-8.5 rounded-xs border border-[#272a31] bg-[#16171b] hover:bg-[#1c1e24] hover:border-[#383d47] text-xs font-semibold text-white transition-all cursor-pointer active:scale-98 shrink-0 my-1"
+        className="w-full flex items-center justify-center gap-2 h-8 rounded-xs border border-[#272a31] bg-[#16171b] hover:bg-[#1c1e24] hover:border-[#383d47] text-xs font-medium text-white transition-all cursor-pointer active:scale-98 shrink-0 my-1"
         title="Start a new chat (Ctrl+N)"
       >
         <Plus className="w-3.5 h-3.5" />
@@ -419,7 +419,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-3 pr-1">
         {searchQuery.trim() ? (
           <div>
-            <div className="text-[10px] font-mono font-semibold text-[#666c75] uppercase tracking-wider px-2 py-1">
+            <div className="text-[10px] font-semibold text-[#606470] uppercase tracking-wider px-2 py-1">
               Search Results ({filteredConversations.length})
             </div>
             <div className="space-y-0.5 mt-1">
@@ -448,7 +448,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
             return (
               <div key={key} className="space-y-1">
-                <div className="text-[10px] font-mono font-semibold text-[#666c75] uppercase tracking-wider px-2 pt-1 pb-0.5">
+                <div className="text-[10px] font-semibold text-[#606470] uppercase tracking-wider px-2 pt-1 pb-0.5">
                   {label}
                 </div>
                 <div className="space-y-0.5">

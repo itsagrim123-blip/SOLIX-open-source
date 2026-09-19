@@ -47,31 +47,41 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 max-w-2xl mx-auto w-full select-none animate-fade-in">
-      <div className="text-center mb-6 space-y-1.5">
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-white font-sans">
+      <div className="text-center mb-5 space-y-1">
+        <h1
+          className="font-sans text-white"
+          style={{ fontSize: "25px", fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.2 }}
+        >
           What can I help with?
         </h1>
-        <p className="text-xs sm:text-sm text-[#858b94]">
+        <p style={{ fontSize: "13px", fontWeight: 400, color: "#8f9299", lineHeight: 1.5 }}>
           Ask a question, explore an idea, or build something.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
         {suggestions.map((card, idx) => (
           <button
             key={idx}
             onClick={() => onSelectPrompt(card.prompt)}
-            className="flex flex-col text-left p-3 rounded-xs bg-[#131518] hover:bg-[#181a1f] border border-[#22242a] hover:border-[#32363f] transition-all cursor-pointer group active:scale-[0.99]"
+            className="flex flex-col text-left bg-[#131518] hover:bg-[#181a1f] border border-[#22242a] hover:border-[#32363f] transition-all cursor-pointer group active:scale-[0.99]"
+            style={{ padding: "11px 13px", borderRadius: "10px", minHeight: "60px" }}
           >
             <div className="flex items-center gap-2 mb-1">
               <span className="shrink-0 group-hover:text-white transition-colors">
                 {card.icon}
               </span>
-              <span className="text-xs font-semibold text-[#eeeeec] group-hover:text-white transition-colors">
+              <span
+                className="text-[#e2e3e6] group-hover:text-white transition-colors"
+                style={{ fontSize: "12.5px", fontWeight: 500 }}
+              >
                 {card.title}
               </span>
             </div>
-            <span className="text-[11px] text-[#787e88] leading-normal group-hover:text-[#a5abb5] transition-colors">
+            <span
+              className="group-hover:text-[#a5abb5] transition-colors"
+              style={{ fontSize: "11px", color: "#787e88", lineHeight: 1.45 }}
+            >
               {card.subtitle}
             </span>
           </button>
