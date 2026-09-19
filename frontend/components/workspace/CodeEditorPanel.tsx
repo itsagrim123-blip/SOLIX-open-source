@@ -255,8 +255,8 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
                         e.stopPropagation();
                         onCloseFile(path);
                       }}
-                      className="w-2 h-2 rounded-full bg-[#858b94] group-hover:hidden"
-                      title="Unsaved changes"
+                      className="w-2 h-2 rounded-full bg-amber-400 group-hover:hidden"
+                      title="Unsaved changes (Ctrl+S to save)"
                     />
                   ) : null}
                   <button

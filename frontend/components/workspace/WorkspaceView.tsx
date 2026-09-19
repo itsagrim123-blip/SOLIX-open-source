@@ -14,6 +14,7 @@ import {
   PlayCircle,
   Plus,
   RefreshCw,
+  Search,
   Terminal as TerminalIcon,
   Trash2,
   X,
@@ -25,6 +26,7 @@ import { CodeEditorPanel } from "./CodeEditorPanel";
 import { AIPanel } from "./AIPanel";
 import { TerminalPanel } from "./TerminalPanel";
 import { DiffReviewModal } from "./DiffReviewModal";
+import { CommandPaletteModal } from "./CommandPaletteModal";
 import { SolixLogo } from "@/components/brand/SolixLogo";
 import type { CodePatch } from "@/types/workspace";
 import { workspaceMigration } from "@/lib/storage/workspaceMigration";
@@ -184,6 +186,166 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
   const [reviewingOperation, setReviewingOperation] = useState<"create" | "modify" | "delete" | undefined>();
   const [reviewingApprovalId, setReviewingApprovalId] = useState<string | null>(null);
 
+  // Panel widths and heights with local persistence
+  const [explorerWidth, setExplorerWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("solix_ide_explorer_width");
+      if (saved) return Math.max(160, Math.min(450, parseInt(saved, 10)));
+    }
+    return 220;
+  });
+
+  const [aiWidth, setAiWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("solix_ide_ai_width");
+      if (saved) return Math.max(260, Math.min(650, parseInt(saved, 10)));
+    }
+    return 340;
+  });
+
+  const [terminalHeight, setTerminalHeight] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("solix_ide_terminal_height");
+      if (saved) return Math.max(100, Math.min(500, parseInt(saved, 10)));
+    }
+    return 220;
+  });
+
+  const [isExplorerOpen, setIsExplorerOpen] = useState(true);
+  const [isAiOpen, setIsAiOpen] = useState(true);
+  const [isTerminalOpen, setIsTerminalOpen] = useState(true);
+
+  // Command palette state
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [paletteMode, setPaletteMode] = useState<"commands" | "files">("commands");
+
+  // Drag resizer handlers
+  const startResizingExplorer = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = explorerWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = Math.max(160, Math.min(450, startWidth + (moveEvent.clientX - startX)));
+      setExplorerWidth(newWidth);
+      localStorage.setItem("solix_ide_explorer_width", String(newWidth));
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
+  const startResizingAi = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = aiWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = Math.max(260, Math.min(650, startWidth - (moveEvent.clientX - startX)));
+      setAiWidth(newWidth);
+      localStorage.setItem("solix_ide_ai_width", String(newWidth));
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
+  const startResizingTerminal = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = terminalHeight;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newHeight = Math.max(100, Math.min(500, startHeight - (moveEvent.clientY - startY)));
+      setTerminalHeight(newHeight);
+      localStorage.setItem("solix_ide_terminal_height", String(newHeight));
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+
+      // Ctrl+Shift+P -> Command Palette (Commands mode)
+      if (isCtrlOrCmd && e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        setPaletteMode("commands");
+        setIsCommandPaletteOpen(true);
+        return;
+      }
+
+      // Ctrl+P -> Quick Open (Files mode)
+      if (isCtrlOrCmd && !e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        setPaletteMode("files");
+        setIsCommandPaletteOpen(true);
+        return;
+      }
+
+      // Ctrl+S -> Save Active File
+      if (isCtrlOrCmd && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveFile();
+        return;
+      }
+
+      // Ctrl+Enter -> Run Project
+      if (isCtrlOrCmd && e.key === "Enter") {
+        e.preventDefault();
+        runProject();
+        return;
+      }
+
+      // Ctrl+` -> Toggle Terminal Panel
+      if (isCtrlOrCmd && e.key === "`") {
+        e.preventDefault();
+        setIsTerminalOpen((prev) => !prev);
+        return;
+      }
+
+      // Ctrl+B -> Toggle AI Panel
+      if (isCtrlOrCmd && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setIsAiOpen((prev) => !prev);
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [saveFile, runProject]);
+
   // Check for legacy migration on mount
   useEffect(() => {
     workspaceMigration
@@ -303,6 +465,25 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             aria-label="Refresh Files"
           >
             <RefreshCw className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* CENTER: Quick Open / Command Palette Trigger */}
+        <div className="hidden md:flex items-center flex-1 max-w-sm mx-2">
+          <button
+            type="button"
+            onClick={() => {
+              setPaletteMode("files");
+              setIsCommandPaletteOpen(true);
+            }}
+            className="w-full flex items-center justify-between px-2.5 h-6 rounded-xs bg-[#16171a] hover:bg-[#1c1e23] border border-[#292c31] hover:border-[#383b42] text-[11px] text-[#666c75] hover:text-[#a5abb5] transition-colors cursor-pointer"
+            title="Search files or commands (Ctrl+P / Ctrl+Shift+P)"
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <Search className="w-3 h-3 text-[#666c75]" />
+              <span className="truncate">Search files or commands...</span>
+            </div>
+            <span className="text-[10px] font-mono text-[#555a62] shrink-0 ml-1">Ctrl+P</span>
           </button>
         </div>
 
@@ -461,23 +642,37 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
       {/* Main Workspace Body: Classic 3-Column Desktop Layout */}
       <div className="hidden lg:flex flex-1 min-h-0 min-w-0 overflow-hidden">
-        {/* Left Column: File Explorer (220px) */}
-        <div className="w-[220px] shrink-0 h-full flex flex-col bg-[#111214]">
-          <FileExplorer
-            tree={fileTree}
-            activeFile={activeFile}
-            projectName={activeWorkspace?.name || "PROJECT"}
-            onSelectFile={openFile}
-            onCreateFileOrDir={createFileOrDir}
-            onDeletePath={deleteFileOrDir}
-            onRenamePath={renameFileOrDir}
-            onExportZip={exportProject}
-            onImportFiles={importProject}
-          />
-        </div>
+        {/* Left Column: File Explorer (Resizable) */}
+        {isExplorerOpen && (
+          <>
+            <div
+              style={{ width: `${explorerWidth}px` }}
+              className="shrink-0 h-full flex flex-col bg-[#111214] overflow-hidden"
+            >
+              <FileExplorer
+                tree={fileTree}
+                activeFile={activeFile}
+                projectName={activeWorkspace?.name || "PROJECT"}
+                onSelectFile={openFile}
+                onCreateFileOrDir={createFileOrDir}
+                onDeletePath={deleteFileOrDir}
+                onRenamePath={renameFileOrDir}
+                onExportZip={exportProject}
+                onImportFiles={importProject}
+              />
+            </div>
+
+            {/* Splitter Resizer Handle between Explorer and Center */}
+            <div
+              onMouseDown={startResizingExplorer}
+              className="w-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-col-resize shrink-0 transition-colors z-10 border-r border-[#292c31]"
+              title="Drag to resize File Explorer"
+            />
+          </>
+        )}
 
         {/* Center Column: Code Editor + Docked Bottom Panel */}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden border-r border-[#292c31]">
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
           {/* Top: Code Editor */}
           <div className="flex-1 min-h-0 overflow-hidden relative">
             <CodeEditorPanel
@@ -503,56 +698,79 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             />
           </div>
 
-          {/* Bottom: Docked Terminal / Problems Panel */}
-          <div className="shrink-0">
-            <TerminalPanel
-              output={terminalOutput}
-              lastResult={lastResult}
-              isRunning={isRunning}
-              onClear={clearTerminal}
-              onStop={stopProject}
-              onDebugError={handleDebugError}
-              gitStatus={gitStatus}
-              activeTab={terminalTab}
-              onTabChange={setTerminalTab}
-              problems={problems}
-              onSelectProblem={jumpToProblem}
-            />
-          </div>
+          {/* Bottom: Docked Terminal / Problems Panel (Resizable) */}
+          {isTerminalOpen && (
+            <div className="shrink-0 flex flex-col">
+              {/* Terminal Horizontal Resizer Splitter */}
+              <div
+                onMouseDown={startResizingTerminal}
+                className="h-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-row-resize shrink-0 transition-colors z-10 border-t border-[#292c31]"
+                title="Drag to resize Terminal panel"
+              />
+              <div style={{ height: `${terminalHeight}px` }} className="overflow-hidden">
+                <TerminalPanel
+                  output={terminalOutput}
+                  lastResult={lastResult}
+                  isRunning={isRunning}
+                  onClear={clearTerminal}
+                  onStop={stopProject}
+                  onDebugError={handleDebugError}
+                  gitStatus={gitStatus}
+                  activeTab={terminalTab}
+                  onTabChange={setTerminalTab}
+                  problems={problems}
+                  onSelectProblem={jumpToProblem}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right Column: AI Developer Tool Panel (340px) */}
-        <div className="w-[340px] shrink-0 h-full flex flex-col bg-[#111214]">
-          <AIPanel
-            messages={messages}
-            isGenerating={isAIGenerating}
-            onSendMessage={sendCodingMessage}
-            activeFile={activeFile}
-            selectedCode={selectedCode}
-            selectedLineRange={selectedLineRange}
-            onReviewPatch={(patch) => {
-              const matchingApproval =
-                pendingApproval?.file === patch.file ? pendingApproval : null;
-              handleReviewPatch(
-                patch,
-                matchingApproval?.approval_id,
-                matchingApproval?.operation
-              );
-            }}
-            onApplyPatch={applyPatch}
-            webSearchEnabled={webSearchEnabled}
-            onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
-            agentMode={agentMode}
-            onToggleAgentMode={setAgentMode}
-            autoApply={autoApply}
-            onToggleAutoApply={() => setAutoApply(!autoApply)}
-            agentState={agentState}
-            currentPlan={currentPlan}
-            pendingApproval={pendingApproval}
-            onRespondApproval={respondApproval}
-            onStopAgent={stopAgent}
-          />
-        </div>
+        {/* Right Column: AI Developer Tool Panel (Resizable) */}
+        {isAiOpen && (
+          <>
+            {/* AI Panel Splitter Resizer Handle */}
+            <div
+              onMouseDown={startResizingAi}
+              className="w-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-col-resize shrink-0 transition-colors z-10 border-l border-[#292c31]"
+              title="Drag to resize Solix Code AI panel"
+            />
+            <div
+              style={{ width: `${aiWidth}px` }}
+              className="shrink-0 h-full flex flex-col bg-[#111214] overflow-hidden"
+            >
+              <AIPanel
+                messages={messages}
+                isGenerating={isAIGenerating}
+                onSendMessage={sendCodingMessage}
+                activeFile={activeFile}
+                selectedCode={selectedCode}
+                selectedLineRange={selectedLineRange}
+                onReviewPatch={(patch) => {
+                  const matchingApproval =
+                    pendingApproval?.file === patch.file ? pendingApproval : null;
+                  handleReviewPatch(
+                    patch,
+                    matchingApproval?.approval_id,
+                    matchingApproval?.operation
+                  );
+                }}
+                onApplyPatch={applyPatch}
+                webSearchEnabled={webSearchEnabled}
+                onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+                agentMode={agentMode}
+                onToggleAgentMode={setAgentMode}
+                autoApply={autoApply}
+                onToggleAutoApply={() => setAutoApply(!autoApply)}
+                agentState={agentState}
+                currentPlan={currentPlan}
+                pendingApproval={pendingApproval}
+                onRespondApproval={respondApproval}
+                onStopAgent={stopAgent}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Mobile Layout (< lg) */}
@@ -1068,6 +1286,58 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
           </div>
         </div>
       )}
+
+      {/* Professional Command Palette / Quick Open Modal */}
+      <CommandPaletteModal
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        initialMode={paletteMode}
+        fileTree={fileTree}
+        onSelectFile={openFile}
+        onSaveFile={() => saveFile()}
+        onRunProject={() => runProject()}
+        onBuildProject={() => buildProject()}
+        onTestProject={() => testProject()}
+        onToggleTerminal={() => setIsTerminalOpen((prev) => !prev)}
+        onToggleExplorer={() => setIsExplorerOpen((prev) => !prev)}
+        onToggleAi={() => setIsAiOpen((prev) => !prev)}
+        onNewFile={() => createFileOrDir("new_file.py", false)}
+        onNewFolder={() => createFileOrDir("new_folder", true)}
+        onNewProject={() => setIsCreatingWorkspace(true)}
+        onExportZip={exportProject}
+        onImportFiles={() => {
+          if (typeof document === "undefined") return;
+          const input = document.createElement("input");
+          input.type = "file";
+          input.multiple = true;
+          input.onchange = async (e: any) => {
+            const files: FileList = e.target.files;
+            if (!files || files.length === 0) return;
+            const items: Array<{ path: string; content: string }> = [];
+            for (let i = 0; i < files.length; i++) {
+              const file = files[i];
+              const text = await file.text();
+              items.push({ path: file.name, content: text });
+            }
+            await importProject(items);
+          };
+          input.click();
+        }}
+        onClearTerminal={clearTerminal}
+        onOpenStorageModal={() => setShowStorageModal(true)}
+        onOpenRuntimesModal={() => setShowRuntimesModal(true)}
+        onBackToChat={onBackToChat}
+        onAiAction={(action) => {
+          if (action === "explain") {
+            sendCodingMessage("Explain the current code architecture and data structures in this project.", { customAction: "explain" });
+          } else if (action === "fix") {
+            sendCodingMessage("Diagnose any potential bugs or edge cases in this project and propose a fix.", { customAction: "fix" });
+          } else if (action === "tests") {
+            sendCodingMessage("Write unit tests for this project.", { customAction: "tests" });
+          }
+          if (!isAiOpen) setIsAiOpen(true);
+        }}
+      />
     </div>
   );
 };

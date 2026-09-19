@@ -63,6 +63,16 @@ interface AIPanelProps {
   onStopAgent?: () => void;
 }
 
+const sanitizeContent = (text: string): string => {
+  if (!text) return "";
+  let cleaned = text.replace(/```(?:tool_call|json)?\s*\{\s*"name"\s*:\s*"workspace_.*?\}\s*```/gs, "");
+  cleaned = cleaned.replace(/<tool_call>.*?<\/tool_call>/gs, "");
+  cleaned = cleaned.replace(/\{\s*"name"\s*:\s*"workspace_[a-z_]+"\s*,\s*"arguments"\s*:\s*\{.*?\}\s*\}/gs, "");
+  cleaned = cleaned.replace(/<\/?tool_call>/g, "");
+  cleaned = cleaned.replace(/^(?:Hello!|Hi!|Hey!|Greetings!|Hello there!|How can I (?:help|assist) you today\??)[^\n]*\n*/i, "");
+  return cleaned.trim();
+};
+
 export const AIPanel: React.FC<AIPanelProps> = ({
   messages,
   isGenerating,
@@ -376,30 +386,46 @@ export const AIPanel: React.FC<AIPanelProps> = ({
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 font-sans text-xs select-text">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col justify-center p-2 text-[#858b94] select-none">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-[#a5abb5] mb-1 font-semibold">
-              Solix Code AI
+            <div className="text-[11px] font-mono uppercase tracking-wider text-[#a5abb5] mb-1 font-semibold flex items-center gap-1.5">
+              <span>{agentMode === "agent" ? "Autonomous Agent Mode" : "Ask Assistant Mode"}</span>
             </div>
             <p className="text-xs text-[#858b94] leading-relaxed mb-3">
-              Ask questions about the current project or assign tasks to the autonomous agent.
+              {agentMode === "agent"
+                ? "Assign tasks to the autonomous agent. Solix will inspect the codebase, plan changes, edit files, and execute code in the sandbox."
+                : "Ask questions about the project architecture, inspect code logic, or debug selected lines."}
             </p>
-            <div className="space-y-1 text-[11px] text-[#666c75] font-mono">
-              <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("explain")}>
-                &bull; Explain current file architecture
-              </div>
-              <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("debug")}>
-                &bull; Inspect potential bugs or errors
-              </div>
-              <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("tests")}>
-                &bull; Generate unit tests for workspace
-              </div>
-              <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => onSendMessage("Can you create a starter algorithm module?")}>
-                &bull; Create or refactor project files
-              </div>
+            <div className="space-y-1.5 text-[11px] text-[#666c75] font-mono">
+              {agentMode === "agent" ? (
+                <>
+                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => onSendMessage("Create a starter python module with clean unit tests")}>
+                    &bull; Create module with unit tests
+                  </div>
+                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("fix")}>
+                    &bull; Inspect errors and apply verified fix
+                  </div>
+                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("refactor")}>
+                    &bull; Refactor file architecture
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("explain")}>
+                    &bull; Explain current file architecture
+                  </div>
+                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("debug")}>
+                    &bull; Inspect potential bugs or edge cases
+                  </div>
+                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("tests")}>
+                    &bull; How should I test this code?
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ) : (
           messages.map((msg) => {
             const isUser = msg.role === "user";
+            const cleanContent = sanitizeContent(msg.content);
 
             return (
               <div
@@ -450,12 +476,12 @@ export const AIPanel: React.FC<AIPanelProps> = ({
 
                     {/* Response Text / Markdown */}
                     <div className="text-xs text-[#d4d7dc] leading-relaxed break-words">
-                      {msg.content ? (
-                        <MarkdownRenderer content={msg.content} />
+                      {cleanContent ? (
+                        <MarkdownRenderer content={cleanContent} />
                       ) : msg.isStreaming ? (
                         <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#858b94] py-1">
                           <span className="w-2.5 h-2.5 border border-[#3a3d43] border-t-cyan-400 rounded-full animate-spin" />
-                          <span>Processing...</span>
+                          <span>Thinking &amp; executing...</span>
                         </div>
                       ) : null}
                     </div>
@@ -570,6 +596,34 @@ export const AIPanel: React.FC<AIPanelProps> = ({
 
 // ── Subcomponents ──
 
+// Human-readable tool label mapper (removes raw JSON/function names from UI)
+function getToolDisplayLabel(name: string, args: Record<string, any> = {}): string {
+  switch (name) {
+    case "workspace_list_files":
+      return "Inspected workspace files";
+    case "workspace_read_file":
+      return args.path ? `Read ${args.path}` : "Read file";
+    case "workspace_create_file":
+      return args.path ? `Created ${args.path}` : "Created file";
+    case "workspace_update_file":
+      return args.path ? `Staged changes to ${args.path}` : "Updated file";
+    case "workspace_delete_file":
+      return args.path ? `Deleted ${args.path}` : "Deleted file";
+    case "workspace_run":
+      return args.file ? `Ran ${args.file}` : "Executed project in sandbox";
+    case "workspace_build":
+      return "Built project";
+    case "workspace_test":
+      return "Ran test suite";
+    case "workspace_search":
+      return args.query ? `Searched for "${args.query}"` : "Searched codebase";
+    case "workspace_diagnose_errors":
+      return "Analyzed errors & diagnostics";
+    default:
+      return name.replace(/^workspace_/, "").replace(/_/g, " ");
+  }
+}
+
 // Classic Task Checklist Plan
 const PlanWidget: React.FC<{ plan: AgentPlanStep[] }> = ({ plan }) => {
   const [isOpen, setIsOpen] = useState(true);
@@ -580,11 +634,11 @@ const PlanWidget: React.FC<{ plan: AgentPlanStep[] }> = ({ plan }) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-2.5 py-1 bg-[#16171c] hover:bg-[#1a1c22] transition-colors text-left cursor-pointer border-b border-[#202227]"
+        className="w-full flex items-center justify-between px-2.5 py-1.5 bg-[#16171c] hover:bg-[#1a1c22] transition-colors text-left cursor-pointer border-b border-[#202227]"
       >
         <div className="flex items-center gap-1.5">
           <span className="text-[10.5px] font-mono font-semibold text-[#858b94] uppercase tracking-wider">
-            Plan
+            Task Plan
           </span>
           <span className="text-[10px] font-mono text-[#666c75]">
             ({completedCount}/{plan.length})
@@ -598,23 +652,26 @@ const PlanWidget: React.FC<{ plan: AgentPlanStep[] }> = ({ plan }) => {
       </button>
 
       {isOpen && (
-        <div className="p-2 space-y-1 bg-[#0d0e10] font-mono text-[11px]">
+        <div className="p-2 space-y-1.5 bg-[#0d0e10] font-mono text-[11px]">
           {plan.map((step) => {
-            let icon = <span className="text-[#666c75]">&bull;</span>;
-            let textColor = "text-[#858b94]";
+            let icon = (
+              <span className="w-2.5 h-2.5 rounded-full border border-[#4a505b] inline-block shrink-0 mt-0.5" />
+            );
+            let textColor = "text-[#a5abb5]";
+
             if (step.status === "completed") {
-              icon = <Check className="w-3 h-3 text-emerald-400" />;
-              textColor = "text-[#858b94] line-through decoration-[#444850]";
+              icon = <Check className="w-3 h-3 text-emerald-400 shrink-0" />;
+              textColor = "text-[#666c75] line-through decoration-[#3a3e46]";
             } else if (step.status === "in_progress") {
-              icon = <Loader2 className="w-3 h-3 text-cyan-400 animate-spin" />;
+              icon = <Loader2 className="w-3 h-3 text-cyan-400 animate-spin shrink-0" />;
               textColor = "text-cyan-300 font-medium";
             } else if (step.status === "failed") {
-              icon = <X className="w-3 h-3 text-rose-400" />;
+              icon = <X className="w-3 h-3 text-rose-400 shrink-0" />;
               textColor = "text-rose-300";
             }
 
             return (
-              <div key={step.id} className="flex items-start gap-1.5 leading-snug">
+              <div key={step.id} className="flex items-start gap-2 leading-tight">
                 <span className="shrink-0 mt-0.5">{icon}</span>
                 <span className={`flex-1 ${textColor}`}>{step.text}</span>
               </div>
@@ -627,19 +684,25 @@ const PlanWidget: React.FC<{ plan: AgentPlanStep[] }> = ({ plan }) => {
 };
 
 const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
+  const [expandedDetails, setExpandedDetails] = useState<Record<number, boolean>>({});
+
+  const toggleDetail = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedDetails((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
 
   return (
     <div className="rounded-xs border border-[#292c31] bg-[#141519] overflow-hidden text-xs">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-2.5 py-1 bg-[#16171c] hover:bg-[#1a1c22] transition-colors text-left cursor-pointer border-b border-[#202227]"
+        className="w-full flex items-center justify-between px-2.5 py-1.5 bg-[#16171c] hover:bg-[#1a1c22] transition-colors text-left cursor-pointer border-b border-[#202227]"
       >
         <div className="flex items-center gap-1.5">
           <Code2 className="w-3 h-3 text-[#666c75]" />
           <span className="text-[10.5px] font-mono text-[#858b94] uppercase tracking-wide">
-            Tool Activity ({tools.length})
+            Activity ({tools.length})
           </span>
         </div>
         {isOpen ? (
@@ -650,30 +713,63 @@ const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) =
       </button>
 
       {isOpen && (
-        <div className="p-1.5 space-y-1 bg-[#0d0e10] max-h-48 overflow-y-auto">
+        <div className="p-1.5 space-y-1 bg-[#0d0e10] max-h-56 overflow-y-auto">
           {tools.map((t, i) => {
             const isRun = t.status === "running";
             const isErr = t.status === "error";
+            const label = getToolDisplayLabel(t.name, t.args);
+            const hasArgs = t.args && Object.keys(t.args).length > 0;
+            const hasResult = Boolean(t.result);
+            const isDetailOpen = Boolean(expandedDetails[i]);
 
             return (
               <div
                 key={t.id || i}
-                className="flex items-start gap-1.5 px-1.5 py-0.5 text-[10.5px] font-mono text-[#858b94]"
+                className="p-1.5 rounded-xs bg-[#131417] border border-[#202227] text-[10.5px] font-mono space-y-1"
               >
-                <span className="shrink-0 mt-0.5">
-                  {isRun ? (
-                    <Loader2 className="w-2.5 h-2.5 text-cyan-400 animate-spin" />
-                  ) : isErr ? (
-                    <X className="w-2.5 h-2.5 text-rose-400" />
-                  ) : (
-                    <Check className="w-2.5 h-2.5 text-emerald-400" />
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5 truncate flex-1">
+                    <span className="shrink-0">
+                      {isRun ? (
+                        <Loader2 className="w-3 h-3 text-cyan-400 animate-spin" />
+                      ) : isErr ? (
+                        <X className="w-3 h-3 text-rose-400" />
+                      ) : (
+                        <Check className="w-3 h-3 text-emerald-400" />
+                      )}
+                    </span>
+                    <span className={isRun ? "text-cyan-300" : isErr ? "text-rose-300" : "text-[#d4d7dc]"}>
+                      {label}
+                    </span>
+                  </div>
+
+                  {(hasArgs || hasResult) && (
+                    <button
+                      type="button"
+                      onClick={(e) => toggleDetail(i, e)}
+                      className="text-[9.5px] text-[#666c75] hover:text-[#a5abb5] underline shrink-0 cursor-pointer ml-1"
+                    >
+                      {isDetailOpen ? "hide" : "details"}
+                    </button>
                   )}
-                </span>
-                <div className="flex-1 truncate">
-                  <span className="text-[#d4d7dc] font-medium">{t.name}</span>
-                  {t.args?.path && <span className="text-[#666c75]"> ({t.args.path})</span>}
-                  {t.args?.query && <span className="text-[#666c75]"> (&quot;{t.args.query}&quot;)</span>}
                 </div>
+
+                {isDetailOpen && (
+                  <div className="mt-1 p-1 bg-[#090a0c] rounded-xs border border-[#1e2025] text-[9.5px] text-[#858b94] overflow-x-auto max-h-24">
+                    {hasArgs && (
+                      <div>
+                        <span className="text-[#555a62]">args: </span>
+                        <span>{JSON.stringify(t.args)}</span>
+                      </div>
+                    )}
+                    {hasResult && (
+                      <div className="mt-0.5 truncate">
+                        <span className="text-[#555a62]">result: </span>
+                        <span>{typeof t.result === "string" ? t.result.slice(0, 150) : JSON.stringify(t.result).slice(0, 150)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

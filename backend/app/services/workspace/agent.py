@@ -20,6 +20,11 @@ logger = logging.getLogger("solix.workspace.agent")
 AGENT_SYSTEM_PROMPT = """You are Solix Autonomous Coding Agent, an elite AI software engineer operating inside the Solix Coding Workspace.
 You reason across entire multi-file codebases, formulate explicit step-by-step plans, create and modify files, run the code in the Solix sandbox, diagnose runtime and compiler errors, and iterate until the code is fully verified.
 
+STRICT COMMUNICATION RULES:
+1. NEVER output conversational filler, polite greetings, or chatbot pleasantries (e.g. NEVER say "Hello!", "How can I help you today?", "Sure, I can help with that", "I would be happy to...").
+2. Get straight to work immediately. If the user asks you to write code, do NOT chat about it — formulate the plan and invoke the necessary workspace tools immediately.
+3. Every response must begin with a concise PLAN or a direct tool call.
+
 RULES FOR AUTONOMOUS OPERATION:
 1. ALWAYS begin complex tasks by writing a concise, numbered plan:
    PLAN:
@@ -132,6 +137,23 @@ class CodingAgentEngine:
             except Exception:
                 pass
         return None
+
+    def _clean_content_for_streaming(self, content: str) -> str:
+        """Strip raw tool JSON, tool call wrappers, and conversational filler from streaming text."""
+        if not content:
+            return ""
+        # Strip ```tool_call ... ``` or ```json ... ``` with workspace_
+        cleaned = re.sub(r"```(?:tool_call|json)?\s*\{\s*\"name\"\s*:\s*\"workspace_.*?\}\s*```", "", content, flags=re.DOTALL)
+        # Strip <tool_call>...</tool_call>
+        cleaned = re.sub(r"<tool_call>.*?</tool_call>", "", cleaned, flags=re.DOTALL)
+        # Strip bare workspace JSON calls
+        cleaned = re.sub(r'\{\s*"name"\s*:\s*"workspace_[a-z_]+"\s*,\s*"arguments"\s*:\s*\{.*?\}\s*\}', "", cleaned, flags=re.DOTALL)
+        # Strip any remaining dangling tool call tags
+        cleaned = re.sub(r"</?tool_call>", "", cleaned)
+        # Strip generic chatbot opening greeting lines
+        cleaned = re.sub(r"^(?:Hello!|Hi!|Hey!|Greetings!|Hello there!|How can I (?:help|assist) you today\??)[^\n]*\n*", "", cleaned, flags=re.IGNORECASE)
+        # Strip duplicate "PLAN:\n1. ... " if task plan was already parsed
+        return cleaned.strip()
 
     def _build_project_grounding(self, workspace_id: str, active_file: Optional[str] = None) -> str:
         """Create a concise grounding snapshot for the agent."""
@@ -263,9 +285,10 @@ class CodingAgentEngine:
                         task.plan = parsed_plan
                         yield f"data: {json.dumps({'type': 'plan_created', 'plan': task.plan})}\n\n"
 
-                # Stream reasoning tokens if content exists
-                if content:
-                    yield f"data: {json.dumps({'type': 'token', 'text': content})}\n\n"
+                # Stream reasoning tokens if clean non-tool text exists
+                clean_token_text = self._clean_content_for_streaming(content)
+                if clean_token_text:
+                    yield f"data: {json.dumps({'type': 'token', 'text': clean_token_text})}\n\n"
 
                 # Detect tool calls: either native or parsed
                 tool_calls_to_run: List[Dict[str, Any]] = []
@@ -298,8 +321,9 @@ class CodingAgentEngine:
 
                     logger.info(f"[AgentEngine] No further tool calls detected. Completing task={task_id}")
                     task.state = "completed"
+                    clean_summary = self._clean_content_for_streaming(content)
                     yield f"data: {json.dumps({'type': 'state_change', 'state': 'completed', 'message': 'Task completed'})}\n\n"
-                    yield f"data: {json.dumps({'type': 'agent_completed', 'summary': content, 'files_created': task.files_created, 'files_modified': task.files_modified, 'files_deleted': task.files_deleted})}\n\n"
+                    yield f"data: {json.dumps({'type': 'agent_completed', 'summary': clean_summary, 'files_created': task.files_created, 'files_modified': task.files_modified, 'files_deleted': task.files_deleted})}\n\n"
                     return
 
                 # Record assistant response in conversation

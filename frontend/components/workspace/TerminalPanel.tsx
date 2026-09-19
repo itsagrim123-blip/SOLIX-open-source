@@ -207,7 +207,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
       {!isCollapsed && (
         <div className="flex-1 min-h-0 overflow-y-auto p-3 font-mono text-xs select-text bg-[#0d0e10]">
           {activeTab === "terminal" && (
-            <div>
+            <div className="space-y-2">
               {output ? (
                 <pre className="whitespace-pre-wrap font-mono text-[11.5px] leading-relaxed text-[#d4d7dc] m-0 select-text">
                   {output}
@@ -217,6 +217,46 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
                   $ Terminal ready. Click &apos;Run&apos; (Ctrl+Enter) or &apos;Test&apos; to execute project.
                 </div>
               )}
+
+              {/* Real-time sandbox running banner */}
+              {isRunning && (
+                <div className="py-1 px-2.5 rounded-xs bg-[#14161a] border border-cyan-800/40 text-[11px] font-mono text-cyan-400 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <span>Executing in sandbox...</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onStop}
+                    className="text-[10px] text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                  >
+                    Stop
+                  </button>
+                </div>
+              )}
+
+              {/* Clean process exit status banner */}
+              {lastResult && !isRunning && (
+                <div
+                  className={`py-1 px-2.5 rounded-xs border text-[11px] font-mono flex items-center justify-between ${
+                    lastResult.exit_code === 0
+                      ? "bg-emerald-950/25 border-emerald-800/40 text-emerald-300"
+                      : "bg-rose-950/25 border-rose-800/40 text-rose-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {lastResult.exit_code === 0 ? (
+                      <span>✓ Process exited with code 0</span>
+                    ) : (
+                      <span>✕ Process exited with code {lastResult.exit_code}</span>
+                    )}
+                  </div>
+                  <span className="text-[#666c75] text-[10px]">
+                    Finished in {lastResult.execution_time}s
+                  </span>
+                </div>
+              )}
+              <div ref={terminalEndRef} />
             </div>
           )}
 
