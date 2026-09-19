@@ -36,6 +36,7 @@ export default function SolixApp() {
     clearAllLocalChats,
     stopGenerating,
     sendMessage,
+    regenerateResponse,
     webSearchEnabled,
     toggleWebSearch,
     webSearchStatus,
@@ -70,14 +71,17 @@ export default function SolixApp() {
 
   const [composerPrefill, setComposerPrefill] = useState("");
   const [temperature, setTemperature] = useState<number>(0.7);
+  const [responseStyle, setResponseStyle] = useState<"default" | "concise" | "detailed">("default");
   const [systemPrompt, setSystemPrompt] = useState<string>("");
 
-  // Load saved temperature & system prompt preferences from localStorage
+  // Load saved preferences from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
         const savedTemp = localStorage.getItem("solix_temperature");
         if (savedTemp) setTemperature(parseFloat(savedTemp));
+        const savedStyle = localStorage.getItem("solix_response_style") as "default" | "concise" | "detailed" | null;
+        if (savedStyle) setResponseStyle(savedStyle);
         const savedPrompt = localStorage.getItem("solix_system_prompt");
         if (savedPrompt) setSystemPrompt(savedPrompt);
       } catch {
@@ -85,6 +89,41 @@ export default function SolixApp() {
       }
     }
   }, []);
+
+  const handleUpdateTemperature = (val: number) => {
+    setTemperature(val);
+    try {
+      localStorage.setItem("solix_temperature", String(val));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleUpdateResponseStyle = (style: "default" | "concise" | "detailed") => {
+    setResponseStyle(style);
+    try {
+      localStorage.setItem("solix_response_style", style);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Global Keyboard Shortcuts (Ctrl+N for new chat, Escape to close modals)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        startNewChat();
+      }
+      if (e.key === "Escape") {
+        setIsSettingsOpen(false);
+        setIsAboutOpen(false);
+        setIsMobileSidebarOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [startNewChat]);
 
   // Cleanup pending transition timers on unmount
   useEffect(() => {
@@ -179,8 +218,29 @@ export default function SolixApp() {
     [viewMode, transitionState]
   );
 
+  const getEffectiveSystemPrompt = useCallback(() => {
+    let promptModifier = systemPrompt;
+    if (responseStyle === "concise") {
+      promptModifier = (promptModifier ? promptModifier + "\n" : "") + "Please provide concise, direct answers without unnecessary filler.";
+    } else if (responseStyle === "detailed") {
+      promptModifier = (promptModifier ? promptModifier + "\n" : "") + "Please provide comprehensive, in-depth explanations with detailed examples and context.";
+    }
+    return promptModifier;
+  }, [systemPrompt, responseStyle]);
+
   const handleSendMessage = (content: string) => {
-    sendMessage(content, { systemPrompt, temperature });
+    const effPrompt = getEffectiveSystemPrompt();
+    sendMessage(content, { systemPrompt: effPrompt, temperature });
+    setComposerPrefill("");
+  };
+
+  const handleEditPrompt = (content: string) => {
+    setComposerPrefill(content);
+  };
+
+  const handleRegenerate = (messageId: string) => {
+    const effPrompt = getEffectiveSystemPrompt();
+    regenerateResponse(messageId, { systemPrompt: effPrompt, temperature });
   };
 
   const handleSelectSuggestion = (prompt: string) => {
@@ -204,7 +264,7 @@ export default function SolixApp() {
         }`}
         aria-hidden={viewMode !== "chat"}
       >
-        {/* Left Full-Height Sidebar (255px) */}
+        {/* Left Full-Height Sidebar */}
         <ChatSidebar
           conversations={conversations}
           activeConversationId={activeConversationId}
@@ -237,7 +297,7 @@ export default function SolixApp() {
               : ""
           }`}
         >
-          {/* Topbar (58px) */}
+          {/* Topbar (38px/48px) */}
           <ChatHeader
             currentModel={currentModel}
             models={models}
@@ -263,6 +323,8 @@ export default function SolixApp() {
               isLoadingHistory={isLoadingHistory}
               modelName={currentModel}
               onSelectPrompt={handleSelectSuggestion}
+              onEditPrompt={handleEditPrompt}
+              onRegenerate={handleRegenerate}
             />
 
             {/* Floating Composer at Bottom */}
@@ -285,6 +347,10 @@ export default function SolixApp() {
               onRemoveFile={removeFile}
               onRetryFile={retryFile}
               fileStatusLabel={fileStatusLabel}
+              temperature={temperature}
+              onUpdateTemperature={handleUpdateTemperature}
+              responseStyle={responseStyle}
+              onUpdateResponseStyle={handleUpdateResponseStyle}
             />
           </section>
         </main>

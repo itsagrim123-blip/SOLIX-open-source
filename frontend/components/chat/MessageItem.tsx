@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Copy, Globe } from "lucide-react";
+import { Check, Copy, Edit2, Globe, RotateCw } from "lucide-react";
 import { Message } from "@/types/chat";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { SolixLogo } from "@/components/brand/SolixLogo";
@@ -12,11 +12,15 @@ import { api } from "@/lib/api";
 interface MessageItemProps {
   message: Message;
   isStreaming?: boolean;
+  onEditPrompt?: (content: string) => void;
+  onRegenerate?: (messageId: string) => void;
 }
 
 export const MessageItem: React.FC<MessageItemProps> = ({
   message,
   isStreaming = false,
+  onEditPrompt,
+  onRegenerate,
 }) => {
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
@@ -107,9 +111,19 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 {formattedTime}
               </span>
             )}
+            {onEditPrompt && (
+              <button
+                onClick={() => onEditPrompt(message.content)}
+                className="p-0.5 rounded text-[#7e828a] hover:text-[#eeeeec] transition-colors cursor-pointer"
+                title="Edit message"
+                aria-label="Edit message"
+              >
+                <Edit2 className="w-3 h-3" />
+              </button>
+            )}
             <button
               onClick={handleCopy}
-              className="p-0.5 rounded text-[#7e828a] hover:text-[#eeeeec] transition-colors"
+              className="p-0.5 rounded text-[#7e828a] hover:text-[#eeeeec] transition-colors cursor-pointer"
               title="Copy message"
               aria-label="Copy message"
             >
@@ -153,24 +167,38 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             )}
           </div>
 
-          <button
-            onClick={handleCopy}
-            className="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded text-[#8f9299] hover:text-[#eeeeec] transition-all text-xs flex items-center gap-1 cursor-pointer"
-            title="Copy response"
-            aria-label="Copy response"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[11px] text-emerald-400">Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span className="text-[11px]">Copy</span>
-              </>
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
+            {!isStreaming && onRegenerate && (
+              <button
+                onClick={() => onRegenerate(message.id)}
+                className="px-1.5 py-0.5 rounded text-[#8f9299] hover:text-[#eeeeec] transition-all text-xs flex items-center gap-1 cursor-pointer"
+                title="Regenerate response"
+                aria-label="Regenerate response"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                <span className="text-[11px]">Regenerate</span>
+              </button>
             )}
-          </button>
+
+            <button
+              onClick={handleCopy}
+              className="px-1.5 py-0.5 rounded text-[#8f9299] hover:text-[#eeeeec] transition-all text-xs flex items-center gap-1 cursor-pointer"
+              title="Copy response"
+              aria-label="Copy response"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[11px] text-emerald-400">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Copy</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Content */}

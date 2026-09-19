@@ -162,6 +162,21 @@ export const conversationStore = {
   },
 
   /**
+   * Delete a single message by its ID.
+   */
+  async deleteMessage(messageId: string): Promise<void> {
+    if (typeof window === "undefined") return;
+    const db = await openDB();
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction("messages", "readwrite");
+      const store = tx.objectStore("messages");
+      store.delete(messageId);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
+  /**
    * Retrieve all messages for a conversation, sorted chronologically.
    */
   async getMessages(conversationId: string): Promise<Message[]> {
@@ -190,6 +205,45 @@ export const conversationStore = {
     } catch (err) {
       console.error("IndexedDB: Failed to get messages", err);
       return [];
+    }
+  },
+
+  /**
+   * Fast, local search across all stored messages.
+   * Returns a map of conversationId -> matched snippet.
+   */
+  async searchAcrossConversations(query: string): Promise<Record<string, string>> {
+    if (!query || !query.trim() || typeof window === "undefined") return {};
+    try {
+      const db = await openDB();
+      return new Promise<Record<string, string>>((resolve, reject) => {
+        const tx = db.transaction("messages", "readonly");
+        const store = tx.objectStore("messages");
+        const req = store.getAll();
+
+        req.onsuccess = () => {
+          const msgs: Message[] = req.result || [];
+          const q = query.toLowerCase().trim();
+          const snippets: Record<string, string> = {};
+
+          for (const m of msgs) {
+            if (!m.content || !m.conversation_id || snippets[m.conversation_id]) continue;
+            const lower = m.content.toLowerCase();
+            const idx = lower.indexOf(q);
+            if (idx !== -1) {
+              const start = Math.max(0, idx - 20);
+              const end = Math.min(m.content.length, idx + q.length + 35);
+              const text = m.content.substring(start, end).replace(/\s+/g, " ").trim();
+              snippets[m.conversation_id] = (start > 0 ? "…" : "") + text + (end < m.content.length ? "…" : "");
+            }
+          }
+          resolve(snippets);
+        };
+
+        req.onerror = () => reject(req.error);
+      });
+    } catch {
+      return {};
     }
   },
 

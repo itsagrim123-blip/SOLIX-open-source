@@ -40,6 +40,10 @@ interface MessageComposerProps {
   onRemoveFile?: (fileId: string) => void;
   onRetryFile?: (fileId: string) => void;
   fileStatusLabel?: string | null;
+  temperature?: number;
+  onUpdateTemperature?: (val: number) => void;
+  responseStyle?: "default" | "concise" | "detailed";
+  onUpdateResponseStyle?: (style: "default" | "concise" | "detailed") => void;
 }
 
 export function formatFileSize(bytes: number): string {
@@ -97,12 +101,18 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   onRemoveFile,
   onRetryFile,
   fileStatusLabel = null,
+  temperature = 0.7,
+  onUpdateTemperature,
+  responseStyle = "default",
+  onUpdateResponseStyle,
 }) => {
   const [content, setContent] = useState(initialValue);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [showSettingsPopover, setShowSettingsPopover] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelPickerRef = useRef<HTMLDivElement>(null);
+  const settingsPopoverRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync initialValue changes
@@ -116,7 +126,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
     }
   }, [initialValue]);
 
-  // Close model picker on click outside
+  // Close model picker and settings popover on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -124,6 +134,12 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
         !modelPickerRef.current.contains(e.target as Node)
       ) {
         setShowModelPicker(false);
+      }
+      if (
+        settingsPopoverRef.current &&
+        !settingsPopoverRef.current.contains(e.target as Node)
+      ) {
+        setShowSettingsPopover(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -437,37 +453,112 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
             <button
               type="button"
               onClick={onToggleWebSearch}
-              className={`solix-web-search-btn ${webSearchEnabled ? "active" : ""}`}
-              title={webSearchEnabled ? "Web Search ON — click to disable" : "Enable Web Search (uses Qwen 3 8B)"}
+              className={`solix-small-btn cursor-pointer active:scale-98 transition-all ${
+                webSearchEnabled
+                  ? "bg-cyan-950/30 border-cyan-500/40 text-cyan-300 font-medium"
+                  : "text-[#8f9299] hover:text-[#eeeeec]"
+              }`}
+              title={webSearchEnabled ? "Web Search enabled — click to disable" : "Enable Web Search"}
               aria-label="Toggle Web Search"
               aria-pressed={webSearchEnabled}
             >
-              <Globe className="w-4 h-4 flex-shrink-0" />
-              <span className="solix-web-search-label font-medium">
-                {webSearchEnabled ? "Web Search ✓" : "Web Search"}
-              </span>
+              {webSearchEnabled ? (
+                <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+              ) : (
+                <Globe className="w-3.5 h-3.5 shrink-0" />
+              )}
+              <span className="text-xs">Web Search</span>
             </button>
 
             {/* Attachment Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="solix-small-btn icon active:scale-95 cursor-pointer"
-              title="Attach documents, code, images, spreadsheets"
-              aria-label="Attach file"
+              className="solix-small-btn icon active:scale-95 cursor-pointer text-[#8f9299] hover:text-[#eeeeec]"
+              title="Attach files"
+              aria-label="Attach files"
             >
-              <Paperclip className="w-4 h-4" />
+              <Paperclip className="w-3.5 h-3.5" />
             </button>
 
-            {/* Tools Button */}
-            <button
-              type="button"
-              className="solix-small-btn icon active:scale-95 cursor-default"
-              title="Assistant capabilities"
-              aria-label="Tools"
-            >
-              <Sliders className="w-4 h-4" />
-            </button>
+            {/* Response Settings Button & Popover */}
+            <div className="relative" ref={settingsPopoverRef}>
+              <button
+                type="button"
+                onClick={() => setShowSettingsPopover(!showSettingsPopover)}
+                className={`solix-small-btn icon active:scale-95 cursor-pointer transition-colors ${
+                  showSettingsPopover
+                    ? "bg-[#1f2127] text-white border-[#3a3d43]"
+                    : "text-[#8f9299] hover:text-[#eeeeec]"
+                }`}
+                title="Response settings"
+                aria-label="Response settings"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Response Settings Popover */}
+              {showSettingsPopover && (
+                <div className="absolute bottom-full left-0 mb-2 w-64 rounded-xl bg-[#141518] border border-[#292b30] p-3 z-50 animate-fade-in shadow-[0_12px_40px_rgba(0,0,0,0.7)] text-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#202227] pb-1.5">
+                    <span className="text-[10px] font-mono font-semibold text-[#858b94] uppercase tracking-wider">
+                      Response Settings
+                    </span>
+                    <button
+                      onClick={() => setShowSettingsPopover(false)}
+                      className="text-[#666c75] hover:text-white p-0.5 cursor-pointer"
+                      title="Close"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Temperature slider */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-[#a5abb5]">Temperature</span>
+                      <span className="font-mono text-cyan-400 font-medium">
+                        {temperature.toFixed(2)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.0"
+                      max="1.0"
+                      step="0.05"
+                      value={temperature}
+                      onChange={(e) => onUpdateTemperature?.(parseFloat(e.target.value))}
+                      className="w-full accent-cyan-400 cursor-pointer h-1 bg-[#25282f] rounded-lg appearance-none"
+                    />
+                    <div className="flex items-center justify-between text-[9.5px] text-[#666c75] font-mono">
+                      <span>Precise</span>
+                      <span>Balanced</span>
+                      <span>Creative</span>
+                    </div>
+                  </div>
+
+                  {/* Response Style Presets */}
+                  <div className="space-y-1.5 pt-1 border-t border-[#202227]">
+                    <span className="text-[11px] text-[#a5abb5]">Response Style</span>
+                    <div className="grid grid-cols-3 gap-1">
+                      {(["default", "concise", "detailed"] as const).map((style) => (
+                        <button
+                          key={style}
+                          onClick={() => onUpdateResponseStyle?.(style)}
+                          className={`py-1 px-1.5 rounded text-[10.5px] capitalize font-medium transition-colors cursor-pointer border ${
+                            responseStyle === style
+                              ? "bg-[#1e2128] border-cyan-500/40 text-cyan-300"
+                              : "bg-[#101114] border-[#22242a] text-[#858b94] hover:text-white"
+                          }`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Action: Send or Stop */}

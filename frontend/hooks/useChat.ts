@@ -11,6 +11,7 @@ import {
   ModelInfo,
   SearchSource,
 } from "@/types/chat";
+import { generateConversationTitle, sanitizeExistingTitle } from "@/lib/titleGenerator";
 
 export type BackendStatus = "checking" | "online" | "offline";
 
@@ -72,7 +73,11 @@ export function useChat() {
         }
       }
 
-      setConversations(localConvs);
+      const sanitizedConvs = (localConvs || []).map((c) => ({
+        ...c,
+        title: sanitizeExistingTitle(c.title),
+      }));
+      setConversations(sanitizedConvs);
     } catch (err: any) {
       console.error("Initialization error:", err);
       setBackendStatus("offline");
@@ -431,13 +436,8 @@ export function useChat() {
             targetConvId = data.conversation_id;
             setActiveConversationId(data.conversation_id);
 
-            // Generate clean title (from backend or user message)
-            const chatTitle =
-              data.title && data.title !== "New Conversation"
-                ? data.title
-                : content.trim().length > 38
-                ? `${content.trim().slice(0, 38)}...`
-                : content.trim();
+            // Generate clean, deterministic title (removes test filler, greetings, and truncation)
+            const chatTitle = generateConversationTitle(content.trim(), data.title);
 
             // Save conversation entry to local IndexedDB
             await conversationStore.createConversation(
@@ -587,6 +587,57 @@ export function useChat() {
     [activeConversationId, attachedFiles, currentModel, isGenerating, isSwitchingModel, webSearchEnabled, webSearchStatus]
   );
 
+  // Regenerate assistant response
+  const regenerateResponse = useCallback(
+    async (
+      targetAssistantId?: string,
+      options?: { systemPrompt?: string; temperature?: number }
+    ) => {
+      if (isGenerating || isSwitchingModel || messages.length === 0) return;
+
+      let assistantIdx = -1;
+      if (targetAssistantId) {
+        assistantIdx = messages.findIndex((m) => m.id === targetAssistantId);
+      } else {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].role === "assistant") {
+            assistantIdx = i;
+            break;
+          }
+        }
+      }
+
+      if (assistantIdx === -1) return;
+
+      // Find the user prompt before this assistant message
+      let userPrompt = "";
+      for (let i = assistantIdx - 1; i >= 0; i--) {
+        if (messages[i].role === "user") {
+          userPrompt = messages[i].content;
+          break;
+        }
+      }
+
+      if (!userPrompt) return;
+
+      // Delete target assistant message and anything after it from state and IndexedDB
+      const assistantMsg = messages[assistantIdx];
+      if (assistantMsg?.id) {
+        try {
+          await conversationStore.deleteMessage(assistantMsg.id);
+        } catch {
+          // ignore
+        }
+      }
+
+      setMessages((prev) => prev.filter((_, idx) => idx < assistantIdx));
+
+      // Re-send user prompt
+      await sendMessage(userPrompt, options);
+    },
+    [isGenerating, isSwitchingModel, messages, sendMessage]
+  );
+
   return {
     conversations,
     activeConversationId,
@@ -610,6 +661,7 @@ export function useChat() {
     clearAllLocalChats,
     stopGenerating,
     sendMessage,
+    regenerateResponse,
     setCurrentModel,
     refreshData,
     // File Intelligence
@@ -624,3 +676,4 @@ export function useChat() {
     webSearchStatus,
   };
 }
+

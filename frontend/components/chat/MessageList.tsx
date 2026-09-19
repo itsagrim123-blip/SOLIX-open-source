@@ -12,6 +12,8 @@ interface MessageListProps {
   isLoadingHistory: boolean;
   modelName: string;
   onSelectPrompt: (prompt: string) => void;
+  onEditPrompt?: (content: string) => void;
+  onRegenerate?: (messageId: string) => void;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -20,19 +22,23 @@ export const MessageList: React.FC<MessageListProps> = ({
   isLoadingHistory,
   modelName,
   onSelectPrompt,
+  onEditPrompt,
+  onRegenerate,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const isUserScrolledUpRef = useRef<boolean>(false);
 
-  // Auto-scroll on new content strictly inside container
+  // Auto-scroll on new content strictly inside container if user hasn't scrolled up
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
+    // Check if user is already near bottom (within 100px)
     const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < 240;
+      container.scrollHeight - container.scrollTop - container.clientHeight < 100;
 
-    if (isNearBottom || isGenerating) {
+    if (isNearBottom && !isUserScrolledUpRef.current) {
       container.scrollTo({
         top: container.scrollHeight,
         behavior: isGenerating ? "auto" : "smooth",
@@ -40,19 +46,24 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   }, [messages, isGenerating]);
 
-  // Show/hide scroll bottom button
+  // Track scroll position to prevent interrupting user reading previous messages
   const handleScroll = () => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const isScrolledUp =
-      container.scrollHeight - container.scrollTop - container.clientHeight > 200;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isScrolledUp = distanceFromBottom > 100;
+
+    isUserScrolledUpRef.current = isScrolledUp;
     setShowScrollBottom(isScrolledUp);
   };
 
   const scrollToBottom = () => {
     const container = scrollContainerRef.current;
     if (!container) return;
+    isUserScrolledUpRef.current = false;
+    setShowScrollBottom(false);
     container.scrollTo({
       top: container.scrollHeight,
       behavior: "smooth",
@@ -64,7 +75,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-[#8f9299] gap-3 select-none">
         <div className="w-6 h-6 rounded-full border-2 border-[#3a3d43] border-t-[#eeeeec] animate-spin" />
         <span className="text-xs tracking-wider uppercase font-mono text-[#666970]">
-          Loading conversation...
+          Loading conversation…
         </span>
       </div>
     );
@@ -92,6 +103,8 @@ export const MessageList: React.FC<MessageListProps> = ({
               key={msg.id}
               message={msg}
               isStreaming={isLast && isGenerating && msg.role === "assistant"}
+              onEditPrompt={onEditPrompt}
+              onRegenerate={onRegenerate}
             />
           );
         })}
@@ -99,17 +112,21 @@ export const MessageList: React.FC<MessageListProps> = ({
         <div className="h-4 flex-shrink-0" />
       </div>
 
-      {/* Floating Scroll to Bottom Button */}
+      {/* Floating Scroll to Bottom Button / New Messages indicator */}
       {showScrollBottom && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-4 right-6 sm:right-10 z-30 p-2 rounded-full bg-[#15171a] text-[#eeeeec] hover:bg-[#1b1d21] border border-[#292b30] shadow-xl transition-all cursor-pointer"
+          className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#15171a] text-[#eeeeec] hover:bg-[#1c1e23] border border-[#2a2d33] shadow-2xl transition-all cursor-pointer text-xs font-medium animate-fade-in ${
+            isGenerating ? "ring-1 ring-cyan-500/40" : ""
+          }`}
           aria-label="Scroll to bottom"
           title="Scroll to bottom"
         >
-          <ArrowDown className="w-3.5 h-3.5" />
+          <ArrowDown className={`w-3.5 h-3.5 ${isGenerating ? "text-cyan-400 animate-bounce" : ""}`} />
+          <span>{isGenerating ? "New messages ↓" : "Scroll to bottom"}</span>
         </button>
       )}
     </div>
   );
 };
+
