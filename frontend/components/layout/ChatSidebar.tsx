@@ -296,11 +296,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   const renderSidebarContent = (isMobile: boolean = false) => (
     <div className="flex flex-col h-full min-h-0 select-none">
-      {/* Brand Header */}
-      <div className="flex items-center justify-between h-10 px-1 shrink-0">
-        <div className="flex items-center gap-2">
-          <SolixLogo size="sm" px={26} />
-          <span className="text-xs font-bold text-white tracking-[0.16em] uppercase">
+      {/* Brand Header: 48px height matching ChatHeader baseline */}
+      <div className="flex items-center justify-between h-12 px-3 border-b border-[#202227] shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8.5 h-8.5 flex items-center justify-center shrink-0">
+            <SolixLogo size="md" px={36} className="scale-115 object-contain" />
+          </div>
+          <span className="text-[16px] font-bold text-white tracking-[0.22em] uppercase font-sans select-none">
             SOLIX
           </span>
         </div>
@@ -328,8 +330,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
       </div>
 
-      {/* View Mode Navigation: Chat vs Coding Workspace */}
-      <div className="grid grid-cols-2 gap-1 p-1 bg-[#101114] border border-[#22242a] rounded-xs my-2 shrink-0">
+      {/* Sidebar Body Content */}
+      <div className="flex-1 min-h-0 flex flex-col p-2.5 overflow-hidden">
+        {/* View Mode Navigation: Chat vs Coding Workspace */}
+        <div className="grid grid-cols-2 gap-1 p-1 bg-[#101114] border border-[#22242a] rounded-xs mb-2 shrink-0">
         <button
           onClick={() => {
             onSelectView?.("chat");
@@ -486,108 +490,114 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </button>
       </div>
     </div>
-  );
+  </div>
+);
 
   // Compact Collapsed Sidebar (Desktop)
   const renderCollapsedSidebar = () => (
-    <div className="flex flex-col items-center justify-between h-full py-2.5 select-none w-13 shrink-0">
-      {/* Top: Logo & Expand */}
-      <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center justify-between h-full select-none w-13 shrink-0">
+      {/* Top Header: 48px height matching ChatHeader */}
+      <div className="h-12 w-full border-b border-[#202227] flex items-center justify-center shrink-0">
         <button
           onClick={toggleCollapsed}
           className="p-1 rounded-xs hover:bg-[#1c1e23] transition-colors cursor-pointer"
           title="Expand sidebar (Ctrl+B)"
           aria-label="Expand sidebar"
         >
-          <SolixLogo size="sm" px={24} />
-        </button>
-
-        <button
-          onClick={toggleCollapsed}
-          className="p-1.5 rounded-xs text-[#787e88] hover:text-white hover:bg-[#1c1e23] transition-colors cursor-pointer"
-          title="Expand sidebar (Ctrl+B)"
-          aria-label="Expand sidebar"
-        >
-          <PanelLeftOpen className="w-4 h-4" />
-        </button>
-
-        <div className="w-6 h-[1px] bg-[#22242a]" />
-
-        {/* View Switch Icons */}
-        <button
-          onClick={() => onSelectView?.("chat")}
-          className={`p-2 rounded-xs transition-colors cursor-pointer ${
-            activeView === "chat"
-              ? "bg-[#1f2127] text-white border border-[#32353c]"
-              : "text-[#858b94] hover:text-white"
-          }`}
-          title="Chat mode"
-          aria-label="Chat mode"
-        >
-          <MessageSquare className="w-4 h-4" />
-        </button>
-
-        <button
-          onClick={() => onSelectView?.("coding")}
-          className={`p-2 rounded-xs transition-colors cursor-pointer ${
-            activeView === "coding"
-              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
-              : "text-[#858b94] hover:text-cyan-300"
-          }`}
-          title="Workspace mode"
-          aria-label="Workspace mode"
-        >
-          <Code2 className="w-4 h-4" />
-        </button>
-
-        <div className="w-6 h-[1px] bg-[#22242a]" />
-
-        {/* New Chat Icon */}
-        <button
-          onClick={() => {
-            onSelectView?.("chat");
-            onNewChat();
-          }}
-          className="p-2 rounded-xs bg-[#16171b] border border-[#272a31] text-white hover:bg-[#1c1e24] hover:border-[#383d47] transition-colors cursor-pointer"
-          title="New Chat (Ctrl+N)"
-          aria-label="New Chat"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
-
-        {/* Search Icon */}
-        <button
-          onClick={() => {
-            toggleCollapsed();
-            setTimeout(() => searchInputRef.current?.focus(), 100);
-          }}
-          className="p-2 rounded-xs text-[#858b94] hover:text-white hover:bg-[#181a1f] transition-colors cursor-pointer"
-          title="Search conversations (Ctrl+K)"
-          aria-label="Search conversations"
-        >
-          <Search className="w-4 h-4" />
+          <SolixLogo size="sm" px={28} />
         </button>
       </div>
 
-      {/* Bottom: Settings */}
-      <div className="flex flex-col items-center gap-2">
-        <button
-          onClick={onOpenSettings}
-          className="p-2 rounded-xs text-[#858b94] hover:text-white hover:bg-[#181a1f] transition-colors cursor-pointer"
-          title="Settings"
-          aria-label="Settings"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
+      {/* Body: Action icons */}
+      <div className="flex-1 flex flex-col items-center justify-between py-2.5 w-full">
+        <div className="flex flex-col items-center gap-3">
+          <button
+            onClick={toggleCollapsed}
+            className="p-1.5 rounded-xs text-[#787e88] hover:text-white hover:bg-[#1c1e23] transition-colors cursor-pointer"
+            title="Expand sidebar (Ctrl+B)"
+            aria-label="Expand sidebar"
+          >
+            <PanelLeftOpen className="w-4 h-4" />
+          </button>
 
-        <button
-          onClick={onOpenAbout}
-          className="p-2 rounded-xs text-[#858b94] hover:text-white hover:bg-[#181a1f] transition-colors cursor-pointer"
-          title="About Solix"
-          aria-label="About Solix"
-        >
-          <Info className="w-4 h-4" />
-        </button>
+          <div className="w-6 h-[1px] bg-[#22242a]" />
+
+          {/* View Switch Icons */}
+          <button
+            onClick={() => onSelectView?.("chat")}
+            className={`p-2 rounded-xs transition-colors cursor-pointer ${
+              activeView === "chat"
+                ? "bg-[#1f2127] text-white border border-[#32353c]"
+                : "text-[#858b94] hover:text-white"
+            }`}
+            title="Chat mode"
+            aria-label="Chat mode"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => onSelectView?.("coding")}
+            className={`p-2 rounded-xs transition-colors cursor-pointer ${
+              activeView === "coding"
+                ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+                : "text-[#858b94] hover:text-cyan-300"
+            }`}
+            title="Workspace mode"
+            aria-label="Workspace mode"
+          >
+            <Code2 className="w-4 h-4" />
+          </button>
+
+          <div className="w-6 h-[1px] bg-[#22242a]" />
+
+          {/* New Chat Icon */}
+          <button
+            onClick={() => {
+              onSelectView?.("chat");
+              onNewChat();
+            }}
+            className="p-2 rounded-xs bg-[#16171b] border border-[#272a31] text-white hover:bg-[#1c1e24] hover:border-[#383d47] transition-colors cursor-pointer"
+            title="New Chat (Ctrl+N)"
+            aria-label="New Chat"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+
+          {/* Search Icon */}
+          <button
+            onClick={() => {
+              toggleCollapsed();
+              setTimeout(() => searchInputRef.current?.focus(), 100);
+            }}
+            className="p-2 rounded-xs text-[#858b94] hover:text-white hover:bg-[#181a1f] transition-colors cursor-pointer"
+            title="Search conversations (Ctrl+K)"
+            aria-label="Search conversations"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Bottom: Settings */}
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={onOpenSettings}
+            className="p-2 rounded-xs text-[#858b94] hover:text-white hover:bg-[#181a1f] transition-colors cursor-pointer"
+            title="Settings"
+            aria-label="Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={onOpenAbout}
+            className="p-2 rounded-xs text-[#858b94] hover:text-white hover:bg-[#181a1f] transition-colors cursor-pointer"
+            title="About Solix"
+            aria-label="About Solix"
+          >
+            <Info className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -596,7 +606,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     <>
       {/* Desktop Fixed/Collapsible Sidebar */}
       <aside
-        className={`hidden md:flex flex-col h-full bg-[#121316] border-r border-[#202227] p-2.5 transition-all duration-200 ease-in-out shrink-0 ${
+        className={`hidden md:flex flex-col h-full bg-[#121316] border-r border-[#202227] transition-all duration-200 ease-in-out shrink-0 ${
           isCollapsed ? "w-13 min-w-13" : "w-[260px] min-w-[260px]"
         } ${
           transitionState === "entering"
@@ -620,7 +630,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
       {/* Mobile Slide-Out Drawer */}
       <div
-        className={`fixed top-0 bottom-0 left-0 w-[275px] max-w-[85vw] h-full bg-[#121316] border-r border-[#22242a] z-50 md:hidden transition-transform duration-250 ease-out shadow-2xl p-3 flex flex-col ${
+        className={`fixed top-0 bottom-0 left-0 w-[275px] max-w-[85vw] h-full bg-[#121316] border-r border-[#22242a] z-50 md:hidden transition-transform duration-250 ease-out shadow-2xl flex flex-col ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

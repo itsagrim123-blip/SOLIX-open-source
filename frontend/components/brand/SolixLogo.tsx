@@ -24,7 +24,7 @@ export function SolixLogo({ size = "sm", px, className = "" }: SolixLogoProps) {
       alt="Solix"
       width={dim}
       height={dim}
-      className={`object-contain flex-shrink-0 mix-blend-screen ${className}`}
+      className={`object-contain flex-shrink-0 ${className}`}
       priority
     />
   );
