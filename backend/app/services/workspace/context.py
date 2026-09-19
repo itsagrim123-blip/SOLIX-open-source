@@ -54,7 +54,13 @@ class CodeContextEngine:
 
     def _get_workspace_code_files(self, workspace_id: str) -> List[Tuple[str, str]]:
         """Collect all text code files in a workspace as (relative_path, content)."""
-        ws_dir = workspace_storage.resolve_safe_path(workspace_id, ".")
+        try:
+            ws_dir = workspace_storage.resolve_safe_path(workspace_id, ".")
+            if not ws_dir.exists():
+                return []
+        except Exception:
+            return []
+
         files: List[Tuple[str, str]] = []
 
         for root, dirs, filenames in os.walk(ws_dir):
@@ -116,9 +122,17 @@ class CodeContextEngine:
         """Assemble a grounded context string across the entire coding project with strict priority."""
         code_files = self._get_workspace_code_files(workspace_id)
         if not code_files:
-            return "No project files found in workspace."
+            fallback = "No project files found on disk."
+            if current_file:
+                fallback += f"\n--- ACTIVE FILE: {current_file} ---"
+                if selected_code:
+                    fallback += f"\n--- USER SELECTED CODE ---\n{selected_code}"
+            return fallback
 
-        tree_nodes = workspace_storage.get_workspace_tree(workspace_id)
+        try:
+            tree_nodes = workspace_storage.get_workspace_tree(workspace_id)
+        except Exception:
+            tree_nodes = []
         file_list_summary = []
 
         def recurse_summary(nodes: List[Dict[str, Any]], indent: int = 0):

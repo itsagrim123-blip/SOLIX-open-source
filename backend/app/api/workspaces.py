@@ -60,6 +60,7 @@ class WorkspaceChatRequest(BaseModel):
     open_files: Optional[List[str]] = None
     terminal_context: Optional[str] = None
     web_search: bool = Field(default=False)
+    files: Optional[List[Dict[str, str]]] = Field(default=None, description="Client-provided local file snapshot")
 
 
 class AgentRunRequest(BaseModel):
@@ -401,15 +402,26 @@ async def get_git_status(workspace_id: str):
 @router.post("/{workspace_id}/chat")
 async def workspace_chat(workspace_id: str, payload: WorkspaceChatRequest):
     """Stream coding assistant responses via SSE with grounded multi-file codebase context."""
+    is_ephemeral = bool(payload.files)
+    if payload.files:
+        try:
+            workspace_storage.create_ephemeral_workspace(workspace_id, payload.files)
+        except Exception as e:
+            logger.warning(f"Could not stage ephemeral files for chat in {workspace_id}: {e}")
+
     try:
-        # 1. Build rich codebase context
-        project_context = code_context_engine.build_context(
-            workspace_id=workspace_id,
-            query=payload.message,
-            current_file=payload.current_file,
-            selected_code=payload.selected_code,
-            open_files=payload.open_files,
-        )
+        # 1. Build rich codebase context with safe fallback
+        try:
+            project_context = code_context_engine.build_context(
+                workspace_id=workspace_id,
+                query=payload.message,
+                current_file=payload.current_file,
+                selected_code=payload.selected_code,
+                open_files=payload.open_files,
+            )
+        except Exception as ctx_err:
+            logger.warning(f"Code context build fallback: {ctx_err}")
+            project_context = "Workspace context unavailable."
 
         user_prompt = payload.message.strip()
 
@@ -517,6 +529,9 @@ async def workspace_chat(workspace_id: str, payload: WorkspaceChatRequest):
             except Exception as e:
                 logger.error(f"Coding stream error: {e}", exc_info=True)
                 yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            finally:
+                if is_ephemeral:
+                    workspace_storage.cleanup_ephemeral_workspace(workspace_id)
 
         return StreamingResponse(
             sse_generator(),
@@ -530,6 +545,8 @@ async def workspace_chat(workspace_id: str, payload: WorkspaceChatRequest):
 
     except Exception as e:
         logger.error(f"Failed to initiate workspace chat: {e}", exc_info=True)
+        if is_ephemeral:
+            workspace_storage.cleanup_ephemeral_workspace(workspace_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 

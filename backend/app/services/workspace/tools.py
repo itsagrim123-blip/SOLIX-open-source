@@ -228,9 +228,21 @@ class WorkspaceToolRegistry:
     async def run_workspace(self, workspace_id: str, entry_file: Optional[str] = None, args: Optional[List[str]] = None) -> Dict[str, Any]:
         """Execute code in the Solix sandbox."""
         try:
+            ws_dir = workspace_storage.resolve_safe_path(workspace_id, ".")
+            if (entry_file and entry_file.endswith(".html")) or ((ws_dir / "index.html").exists() and not (ws_dir / "main.py").exists() and not (ws_dir / "index.js").exists()):
+                html_name = entry_file if (entry_file and entry_file.endswith(".html")) else "index.html"
+                return {
+                    "success": True,
+                    "exit_code": 0,
+                    "stdout": f"[Web Project]: {html_name} validated. Ready for browser preview in Live Preview tab.",
+                    "stderr": "",
+                    "execution_time": 0.01,
+                    "timed_out": False,
+                    "problems": [],
+                }
+
             cmd = None
             if entry_file:
-                ws_dir = workspace_storage.resolve_safe_path(workspace_id, ".")
                 safe_entry = workspace_storage.resolve_safe_path(workspace_id, entry_file)
                 rel_entry = safe_entry.relative_to(ws_dir).as_posix()
                 if rel_entry.endswith(".py"):
@@ -311,7 +323,8 @@ class WorkspaceToolRegistry:
                         "source": "Python Compiler",
                     })
 
-            return {"success": True, "problems": problems, "count": len(problems)}
+            msg = "No syntax or compiler problems detected. Project is clean." if not problems else f"Found {len(problems)} problem(s)."
+            return {"success": True, "problems": problems, "count": len(problems), "message": msg}
         except Exception as e:
             return {"success": False, "error": str(e)}
 

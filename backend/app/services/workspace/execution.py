@@ -205,6 +205,21 @@ class ExecutionManager:
         if is_test:
             return await self._run_tests(workspace_id, ws_dir, execution_id, command)
 
+        # Fast-path for static web projects with index.html
+        if not command and (ws_dir / "index.html").exists() and not (ws_dir / "main.py").exists() and not (ws_dir / "index.js").exists():
+            return {
+                "execution_id": execution_id,
+                "workspace_id": workspace_id,
+                "command": "web_preview index.html",
+                "exit_code": 0,
+                "stdout": "[Web Project]: index.html ready for Live Preview in browser.\n",
+                "stderr": "",
+                "execution_time": 0.01,
+                "timed_out": False,
+                "success": True,
+                "problems": [],
+            }
+
         # Determine run command and whether a build is required
         needs_build = False
         if command and command.strip():

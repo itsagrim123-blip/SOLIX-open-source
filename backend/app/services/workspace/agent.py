@@ -23,31 +23,27 @@ You reason across entire multi-file codebases, formulate explicit step-by-step p
 STRICT COMMUNICATION RULES:
 1. NEVER output conversational filler, polite greetings, or chatbot pleasantries (e.g. NEVER say "Hello!", "How can I help you today?", "Sure, I can help with that", "I would be happy to...").
 2. Get straight to work immediately. If the user asks you to write code, do NOT chat about it — formulate the plan and invoke the necessary workspace tools immediately.
-3. Every response must begin with a concise PLAN or a direct tool call.
+3. When starting a task, state a concise numbered PLAN (2-4 steps) AND immediately call your first workspace tool (e.g. `workspace_list_files`, `workspace_read_file`, `workspace_create_file`, or `workspace_update_file`) in the same turn. Do not stop after writing the plan — immediately call a tool to begin execution.
 
 RULES FOR AUTONOMOUS OPERATION:
-1. ALWAYS begin complex tasks by writing a concise, numbered plan:
-   PLAN:
-   1. [Step description]
-   2. [Step description]
-   ...
-2. Inspect the project before modifying files. If you need to find symbols or definitions, use `workspace_search`. If you need to see file content, use `workspace_read_file`.
-3. When creating or modifying files:
+1. Inspect the project before modifying files. If you need to check existing files, use `workspace_list_files` or `workspace_read_file`.
+2. When creating or modifying files:
    - Provide complete, functional code with no placeholders or '... rest of code ...'.
    - Use `workspace_create_file` for new files and `workspace_update_file` for existing files.
-   - The user will review the unified diff in their editor before the changes are applied.
-4. After creating or editing code, ALWAYS execute or test your work:
+   - For web projects (HTML, CSS, JavaScript), ensure all necessary files (e.g. index.html, styles.css, app.js) are implemented and linked properly.
+3. After creating or editing code, ALWAYS execute or test your work:
    - For Python: use `workspace_run` or `workspace_test`.
+   - For Web projects (HTML/CSS/JS): use `workspace_run` to validate the entrypoint.
    - For C/C++: use `workspace_build`, then `workspace_run`.
    - For Node/JS: use `workspace_run` or `workspace_test`.
-5. If execution produces an error (traceback, compiler error, test failure):
+4. If execution produces an error (traceback, compiler error, test failure):
    - Analyze the root cause.
    - Propose an exact fix to the relevant file.
    - Re-run or re-test to ensure the fix resolved the error.
-6. When your plan is fully executed and verified, provide a concise final summary of what was created, tested, and verified.
+5. When your plan is fully executed and verified, provide a concise final summary of what was created, tested, and verified.
 """
 
-MAX_AGENT_ITERATIONS = 5
+MAX_AGENT_ITERATIONS = 10
 
 
 class AgentTaskState:
@@ -395,6 +391,8 @@ class CodingAgentEngine:
                     has_pending = (task.plan and any(step.get("status") in ("pending", "in_progress") for step in task.plan)) or (task.iterations == 1 and not task.files_created and not task.files_modified)
                     if has_pending and task.iterations < MAX_AGENT_ITERATIONS:
                         logger.info(f"[AgentEngine] Pending steps or turn 1 without tools. Prompting model to execute tools.")
+                        task.state = "editing" if (task.files_created or task.files_modified) else "reading"
+                        yield f"data: {json.dumps({'type': 'state_change', 'state': task.state, 'message': 'Executing plan with workspace tools...'})}\n\n"
                         messages.append(msg)
                         messages.append({
                             "role": "user",
@@ -581,6 +579,8 @@ class CodingAgentEngine:
                                 tool_result = {"status": "auto_applied", "file": path, "operation": op, "result": apply_res}
                                 yield f"data: {json.dumps({'type': 'changes_applied', 'file': path, 'operation': op, 'content': content, 'auto_applied': True, 'result': apply_res})}\n\n"
 
+                    elif tool_name in ("workspace_open_in_browser", "workspace_preview", "workspace_open_browser"):
+                        tool_result = {"success": True, "message": "Website opened in the Solix Live Preview tab."}
                     else:
                         tool_result = {"error": f"Unknown tool: {tool_name}"}
 

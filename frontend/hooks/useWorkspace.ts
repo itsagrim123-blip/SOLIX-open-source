@@ -854,7 +854,12 @@ export function useWorkspace() {
       });
 
       if (!response.ok || !response.body) {
-        throw new Error(`Agent run failed: ${response.statusText}`);
+        let errDetail = "";
+        try {
+          const errJson = await response.json();
+          errDetail = errJson.detail || errJson.message || errJson.error || "";
+        } catch {}
+        throw new Error(errDetail || response.statusText || `HTTP ${response.status}`);
       }
 
       const reader = response.body.getReader();
@@ -997,6 +1002,9 @@ export function useWorkspace() {
               }
             } else if (event.type === "agent_completed") {
               setAgentState("completed");
+              setMessages((prev) =>
+                prev.map((m) => (m.id === assistantMsgId ? { ...m, agentState: "completed" } : m))
+              );
               if (event.file_contents && activeWorkspace) {
                 for (const [filePath, fileText] of Object.entries(event.file_contents)) {
                   if (typeof fileText === "string") {
@@ -1008,8 +1016,22 @@ export function useWorkspace() {
               refreshWorkspace();
             } else if (event.type === "agent_failed") {
               setAgentState("failed");
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId
+                    ? {
+                        ...m,
+                        agentState: "failed",
+                        content: m.content + (event.error ? `\n\n[Agent Error: ${event.error}]` : ""),
+                      }
+                    : m
+                )
+              );
             } else if (event.type === "agent_cancelled") {
               setAgentState("cancelled");
+              setMessages((prev) =>
+                prev.map((m) => (m.id === assistantMsgId ? { ...m, agentState: "cancelled" } : m))
+              );
             }
           } catch {}
         }
@@ -1021,6 +1043,7 @@ export function useWorkspace() {
             ? {
                 ...m,
                 isStreaming: false,
+                agentState: m.agentState === "planning" ? "completed" : m.agentState,
                 content: accumulatedText || m.content,
                 plan: latestPlan.length > 0 ? latestPlan : m.plan,
                 tools: currentTools,
@@ -1101,6 +1124,15 @@ export function useWorkspace() {
     abortControllerRef.current = new AbortController();
 
     try {
+      // Collect local files for context snapshot
+      let filesPayload: { path: string; content: string }[] | undefined = undefined;
+      try {
+        const localFiles = await workspaceStorage.getAllFiles(activeWorkspace.id);
+        filesPayload = localFiles.map((f) => ({ path: f.path, content: f.content }));
+      } catch (e) {
+        console.warn("Failed to retrieve local files for chat context", e);
+      }
+
       const response = await fetch(workspaceApi.getChatUrl(activeWorkspace.id), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1111,12 +1143,18 @@ export function useWorkspace() {
           open_files: openFiles,
           terminal_context: termCtx,
           web_search: options.webSearch ?? webSearchEnabled,
+          files: filesPayload,
         }),
         signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok || !response.body) {
-        throw new Error(`Chat error: ${response.statusText}`);
+        let errDetail = "";
+        try {
+          const errJson = await response.json();
+          errDetail = errJson.detail || errJson.message || errJson.error || "";
+        } catch {}
+        throw new Error(errDetail || response.statusText || `HTTP ${response.status}`);
       }
 
       const reader = response.body.getReader();
@@ -1166,6 +1204,13 @@ export function useWorkspace() {
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantMsgId ? { ...m, sources: event.sources } : m
+                )
+              );
+            } else if (event.type === "error") {
+              accumulatedText += (accumulatedText ? "\n\n" : "") + `[Error: ${event.error || "Generation error"}]`;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId ? { ...m, content: accumulatedText } : m
                 )
               );
             }

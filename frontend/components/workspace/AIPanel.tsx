@@ -499,7 +499,9 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                     <div className="flex items-center gap-2 text-[10.5px] font-mono text-[#717680]">
                       <span className="font-semibold text-[#d4d7dc]">SOLIX</span>
                       {msg.agentState && msg.agentState !== "idle" && (
-                        <span>· {renderAgentStatusText(msg.agentState)}</span>
+                        <span>
+                          · {(!msg.isStreaming && msg.agentState === "planning") ? "Completed" : renderAgentStatusText(msg.agentState)}
+                        </span>
                       )}
                     </div>
 
