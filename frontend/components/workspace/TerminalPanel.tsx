@@ -71,12 +71,12 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
 
   return (
     <div
-      className={`border-t border-[#292c31] bg-[#0d0e10] flex flex-col transition-all duration-150 select-none ${
-        isCollapsed ? "h-[30px]" : isExpanded ? "h-[420px]" : "h-[220px]"
+      className={`border-t border-[#22242a] bg-[#0d0f12] flex flex-col transition-all duration-150 select-none ${
+        isCollapsed ? "h-[30px]" : isExpanded ? "h-[420px]" : "h-full"
       }`}
     >
       {/* Docked IDE Bottom Panel Header (30px) */}
-      <div className="flex items-center justify-between px-2 h-[30px] bg-[#111214] border-b border-[#292c31] select-none shrink-0">
+      <div className="flex items-center justify-between px-2 h-[30px] bg-[#111214] border-b border-[#22242a] select-none shrink-0">
         {/* Left Tabs */}
         <div className="flex items-center h-full">
           <button
@@ -87,8 +87,8 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
             }}
             className={`flex items-center gap-1.5 px-3 h-full text-[11px] font-mono tracking-wider transition-colors cursor-pointer border-b-2 ${
               activeTab === "terminal"
-                ? "text-[#d4d7dc] border-cyan-500 bg-[#16171a] font-semibold"
-                : "text-[#858b94] border-transparent hover:text-[#d4d7dc] hover:bg-[#151619]"
+                ? "text-[#e2e8f0] border-cyan-500 bg-[#16171b] font-semibold"
+                : "text-[#858b94] border-transparent hover:text-[#d4d7dc] hover:bg-[#141518]"
             }`}
           >
             <TerminalIcon className="w-3 h-3" />
@@ -103,15 +103,19 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
             }}
             className={`flex items-center gap-1.5 px-3 h-full text-[11px] font-mono tracking-wider transition-colors cursor-pointer border-b-2 ${
               activeTab === "problems"
-                ? "text-[#d4d7dc] border-cyan-500 bg-[#16171a] font-semibold"
-                : "text-[#858b94] border-transparent hover:text-[#d4d7dc] hover:bg-[#151619]"
+                ? "text-[#e2e8f0] border-cyan-500 bg-[#16171b] font-semibold"
+                : "text-[#858b94] border-transparent hover:text-[#d4d7dc] hover:bg-[#141518]"
             }`}
           >
             <AlertCircle
               className={`w-3 h-3 ${problemCount > 0 ? "text-rose-400" : "text-[#666c75]"}`}
             />
             <span>PROBLEMS</span>
-            <span className={`text-[10px] font-mono ${problemCount > 0 ? "text-rose-400 font-bold" : "text-[#666c75]"}`}>
+            <span
+              className={`text-[10px] font-mono ${
+                problemCount > 0 ? "text-rose-400 font-bold" : "text-[#666c75]"
+              }`}
+            >
               ({problemCount})
             </span>
           </button>
@@ -124,8 +128,8 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
             }}
             className={`flex items-center gap-1.5 px-3 h-full text-[11px] font-mono tracking-wider transition-colors cursor-pointer border-b-2 ${
               activeTab === "git"
-                ? "text-[#d4d7dc] border-cyan-500 bg-[#16171a] font-semibold"
-                : "text-[#858b94] border-transparent hover:text-[#d4d7dc] hover:bg-[#151619]"
+                ? "text-[#e2e8f0] border-cyan-500 bg-[#16171b] font-semibold"
+                : "text-[#858b94] border-transparent hover:text-[#d4d7dc] hover:bg-[#141518]"
             }`}
           >
             <GitBranch className="w-3 h-3" />
@@ -205,7 +209,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
 
       {/* Terminal Content Body */}
       {!isCollapsed && (
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 font-mono text-xs select-text bg-[#0d0e10]">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 font-mono text-xs select-text bg-[#0d0f12]">
           {activeTab === "terminal" && (
             <div className="space-y-2">
               {output ? (
@@ -213,8 +217,8 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
                   {output}
                 </pre>
               ) : (
-                <div className="text-[#555a62] italic text-[11px]">
-                  $ Terminal ready. Click &apos;Run&apos; (Ctrl+Enter) or &apos;Test&apos; to execute project.
+                <div className="text-[#666c75] text-[11px] font-mono">
+                  Terminal ready · Ctrl+Enter to run
                 </div>
               )}
 
@@ -322,8 +326,8 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
                 </button>
               </div>
             ) : (
-              <div className="text-xs text-[#555a62] italic py-3">
-                No problems or compiler warnings detected in active project.
+              <div className="text-[11px] text-[#666c75] font-mono py-2">
+                No problems detected.
               </div>
             )
           )}

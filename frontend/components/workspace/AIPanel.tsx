@@ -242,15 +242,17 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#111214] border-l border-[#292c31] select-none text-[#d4d7dc]">
+    <div className="h-full flex flex-col bg-[#111214] border-l border-[#22242a] select-none text-[#d4d7dc]">
       {/* Top Header: AI Developer Tool Panel (34px) */}
-      <div className="flex items-center justify-between px-3 h-[34px] border-b border-[#292c31] bg-[#111214] shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[10.5px] font-mono font-semibold tracking-wider text-[#858b94] uppercase">
+      <div className="flex items-center justify-between px-3 h-[34px] border-b border-[#22242a] bg-[#111214] shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <SolixLogo size="sm" px={16} />
+          <span className="text-[10.5px] font-mono font-semibold tracking-wider text-white uppercase">
             SOLIX CODE AI
           </span>
-          <span className="text-[10px] font-mono text-[#555a62] hidden sm:inline truncate">
-            qwen2.5-coder:7b
+          <span className="text-[#3c4048] font-mono text-[10px]">·</span>
+          <span className="text-[10px] font-mono text-[#787f8c] hidden sm:inline truncate">
+            {agentMode === "agent" ? "Agent" : "Ask"} · qwen2.5-coder:7b
           </span>
         </div>
 
@@ -385,41 +387,65 @@ export const AIPanel: React.FC<AIPanelProps> = ({
       {/* Messages Thread */}
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 font-sans text-xs select-text">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col justify-center p-2 text-[#858b94] select-none">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-[#a5abb5] mb-1 font-semibold flex items-center gap-1.5">
-              <span>{agentMode === "agent" ? "Autonomous Agent Mode" : "Ask Assistant Mode"}</span>
+          <div className="h-full flex flex-col justify-center px-4 py-6 text-[#858b94] select-none max-w-sm mx-auto">
+            <div className="flex items-center gap-2 mb-2">
+              <SolixLogo size="sm" px={20} />
+              <span className="text-xs font-mono font-semibold text-[#e2e8f0] uppercase tracking-wider">
+                SOLIX CODE AI
+              </span>
             </div>
-            <p className="text-xs text-[#858b94] leading-relaxed mb-3">
-              {agentMode === "agent"
-                ? "Assign tasks to the autonomous agent. Solix will inspect the codebase, plan changes, edit files, and execute code in the sandbox."
-                : "Ask questions about the project architecture, inspect code logic, or debug selected lines."}
+            <p className="text-xs text-[#858b94] mb-4 font-sans leading-relaxed">
+              Ready to work on your project.
             </p>
-            <div className="space-y-1.5 text-[11px] text-[#666c75] font-mono">
-              {agentMode === "agent" ? (
-                <>
-                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => onSendMessage("Create a starter python module with clean unit tests")}>
-                    &bull; Create module with unit tests
-                  </div>
-                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("fix")}>
-                    &bull; Inspect errors and apply verified fix
-                  </div>
-                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("refactor")}>
-                    &bull; Refactor file architecture
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("explain")}>
-                    &bull; Explain current file architecture
-                  </div>
-                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("debug")}>
-                    &bull; Inspect potential bugs or edge cases
-                  </div>
-                  <div className="hover:text-[#d4d7dc] cursor-pointer" onClick={() => handleActionClick("tests")}>
-                    &bull; How should I test this code?
-                  </div>
-                </>
-              )}
+
+            <div className="text-[10.5px] font-mono text-[#666c75] uppercase tracking-wider mb-2 font-semibold">
+              Try:
+            </div>
+
+            <div className="space-y-1.5 text-xs font-sans">
+              <button
+                type="button"
+                onClick={() =>
+                  onSendMessage(
+                    agentMode === "agent"
+                      ? `Add comprehensive unit tests for ${activeFile || "this project"}`
+                      : `How should I test ${activeFile || "this code"}?`
+                  )
+                }
+                className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xs bg-[#15171c] hover:bg-[#1c1f26] text-[#a5abb5] hover:text-white border border-[#22242a] hover:border-[#32353e] transition-colors cursor-pointer"
+              >
+                <span className="text-cyan-400 font-mono font-bold">›</span>
+                <span>Add unit tests</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleActionClick("fix")}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xs bg-[#15171c] hover:bg-[#1c1f26] text-[#a5abb5] hover:text-white border border-[#22242a] hover:border-[#32353e] transition-colors cursor-pointer"
+              >
+                <span className="text-cyan-400 font-mono font-bold">›</span>
+                <span>Fix the current error</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleActionClick("refactor")}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xs bg-[#15171c] hover:bg-[#1c1f26] text-[#a5abb5] hover:text-white border border-[#22242a] hover:border-[#32353e] transition-colors cursor-pointer"
+              >
+                <span className="text-cyan-400 font-mono font-bold">›</span>
+                <span>
+                  Refactor {activeFile ? activeFile.split("/").pop() : "codebase"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleActionClick("explain")}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xs bg-[#15171c] hover:bg-[#1c1f26] text-[#a5abb5] hover:text-white border border-[#22242a] hover:border-[#32353e] transition-colors cursor-pointer"
+              >
+                <span className="text-cyan-400 font-mono font-bold">›</span>
+                <span>Explain this project</span>
+              </button>
             </div>
           </div>
         ) : (
@@ -537,19 +563,19 @@ export const AIPanel: React.FC<AIPanelProps> = ({
 
       {/* Input Command Box */}
       <form onSubmit={handleSubmit} className="p-2 border-t border-[#292c31] bg-[#111214]">
-        <div className="rounded-xs border border-[#292c31] bg-[#0d0e10] focus-within:border-[#424650] transition-colors">
+        <div className="rounded-xs border border-[#22242a] bg-[#0d0f12] focus-within:border-[#3a3f4b] transition-colors">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
               agentMode === "agent"
-                ? "Assign task to agent (Enter to run)..."
+                ? "Describe a task for the Agent..."
                 : selectedCode
-                ? "Ask about selected code (Enter to send)..."
+                ? "Ask about selected code..."
                 : activeFile
-                ? `Ask about ${activeFile} (Enter to send)...`
-                : "Ask Solix about this project..."
+                ? `Ask about ${activeFile}...`
+                : "Ask about this project..."
             }
             rows={2}
             className="w-full bg-transparent px-2.5 py-1.5 text-xs text-[#d4d7dc] placeholder:text-[#555a62] outline-none resize-none font-sans"
@@ -630,15 +656,15 @@ const PlanWidget: React.FC<{ plan: AgentPlanStep[] }> = ({ plan }) => {
   const completedCount = plan.filter((p) => p.status === "completed").length;
 
   return (
-    <div className="rounded-xs border border-[#292c31] bg-[#141519] overflow-hidden text-xs">
+    <div className="rounded-xs border border-[#22242a] bg-[#141519] overflow-hidden text-xs">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-2.5 py-1.5 bg-[#16171c] hover:bg-[#1a1c22] transition-colors text-left cursor-pointer border-b border-[#202227]"
       >
         <div className="flex items-center gap-1.5">
-          <span className="text-[10.5px] font-mono font-semibold text-[#858b94] uppercase tracking-wider">
-            Task Plan
+          <span className="text-[10px] font-mono font-semibold text-[#858b94] uppercase tracking-wider">
+            PLAN
           </span>
           <span className="text-[10px] font-mono text-[#666c75]">
             ({completedCount}/{plan.length})
@@ -652,7 +678,7 @@ const PlanWidget: React.FC<{ plan: AgentPlanStep[] }> = ({ plan }) => {
       </button>
 
       {isOpen && (
-        <div className="p-2 space-y-1.5 bg-[#0d0e10] font-mono text-[11px]">
+        <div className="p-2 space-y-1.5 bg-[#0d0f12] font-mono text-[11px]">
           {plan.map((step) => {
             let icon = (
               <span className="w-2.5 h-2.5 rounded-full border border-[#4a505b] inline-block shrink-0 mt-0.5" />
@@ -693,7 +719,7 @@ const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) =
   };
 
   return (
-    <div className="rounded-xs border border-[#292c31] bg-[#141519] overflow-hidden text-xs">
+    <div className="rounded-xs border border-[#22242a] bg-[#141519] overflow-hidden text-xs">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -701,8 +727,8 @@ const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) =
       >
         <div className="flex items-center gap-1.5">
           <Code2 className="w-3 h-3 text-[#666c75]" />
-          <span className="text-[10.5px] font-mono text-[#858b94] uppercase tracking-wide">
-            Activity ({tools.length})
+          <span className="text-[10px] font-mono text-[#858b94] uppercase tracking-wider font-semibold">
+            ACTIVITY ({tools.length})
           </span>
         </div>
         {isOpen ? (
@@ -713,7 +739,7 @@ const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) =
       </button>
 
       {isOpen && (
-        <div className="p-1.5 space-y-1 bg-[#0d0e10] max-h-56 overflow-y-auto">
+        <div className="p-1.5 space-y-1 bg-[#0d0f12] max-h-56 overflow-y-auto">
           {tools.map((t, i) => {
             const isRun = t.status === "running";
             const isErr = t.status === "error";
@@ -747,15 +773,15 @@ const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) =
                     <button
                       type="button"
                       onClick={(e) => toggleDetail(i, e)}
-                      className="text-[9.5px] text-[#666c75] hover:text-[#a5abb5] underline shrink-0 cursor-pointer ml-1"
+                      className="text-[9.5px] text-[#666c75] hover:text-[#a5abb5] shrink-0 cursor-pointer ml-1 font-mono"
                     >
-                      {isDetailOpen ? "hide" : "details"}
+                      {isDetailOpen ? "▾ details" : "▸ details"}
                     </button>
                   )}
                 </div>
 
                 {isDetailOpen && (
-                  <div className="mt-1 p-1 bg-[#090a0c] rounded-xs border border-[#1e2025] text-[9.5px] text-[#858b94] overflow-x-auto max-h-24">
+                  <div className="mt-1 p-1.5 bg-[#090a0c] rounded-xs border border-[#1e2025] text-[9.5px] text-[#858b94] overflow-x-auto max-h-24">
                     {hasArgs && (
                       <div>
                         <span className="text-[#555a62]">args: </span>
@@ -765,7 +791,11 @@ const ToolActivityCard: React.FC<{ tools: AgentToolActivity[] }> = ({ tools }) =
                     {hasResult && (
                       <div className="mt-0.5 truncate">
                         <span className="text-[#555a62]">result: </span>
-                        <span>{typeof t.result === "string" ? t.result.slice(0, 150) : JSON.stringify(t.result).slice(0, 150)}</span>
+                        <span>
+                          {typeof t.result === "string"
+                            ? t.result.slice(0, 150)
+                            : JSON.stringify(t.result).slice(0, 150)}
+                        </span>
                       </div>
                     )}
                   </div>

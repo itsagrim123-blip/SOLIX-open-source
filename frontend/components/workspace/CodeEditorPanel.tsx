@@ -108,16 +108,21 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
         { token: "number", foreground: "ffab70" },
         { token: "type", foreground: "b392f0" },
         { token: "function", foreground: "b392f0" },
+        { token: "variable", foreground: "d4d7dc" },
       ],
       colors: {
-        "editor.background": "#0d0e10",
+        "editor.background": "#0d0f12",
         "editor.foreground": "#d4d7dc",
-        "editor.lineHighlightBackground": "#141619",
-        "editorCursor.foreground": "#58a6ff",
-        "editorLineNumber.foreground": "#42464e",
-        "editorLineNumber.activeForeground": "#d4d7dc",
-        "editor.selectionBackground": "#222730",
-        "editor.inactiveSelectionBackground": "#191c22",
+        "editor.lineHighlightBackground": "#15181e",
+        "editorCursor.foreground": "#38bdf8",
+        "editorLineNumber.foreground": "#454b56",
+        "editorLineNumber.activeForeground": "#e2e8f0",
+        "editor.selectionBackground": "#222f42",
+        "editor.inactiveSelectionBackground": "#182230",
+        "editorIndentGuide.background": "#1a1e26",
+        "editorIndentGuide.activeBackground": "#2c3546",
+        "editorBracketMatch.background": "#1e293b",
+        "editorBracketMatch.border": "#38bdf8",
       },
     });
     monaco.editor.setTheme("solix-ide-dark");
@@ -224,9 +229,9 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   const pathParts = activeFile ? activeFile.split("/") : [];
 
   return (
-    <div className="h-full flex flex-col bg-[#0d0e10] overflow-hidden select-none">
+    <div className="h-full flex flex-col bg-[#0d0f12] overflow-hidden select-none">
       {/* Top Tabs Bar: Classic IDE Rectangular Tabs (32px) */}
-      <div className="flex items-center justify-between border-b border-[#292c31] bg-[#111214] h-8 flex-shrink-0 select-none overflow-hidden">
+      <div className="flex items-center justify-between border-b border-[#22242a] bg-[#111214] h-8 flex-shrink-0 select-none overflow-hidden">
         {/* Tab List */}
         <div className="flex items-center overflow-x-auto h-full scrollbar-none flex-1 min-w-0">
           {openFiles.map((path) => {
@@ -238,12 +243,18 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
               <div
                 key={path}
                 onClick={() => onSelectFile(path)}
-                className={`group flex items-center gap-2 px-3 h-full text-xs font-medium cursor-pointer border-r border-[#292c31] transition-colors flex-shrink-0 relative ${
+                onMouseDown={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    onCloseFile(path);
+                  }
+                }}
+                className={`group flex items-center gap-2 px-3 h-full text-xs font-medium cursor-pointer border-r border-[#22242a] transition-colors flex-shrink-0 relative ${
                   isActive
-                    ? "bg-[#0d0e10] text-[#d4d7dc] border-t-2 border-t-cyan-500 font-semibold"
-                    : "bg-[#111214] text-[#858b94] hover:bg-[#151619] hover:text-[#d4d7dc] border-t-2 border-t-transparent"
+                    ? "bg-[#0d0f12] text-[#e2e8f0] border-t-2 border-t-cyan-500 font-semibold"
+                    : "bg-[#111214] text-[#858b94] hover:bg-[#15171b] hover:text-[#d4d7dc] border-t-2 border-t-transparent"
                 }`}
-                title={path}
+                title={`${path} (middle-click to close)`}
               >
                 <span className="truncate max-w-[150px]">{fileName}</span>
 
@@ -338,7 +349,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
 
       {/* Classic IDE Breadcrumb Path Bar (22px) */}
       {activeFile && (
-        <div className="h-[22px] px-3 bg-[#0d0e10] border-b border-[#202227] text-[11px] font-mono text-[#666c75] flex items-center justify-between shrink-0 select-none">
+        <div className="h-[22px] px-3 bg-[#0d0f12] border-b border-[#202227] text-[11px] font-mono text-[#666c75] flex items-center justify-between shrink-0 select-none">
           <div className="flex items-center gap-1 truncate">
             {pathParts.map((part, idx) => (
               <React.Fragment key={idx}>
@@ -365,7 +376,8 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
             theme="solix-ide-dark"
             options={{
               fontSize: 13,
-              fontFamily: "JetBrains Mono, Menlo, Monaco, Consolas, monospace",
+              lineHeight: 21,
+              fontFamily: "JetBrains Mono, Cascadia Code, Monaco, Menlo, Consolas, monospace",
               fontLigatures: true,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
@@ -377,7 +389,13 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
               bracketPairColorization: { enabled: true },
               formatOnPaste: true,
               suggestOnTriggerCharacters: true,
-              padding: { top: 6, bottom: 6 },
+              cursorBlinking: "smooth",
+              cursorSmoothCaretAnimation: "on",
+              cursorWidth: 2,
+              renderWhitespace: "selection",
+              guides: { indentation: true, bracketPairs: true },
+              padding: { top: 8, bottom: 8 },
+              smoothScrolling: true,
             }}
           />
         ) : (

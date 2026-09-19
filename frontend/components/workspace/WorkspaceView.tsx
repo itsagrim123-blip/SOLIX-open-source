@@ -414,9 +414,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
   const activeLanguage = getLanguageLabel(activeFile);
 
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0 bg-[#0d0e10] text-[#d4d7dc] overflow-hidden select-none">
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-[#0d0f12] text-[#d4d7dc] overflow-hidden select-none">
       {/* Top Bar: Classic Professional Desktop IDE Header (38px) */}
-      <div className="h-[38px] px-3 border-b border-[#292c31] bg-[#111214] flex items-center justify-between shrink-0 gap-3 z-20 select-none">
+      <div className="h-[38px] px-3 border-b border-[#22242a] bg-[#111214] flex items-center justify-between shrink-0 gap-3 z-20 select-none">
         {/* LEFT: Solix Logo + Project Selector Dropdown + Actions */}
         <div className="flex items-center gap-2 min-w-0">
           {/* Solix Brand Icon & Title */}
@@ -430,7 +430,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
           <span className="text-[#444850] font-mono text-xs">/</span>
 
           {/* Project Selector Dropdown */}
-          <div className="flex items-center gap-1.5 px-2 h-6 rounded-xs bg-[#16171a] border border-[#292c31] hover:border-[#383b42] transition-colors">
+          <div className="flex items-center gap-1.5 px-2 h-6 rounded-xs bg-[#16171a] border border-[#22242a] hover:border-[#2e323b] transition-colors">
             <Code2 className="w-3 h-3 text-cyan-400 shrink-0" />
             <select
               aria-label="Select active workspace"
@@ -476,11 +476,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               setPaletteMode("files");
               setIsCommandPaletteOpen(true);
             }}
-            className="w-full flex items-center justify-between px-2.5 h-6 rounded-xs bg-[#16171a] hover:bg-[#1c1e23] border border-[#292c31] hover:border-[#383b42] text-[11px] text-[#666c75] hover:text-[#a5abb5] transition-colors cursor-pointer"
+            className="w-full flex items-center justify-between px-2.5 h-6 rounded-xs bg-[#16171a] hover:bg-[#1a1c20] border border-[#22242a] hover:border-[#2e323b] text-[11px] text-[#787f8c] hover:text-[#9ca3af] transition-colors cursor-pointer"
             title="Search files or commands (Ctrl+P / Ctrl+Shift+P)"
           >
             <div className="flex items-center gap-1.5 truncate">
-              <Search className="w-3 h-3 text-[#666c75]" />
+              <Search className="w-3 h-3 text-[#787f8c]" />
               <span className="truncate">Search files or commands...</span>
             </div>
             <span className="text-[10px] font-mono text-[#555a62] shrink-0 ml-1">Ctrl+P</span>
@@ -529,7 +529,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
 
         {/* RIGHT: Chat / Workspace Mode Switcher */}
         <div className="flex items-center gap-2">
-          <div className="inline-flex items-center p-0.5 rounded-xs bg-[#151619] border border-[#292c31] text-xs">
+          <div className="inline-flex items-center p-0.5 rounded-xs bg-[#151619] border border-[#22242a] text-xs">
             <button
               onClick={onBackToChat}
               className="flex items-center gap-1 px-2.5 h-6 rounded-xs text-[#858b94] hover:text-white transition-colors font-medium cursor-pointer"
@@ -653,6 +653,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
                 tree={fileTree}
                 activeFile={activeFile}
                 projectName={activeWorkspace?.name || "PROJECT"}
+                dirtyFiles={dirtyFiles}
+                problems={problems}
+                gitStatus={gitStatus}
                 onSelectFile={openFile}
                 onCreateFileOrDir={createFileOrDir}
                 onDeletePath={deleteFileOrDir}
@@ -665,7 +668,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             {/* Splitter Resizer Handle between Explorer and Center */}
             <div
               onMouseDown={startResizingExplorer}
-              className="w-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-col-resize shrink-0 transition-colors z-10 border-r border-[#292c31]"
+              className="w-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-col-resize shrink-0 transition-colors z-10 border-r border-[#22242a]"
               title="Drag to resize File Explorer"
             />
           </>
@@ -704,7 +707,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               {/* Terminal Horizontal Resizer Splitter */}
               <div
                 onMouseDown={startResizingTerminal}
-                className="h-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-row-resize shrink-0 transition-colors z-10 border-t border-[#292c31]"
+                className="h-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-row-resize shrink-0 transition-colors z-10 border-t border-[#22242a]"
                 title="Drag to resize Terminal panel"
               />
               <div style={{ height: `${terminalHeight}px` }} className="overflow-hidden">
@@ -732,7 +735,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             {/* AI Panel Splitter Resizer Handle */}
             <div
               onMouseDown={startResizingAi}
-              className="w-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-col-resize shrink-0 transition-colors z-10 border-l border-[#292c31]"
+              className="w-1 bg-[#16171a] hover:bg-cyan-500 active:bg-cyan-500 cursor-col-resize shrink-0 transition-colors z-10 border-l border-[#22242a]"
               title="Drag to resize Solix Code AI panel"
             />
             <div
@@ -781,6 +784,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
               tree={fileTree}
               activeFile={activeFile}
               projectName={activeWorkspace?.name || "PROJECT"}
+              dirtyFiles={dirtyFiles}
+              problems={problems}
+              gitStatus={gitStatus}
               onSelectFile={(path) => {
                 openFile(path);
                 setMobileTab("editor");
@@ -886,20 +892,24 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
       </div>
 
       {/* Classic IDE Status Bar (22px) */}
-      <div className="h-[22px] px-3 bg-[#0d0e10] border-t border-[#292c31] flex items-center justify-between text-[11px] font-mono text-[#666c75] shrink-0 select-none">
+      <div className="h-[22px] px-3 bg-[#111214] border-t border-[#22242a] flex items-center justify-between text-[11px] font-mono text-[#787f8c] shrink-0 select-none">
         {/* Left Side: File & Editor metadata */}
-        <div className="flex items-center gap-3">
-          <span className="text-[#858b94]">{activeLanguage}</span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[#a5abb5]">{activeLanguage}</span>
+          <span className="text-[#2a2d35]">·</span>
           <span>UTF-8</span>
+          <span className="text-[#2a2d35]">·</span>
           <span>LF</span>
+          <span className="text-[#2a2d35]">·</span>
           <span>Spaces: 4</span>
-          <span className="text-[#858b94]">
+          <span className="text-[#2a2d35]">·</span>
+          <span className="text-[#a5abb5]">
             Ln {cursorPos.line}, Col {cursorPos.col}
           </span>
         </div>
 
         {/* Right Side: Runtime & Persistence status (clickable) */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Browser Sandbox status */}
           <button
             type="button"
@@ -911,23 +921,23 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ onBackToChat, work
             <span>Python (Pyodide WASM)</span>
           </button>
 
-          <span>|</span>
+          <span className="text-[#2a2d35]">·</span>
 
           {/* Local Storage status */}
           <button
             type="button"
             onClick={() => setShowStorageModal(true)}
-            className="flex items-center gap-1 hover:text-cyan-400 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors cursor-pointer"
             title="Inspect local browser storage & export backup"
           >
-            <HardDrive className="w-3 h-3 text-[#666c75]" />
+            <HardDrive className="w-3 h-3 text-[#787f8c]" />
             <span>
-              {storageStats.isSaving ? "Saving..." : "✓ Saved locally"}
+              {storageStats.isSaving ? "Saving..." : "Saved locally"}
               {storageStats.bytes > 0 ? ` (${formatBytes(storageStats.bytes)})` : ""}
             </span>
           </button>
 
-          <span>|</span>
+          <span className="text-[#2a2d35]">·</span>
 
           {/* Compilers Inspector */}
           <button

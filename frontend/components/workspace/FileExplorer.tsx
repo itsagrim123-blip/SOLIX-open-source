@@ -10,18 +10,22 @@ import {
   FilePlus,
   FileText,
   Folder,
+  FolderOpen,
   FolderPlus,
   FolderUp,
   Pencil,
   Trash2,
   Upload,
 } from "lucide-react";
-import { FileNode } from "@/types/workspace";
+import { FileNode, GitStatus, Problem } from "@/types/workspace";
 
 interface FileExplorerProps {
   tree: FileNode[];
   activeFile: string | null;
   projectName?: string;
+  dirtyFiles?: Record<string, string>;
+  problems?: Problem[];
+  gitStatus?: GitStatus | null;
   onSelectFile: (path: string) => void;
   onCreateFileOrDir: (path: string, isDirectory: boolean) => Promise<void>;
   onDeletePath: (path: string) => Promise<void>;
@@ -34,6 +38,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   tree,
   activeFile,
   projectName = "PROJECT",
+  dirtyFiles = {},
+  problems = [],
+  gitStatus = null,
   onSelectFile,
   onCreateFileOrDir,
   onDeletePath,
@@ -283,6 +290,27 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
     const isActive = !isDir && activeFile === node.path;
     const isEditing = editingPath === node.path;
 
+    // Real state flags
+    const isUnsaved = !isDir && Boolean(dirtyFiles && dirtyFiles[node.path] !== undefined);
+    const isModified =
+      !isDir &&
+      Boolean(
+        gitStatus?.modified &&
+          gitStatus.modified.some((f: string) => f === node.path || f.endsWith("/" + node.path))
+      );
+    const hasError =
+      !isDir &&
+      Boolean(
+        problems &&
+          problems.some(
+            (p) =>
+              p.file &&
+              (p.file === node.path ||
+                p.file.endsWith("/" + node.path) ||
+                node.path.endsWith("/" + p.file))
+          )
+      );
+
     if (isEditing) {
       return (
         <form
@@ -297,7 +325,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             onChange={(e) => setRenameInput(e.target.value)}
             autoFocus
             onBlur={() => setEditingPath(null)}
-            className="w-full bg-[#1b1d22] text-xs text-[#d4d7dc] px-2 py-0.5 rounded-xs border border-[#3a3d43] outline-none"
+            className="w-full bg-[#1b1d22] text-xs text-[#d4d7dc] px-2 py-0.5 rounded-xs border border-[#3a3d43] outline-none font-mono"
           />
         </form>
       );
@@ -307,10 +335,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       <div key={node.path}>
         <div
           onClick={() => (isDir ? toggleDir(node.path) : onSelectFile(node.path))}
-          className={`group flex items-center justify-between h-7 px-2 text-xs cursor-pointer select-none transition-colors ${
+          className={`group flex items-center justify-between h-7 px-2 text-xs cursor-pointer select-none transition-colors duration-100 ${
             isActive
-              ? "bg-[#1d2026] text-white font-medium border-l-2 border-cyan-500"
-              : "text-[#858b94] hover:bg-[#151619] hover:text-[#d4d7dc] border-l-2 border-transparent"
+              ? "bg-[#181a20] text-white font-medium border-l-2 border-cyan-500 shadow-xs"
+              : "text-[#858b94] hover:bg-[#15161a] hover:text-[#d4d7dc] border-l-2 border-transparent"
           }`}
           style={{ paddingLeft: `${depth * 14 + 10}px` }}
         >
@@ -318,20 +346,48 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             {isDir ? (
               <>
                 {isCollapsed ? (
-                  <ChevronRight className="w-3 h-3 text-[#666c75] shrink-0" />
+                  <ChevronRight className="w-3 h-3 text-[#666c75] shrink-0 transition-transform duration-100" />
                 ) : (
-                  <ChevronDown className="w-3 h-3 text-[#666c75] shrink-0" />
+                  <ChevronDown className="w-3 h-3 text-[#666c75] shrink-0 transition-transform duration-100" />
                 )}
-                <Folder className="w-3.5 h-3.5 text-[#e5a855] shrink-0" />
+                {isCollapsed ? (
+                  <Folder className="w-3.5 h-3.5 text-[#d49e53] shrink-0" />
+                ) : (
+                  <FolderOpen className="w-3.5 h-3.5 text-[#e5a855] shrink-0" />
+                )}
               </>
             ) : (
               getFileIcon(node.name)
             )}
             <span className="truncate">{node.name}</span>
+
+            {/* Real File State Indicators */}
+            {isUnsaved && (
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 ml-0.5"
+                title="Unsaved changes"
+              />
+            )}
+            {isModified && !isUnsaved && (
+              <span
+                className="text-[9.5px] font-mono font-bold text-cyan-400 shrink-0 ml-0.5"
+                title="Modified in Git"
+              >
+                M
+              </span>
+            )}
+            {hasError && (
+              <span
+                className="text-[10px] font-mono font-bold text-rose-400 shrink-0 ml-0.5"
+                title="Problems detected"
+              >
+                !
+              </span>
+            )}
           </div>
 
           {/* Action buttons on hover */}
-          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 pr-1">
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 pr-1 transition-opacity duration-100">
             <button
               type="button"
               onClick={(e) => {
@@ -340,7 +396,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 setRenameInput(node.path);
               }}
               className="p-1 hover:text-white rounded-xs text-[#666c75] hover:bg-[#22252b] transition-colors"
-              title="Rename"
+              title="Rename file"
             >
               <Pencil className="w-2.5 h-2.5" />
             </button>
@@ -353,15 +409,22 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 }
               }}
               className="p-1 hover:text-rose-400 rounded-xs text-[#666c75] hover:bg-[#22252b] transition-colors"
-              title="Delete"
+              title="Delete file"
             >
               <Trash2 className="w-2.5 h-2.5" />
             </button>
           </div>
         </div>
 
+        {/* Child container with subtle indentation guide line */}
         {isDir && !isCollapsed && node.children && (
-          <div>{node.children.map((child) => renderNode(child, depth + 1))}</div>
+          <div className="relative">
+            <div
+              className="absolute top-0 bottom-0 border-l border-[#1f2127]"
+              style={{ left: `${depth * 14 + 16}px` }}
+            />
+            {node.children.map((child) => renderNode(child, depth + 1))}
+          </div>
         )}
       </div>
     );
