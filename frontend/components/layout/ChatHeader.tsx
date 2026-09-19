@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { HardDrive, Menu, Server, Settings, Sparkles } from "lucide-react";
 import { ModelInfo } from "@/types/chat";
 import { getModelLabel } from "@/lib/models";
+import { HeaderSaturn } from "@/components/layout/HeaderSaturn";
 
 export type BackendStatus = "checking" | "online" | "offline";
 
@@ -57,7 +58,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
   return (
     <header className="h-12 px-4 border-b border-[#22242a] bg-[#111214] flex items-center justify-between select-none relative z-20 shrink-0">
-      {/* LEFT: Mobile Menu Button · Server Status */}
+      {/* LEFT: Mobile Menu Button · Particle Saturn · Server Status */}
       <div className="flex items-center gap-2.5 min-w-0">
         {/* Mobile menu hamburger button */}
         <button
@@ -68,6 +69,9 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         >
           <Menu className="w-4 h-4" />
         </button>
+
+        {/* Decorative Particle Saturn Animation */}
+        <HeaderSaturn />
 
         {/* Server Status Indicator (Click opens status popover) */}
         <div className="relative inline-flex items-center" ref={statusPopoverRef}>
